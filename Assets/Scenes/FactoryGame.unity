@@ -1173,6 +1173,7 @@ GameObject:
   m_Component:
   - component: {fileID: 665740493}
   - component: {fileID: 665740494}
+  - component: {fileID: 665740495}
   m_Layer: 0
   m_Name: Hauler
   m_TagString: Untagged
@@ -1250,6 +1251,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &665740495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 665740492}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f9e2ad5da6e3a346af4b8fd7ab75bfb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &678344652
 GameObject:
   m_ObjectHideFlags: 0
@@ -1260,6 +1273,7 @@ GameObject:
   m_Component:
   - component: {fileID: 678344653}
   - component: {fileID: 678344654}
+  - component: {fileID: 678344655}
   m_Layer: 0
   m_Name: Factory
   m_TagString: Untagged
@@ -1337,6 +1351,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &678344655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 678344652}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3773fc292827724cbe85681b4c9743f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &875974723
 GameObject:
   m_ObjectHideFlags: 0
@@ -1347,6 +1373,7 @@ GameObject:
   m_Component:
   - component: {fileID: 875974724}
   - component: {fileID: 875974725}
+  - component: {fileID: 875974726}
   m_Layer: 0
   m_Name: Drill
   m_TagString: Untagged
@@ -1424,6 +1451,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &875974726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 875974723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e0d6624064cbd04181cdd6d9c532d02, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0
@@ -1767,6 +1806,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1125748059}
   - component: {fileID: 1125748060}
+  - component: {fileID: 1125748061}
   m_Layer: 0
   m_Name: Miner
   m_TagString: Untagged
@@ -1844,6 +1884,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1125748061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1125748058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0a3044733f3d9a449ff870238f64d32, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1166443040
 GameObject:
   m_ObjectHideFlags: 0
@@ -1992,6 +2044,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1205952624}
   - component: {fileID: 1205952625}
+  - component: {fileID: 1205952626}
   m_Layer: 0
   m_Name: Builder
   m_TagString: Untagged
@@ -2069,6 +2122,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1205952626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1205952623}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 359a21388782012428a2ca8eedeac7d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1210551303
 GameObject:
   m_ObjectHideFlags: 0
@@ -2166,6 +2231,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1306989971}
   - component: {fileID: 1306989972}
+  - component: {fileID: 1306989973}
   m_Layer: 0
   m_Name: HQ
   m_TagString: Untagged
@@ -2182,8 +2248,8 @@ Transform:
   m_GameObject: {fileID: 1306989970}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: -2, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 4, y: -2, z: 0}
+  m_LocalScale: {x: 0.9, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 646330576}
@@ -2243,6 +2309,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1306989973
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1306989970}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6416f727608af543829ff47f492c41e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -2303,6 +2381,7 @@ MonoBehaviour:
   tickFrequency: 0.025
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
+  maxTicksButton: {fileID: 0}
   HQOreBuffer: 5
   spawnAttempts: 5
   oreSpawnFactor: 1
@@ -2974,6 +3053,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2002754850}
   - component: {fileID: 2002754851}
+  - component: {fileID: 2002754852}
   m_Layer: 0
   m_Name: CoalPlant
   m_TagString: Untagged
@@ -3051,6 +3131,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &2002754852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2002754849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 299d8a790b57d634e988d1744f9ecabf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2041591263
 GameObject:
   m_ObjectHideFlags: 0
@@ -3061,6 +3153,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2041591264}
   - component: {fileID: 2041591265}
+  - component: {fileID: 2041591266}
   m_Layer: 0
   m_Name: Warehouse
   m_TagString: Untagged
@@ -3078,7 +3171,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 3, y: -2, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.9, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 646330576}
@@ -3138,6 +3231,18 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &2041591266
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2041591263}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46bb0e0ac10758242baf009064114f0d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2111162004
 GameObject:
   m_ObjectHideFlags: 0
