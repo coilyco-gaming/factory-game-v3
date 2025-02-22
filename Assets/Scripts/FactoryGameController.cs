@@ -10,6 +10,7 @@ public class FactoryGameController : GameController
 {
     public GameObject resetButton;
     public GameObject pauseButton;
+    public GameObject maxTicksButton;
     public int HQOreBuffer = 3;
     public int spawnAttempts = 5;
     public float oreSpawnFactor = 0.5f;
@@ -40,7 +41,7 @@ public class FactoryGameController : GameController
         resetComponent.onClick.AddListener(this.Reset);
 
         Button pauseComponent = this.pauseButton.GetComponent<Button>();
-        pauseComponent.onClick.AddListener(this.PausePlay);
+        pauseComponent.onClick.AddListener(this.TogglePausePlay);
 
         this.pauseTextComponent = this.pauseButton.GetComponentInChildren<TextMeshProUGUI>();
         this.pauseTextComponent.SetText("Play");
@@ -115,10 +116,17 @@ public class FactoryGameController : GameController
         };
     }
 
-    private void PausePlay()
+    private void TogglePausePlay()
     {
-        this.readyForTicks = !this.readyForTicks;
-        this.pauseTextComponent.SetText(this.readyForTicks ? "Pause" : "Play");
-        this.PlayerComponent.ToggleFogPosition(!this.readyForTicks);
+        this.readyForTicks = !this.readyForTicks; // toggle
+        this.RenderPausePlay(!this.readyForTicks); // if not ready, then render paused
+    }
+
+    private void RenderPausePlay(bool paused)
+    {
+        string playText = "Play";
+        string pauseText = "Pause";
+        this.pauseTextComponent.SetText(paused ? pauseText : playText);
+        this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
     }
 }

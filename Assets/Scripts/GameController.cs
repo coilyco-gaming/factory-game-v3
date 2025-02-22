@@ -14,6 +14,7 @@ public class GameController : MonoBehaviour
     protected int randomSeed = 0;
     protected System.Random random;
     protected bool readyForTicks = false;
+    protected int maxTicks = 0;
     private Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObject>> worldObjects =
         new();
     private List<DeletionQueueItem> queuedForDeletion = new();
@@ -113,6 +114,12 @@ public class GameController : MonoBehaviour
     {
         // If we aren't ready for ticks, the main game loop won't run
         if (!this.readyForTicks)
+        {
+            return;
+        }
+
+        // If the max ticks is set and we've reached it, stop the game loop
+        if (this.maxTicks != 0 && this.Tick >= this.maxTicks)
         {
             return;
         }
