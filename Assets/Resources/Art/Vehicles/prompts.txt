@@ -1,0 +1,13 @@
+image size: 128x128 px
+
+autonomous, robotic, industrial machinery, truck, isometric view, sci-fi, high chassis
+transport, hauling, shipping
+
+autonomous, robotic, industrial machinery, truck, isometric view, sci-fi, high chassis
+mining, harvesting, gathering, digging, pile driver
+
+autonomous, robotic, industrial machinery, tank, isometric view, sci-fi, high chassis
+security, guard, weapon, combat
+
+autonomous, robotic, industrial machinery, isometric view, sci-fi, high chassis, vehicle, walker
+construction, assembly, robotic arm, crane, pincers
