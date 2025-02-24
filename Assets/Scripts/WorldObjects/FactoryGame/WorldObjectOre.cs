@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Assets.Scripts.Components;
+using Assets.Scripts.Components.Unity;
 using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame

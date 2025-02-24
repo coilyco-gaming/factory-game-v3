@@ -1,9 +1,10 @@
-using System;
-using System.Collections.Generic;
-using UnityEngine;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System;
+    using System.Collections.Generic;
+    using UnityEngine;
+
     public class StatusDataComponent : MonoBehaviour
     {
         // PROPERTIES //
@@ -23,3 +24,4 @@ namespace Assets.Scripts.Components
         public void Instantiate() { }
     }
 }
+#endif

@@ -1,13 +1,14 @@
-using System.Collections.Generic;
-using System.Linq;
-using Assets.Scripts.WorldObjects;
-using TMPro;
-using UnityEngine;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.WorldObjects;
+    using TMPro;
+    using UnityEngine;
+    using YamlDotNet.Serialization;
+    using YamlDotNet.Serialization.NamingConventions;
+
     public class StatusUIComponent : MonoBehaviour
     {
         // FIELDS //
@@ -78,3 +79,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

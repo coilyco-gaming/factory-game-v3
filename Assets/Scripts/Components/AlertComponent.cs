@@ -1,11 +1,12 @@
-using System.Collections.Generic;
-using TMPro;
-using UnityEngine;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System.Collections.Generic;
+    using TMPro;
+    using UnityEngine;
+    using YamlDotNet.Serialization;
+    using YamlDotNet.Serialization.NamingConventions;
+
     public class AlertComponent : MonoBehaviour
     {
         // STATICS //
@@ -90,3 +91,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

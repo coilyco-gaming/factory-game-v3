@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.Scripts.Components;
+using Assets.Scripts.Components.Unity;
 using Assets.Scripts.WorldObjects;
 using UnityEngine;
 

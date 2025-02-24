@@ -1,3 +1,8 @@
+!project.csproj
+
+bin/
+obj/
+
 # This .gitignore file should be placed at the root of your Unity project directory
 #
 # Get latest from https://github.com/github/gitignore/blob/main/Unity.gitignore
@@ -32,7 +37,6 @@ ExportedObj/
 .consulo/
 *.csproj
 *.unityproj
-*.sln
 *.suo
 *.tmp
 *.user
@@ -70,3 +74,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 .DS_Store
+
+!project.csproj

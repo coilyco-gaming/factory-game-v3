@@ -1,12 +1,13 @@
-using System.Collections.Generic;
-using Assets.Scripts.WorldObjects;
-using Roy_T.AStar.Graphs;
-using Roy_T.AStar.Paths;
-using Roy_T.AStar.Primitives;
-using UnityEngine;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System.Collections.Generic;
+    using Assets.Scripts.WorldObjects;
+    using Roy_T.AStar.Graphs;
+    using Roy_T.AStar.Paths;
+    using Roy_T.AStar.Primitives;
+    using UnityEngine;
+
     // TODO: Split this into a MapGenComponent and a PathfindingComponent
     public class MeshMapComponent : MonoBehaviour
     {
@@ -210,3 +211,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

@@ -1,6 +1,6 @@
 {
-    "files.exclude": {
-        "**/*.meta": true
-    },
-    "dotnet.defaultSolution": "factory-game-v2.sln"
+  "files.exclude": {
+    "**/*.meta": true
+  },
+  "dotnet.defaultSolution": "factory-game-v2.sln"
 }

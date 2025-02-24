@@ -1,7 +1,8 @@
-using UnityEngine;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using UnityEngine;
+
     public class PlayerComponent : MonoBehaviour
     {
         public int maxZoom = 10;
@@ -69,3 +70,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

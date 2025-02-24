@@ -1,12 +1,13 @@
-using System.Collections.Generic;
-using Assets.Scripts.WorldObjects;
-using Roy_T.AStar.Graphs;
-using Roy_T.AStar.Paths;
-using Roy_T.AStar.Primitives;
-using UnityEngine;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System.Collections.Generic;
+    using Assets.Scripts.WorldObjects;
+    using Roy_T.AStar.Graphs;
+    using Roy_T.AStar.Paths;
+    using Roy_T.AStar.Primitives;
+    using UnityEngine;
+
     public class SpriteMapComponent : MonoBehaviour
     {
         public UnityEngine.Vector2Int mapSize = new(20, 20);
@@ -174,3 +175,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

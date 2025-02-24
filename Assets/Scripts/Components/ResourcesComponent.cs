@@ -1,10 +1,11 @@
-using System;
-using System.Collections.Generic;
-using Assets.Scripts.WorldObjects;
-using UnityEngine;
-
-namespace Assets.Scripts.Components
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
 {
+    using System;
+    using System.Collections.Generic;
+    using Assets.Scripts.WorldObjects;
+    using UnityEngine;
+
     public class ResourcesComponent : MonoBehaviour
     {
         // FIELDS //
@@ -138,3 +139,4 @@ namespace Assets.Scripts.Components
         }
     }
 }
+#endif

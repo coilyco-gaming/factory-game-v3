@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+      <DefineConstants>TESTS;</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Library\**" />
+    <Compile Remove="Library\**" />
+    <EmbeddedResource Remove="Library\**" />
+    <None Remove="Library\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Temp\**" />
+    <Compile Remove="Temp\**" />
+    <EmbeddedResource Remove="Temp\**" />
+    <None Remove="Temp\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Scripts\*" />
+    <Compile Remove="Assets\Scripts\*" />
+    <EmbeddedResource Remove="Assets\Scripts\*" />
+    <None Remove="Assets\Scripts\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Scripts\WorldObjects\**" />
+    <Compile Remove="Assets\Scripts\WorldObjects\**" />
+    <EmbeddedResource Remove="Assets\Scripts\WorldObjects\**" />
+    <None Remove="Assets\Scripts\WorldObjects\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Xunit.Core">
+      <HintPath>Assets\Plugins\xunit.core.dll</HintPath>
+    </Reference>
+    <Reference Include="Xunit.Assert">
+      <HintPath>Assets\Plugins\xunit.assert.dll</HintPath>
+    </Reference>
+    <Reference Include="Xunit.Abstractions">
+      <HintPath>Assets\Plugins\xunit.abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Xunit.Execution.DotNet">
+      <HintPath>Assets\Plugins\xunit.execution.dotnet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
