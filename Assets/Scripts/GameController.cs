@@ -152,6 +152,7 @@ namespace Assets.Scripts
                 }
 
                 // TODO: make sure an object isnt being moved while being deleted.
+                // TODO: LERP the movement of objects
                 // Move queued objects
                 if (this.queuedForMovement != null)
                 {

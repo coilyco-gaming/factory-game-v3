@@ -1,6 +1,6 @@
 namespace Assets.Scripts.Components.Core
 {
-    public class PowerComponentCore
+    public class ExampleComponentCore
     {
         public void Instantiate() { }
     }
@@ -12,28 +12,27 @@ namespace Assets.Scripts.Components.Unity
     using Assets.Scripts.Components.Core;
     using UnityEngine;
 
-    public class PowerComponent : MonoBehaviour
+    public class ExampleComponent : MonoBehaviour
     {
-        private PowerComponentCore powerComponentCore = new();
+        private ExampleComponentCore ExampleComponentCore = new();
 
-        public void Instantiate() => this.powerComponentCore.Instantiate();
+        public void Instantiate() => this.ExampleComponentCore.Instantiate();
     }
 }
 #endif
 
-// TODO: add tree shaking to remove the tests from the build
 namespace Assets.Scripts.Components.Tests
 {
     using Assets.Scripts.Components.Core;
     using Xunit;
 
-    public class PowerComponentTest
+    public class ExampleComponentTest
     {
         [Fact]
         public void TestTrue()
         {
-            PowerComponentCore powerComponent = new();
-            powerComponent.Instantiate();
+            ExampleComponentCore ExampleComponent = new();
+            ExampleComponent.Instantiate();
             Assert.True(true);
         }
     }

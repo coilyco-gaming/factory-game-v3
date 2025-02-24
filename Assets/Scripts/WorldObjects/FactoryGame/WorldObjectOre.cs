@@ -18,9 +18,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.PostInstantiate(gameController, spawnQueueItem);
             this.Resources = this.AddComponent<ResourcesComponent>();
             this.Resources.Instantiate(
-                this,
                 this.Amount,
-                new Dictionary<string, int> { { this.WorldObjectType, this.Amount } } // TODO: randomize this number a bit
+                new Dictionary<string, int> { { this.WorldObjectType, this.Amount } }
             );
         }
 

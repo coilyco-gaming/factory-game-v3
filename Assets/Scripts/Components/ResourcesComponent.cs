@@ -1,22 +1,15 @@
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
+namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
-    using Assets.Scripts.WorldObjects;
-    using UnityEngine;
 
-    public class ResourcesComponent : MonoBehaviour
+    public class ResourcesComponentCore
     {
-        // FIELDS //
-
-        public WorldObject worldObject;
-
         // PROPERTIES //
 
         public Dictionary<string, int> Resources { get; set; } = null;
 
-        public int TotalResourceCapacity { get; set; }
+        public int TotalResourceCapacity { get; set; } = 0;
 
         public virtual Dictionary<string, string> ResourceInfo
         {
@@ -75,6 +68,8 @@ namespace Assets.Scripts.Components.Unity
             }
         }
 
+        public bool HasResources => this.TotalResources > 0;
+
         // CLASSES //
 
         public class ResourceException : Exception
@@ -83,15 +78,25 @@ namespace Assets.Scripts.Components.Unity
                 : base(message) { }
         }
 
+        public class ResourceCapacityException : ResourceException
+        {
+            public ResourceCapacityException(string message)
+                : base(message) { }
+        }
+
+        public class ResourceQuantityException : ResourceException
+        {
+            public ResourceQuantityException(string message)
+                : base(message) { }
+        }
+
         // FUNCTIONS //
 
         public void Instantiate(
-            WorldObject worldObject,
-            int TotalResourceCapacity,
+            int TotalResourceCapacity = 0,
             Dictionary<string, int> ResourcesOnCreate = null
         )
         {
-            this.worldObject = worldObject;
             this.TotalResourceCapacity = TotalResourceCapacity;
             this.Resources = ResourcesOnCreate ?? new();
         }
@@ -102,7 +107,7 @@ namespace Assets.Scripts.Components.Unity
             if (availableResources < amountToConsume)
             {
                 throw new ResourceException(
-                    $"Not enough {amountToConsume} {resourceName} to consume"
+                    $"Does not have {amountToConsume} {resourceName} to consume"
                 );
             }
 
@@ -110,19 +115,23 @@ namespace Assets.Scripts.Components.Unity
             return true;
         }
 
-        public bool GiveResources(ResourcesComponent target, string resourceName, int amountToGive)
+        public bool GiveResources(
+            ResourcesComponentCore target,
+            string resourceName,
+            int amountToGive
+        )
         {
             int availableResources = this.Resources.GetValueOrDefault(resourceName, 0);
             if (availableResources < amountToGive)
             {
-                throw new ResourceException(
-                    $"Not enough {amountToGive} {resourceName} to give {target.worldObject.WorldObjectType}"
+                throw new ResourceQuantityException(
+                    $"Does not have {amountToGive} {resourceName} to give"
                 );
             }
 
             if (target.RemainingResourceCapacity < amountToGive)
             {
-                throw new ResourceException(
+                throw new ResourceCapacityException(
                     $"Not enough capacity to recieve {amountToGive} {resourceName}"
                 );
             }
@@ -133,10 +142,246 @@ namespace Assets.Scripts.Components.Unity
             return true;
         }
 
-        public bool TakeResouces(ResourcesComponent target, string resourceName, int amountToTake)
+        public bool TakeResouces(
+            ResourcesComponentCore target,
+            string resourceName,
+            int amountToTake
+        )
         {
+            // TODO: catch the exceptions, emit them as alerts on the parent world object, then rethrow exception
+            // TODO: give should alert on the giver, take should alert on the taker
             return target.GiveResources(this, resourceName, amountToTake);
         }
     }
 }
+
+#if UNITY_6000
+namespace Assets.Scripts.Components.Unity
+{
+    using System.Collections.Generic;
+    using Assets.Scripts.Components.Core;
+    using UnityEngine;
+
+    public class ResourcesComponent : MonoBehaviour
+    {
+        // FIELDS //
+
+        private ResourcesComponentCore resourcesComponentCore = new();
+
+        // PROPERTIES //
+
+        // TODO: allow viewing these values in the unity inspector somehow
+        public Dictionary<string, int> Resources
+        {
+            get => this.resourcesComponentCore.Resources;
+            set => this.resourcesComponentCore.Resources = value;
+        }
+
+        public virtual Dictionary<string, string> ResourceInfo =>
+            this.resourcesComponentCore.ResourceInfo;
+
+        public int TotalResources => this.resourcesComponentCore.TotalResources;
+
+        public int RemainingResourceCapacity =>
+            this.resourcesComponentCore.RemainingResourceCapacity;
+
+        public string LeastAvailableResource => this.resourcesComponentCore.LeastAvailableResource;
+
+        public bool HasResources => this.resourcesComponentCore.HasResources;
+
+        // FUNCTIONS //
+
+        public void Instantiate(
+            int TotalResourceCapacity = 0,
+            Dictionary<string, int> ResourcesOnCreate = null
+        ) => this.resourcesComponentCore.Instantiate(TotalResourceCapacity, ResourcesOnCreate);
+
+        public bool ConsumeResources(string resourceName, int amountToConsume) =>
+            this.resourcesComponentCore.ConsumeResources(resourceName, amountToConsume);
+
+        public bool GiveResources(
+            ResourcesComponent target,
+            string resourceName,
+            int amountToGive
+        ) =>
+            this.resourcesComponentCore.GiveResources(
+                target.resourcesComponentCore,
+                resourceName,
+                amountToGive
+            );
+
+        public bool TakeResouces(
+            ResourcesComponent target,
+            string resourceName,
+            int amountToTake
+        ) =>
+            this.resourcesComponentCore.TakeResouces(
+                target.resourcesComponentCore,
+                resourceName,
+                amountToTake
+            );
+    }
+}
 #endif
+
+namespace Assets.Scripts.Components.Tests
+{
+    using Assets.Scripts.Components.Core;
+    using Xunit;
+
+    public class ResourcesComponentTest
+    {
+        [Fact]
+        public void TestTrue()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate();
+            Assert.True(true);
+        }
+
+        [Fact]
+        public void TestFieldZeroStates()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate();
+            Assert.Equal(0, resourcesComponent.TotalResources);
+            Assert.Equal(0, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(resourcesComponent.Resources.Count, 0);
+            Assert.Equal(resourcesComponent.ResourceInfo.Count, 0);
+            Assert.Null(resourcesComponent.LeastAvailableResource);
+            Assert.False(resourcesComponent.HasResources);
+        }
+
+        [Fact]
+        public void TestResourcesOnInit()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+            Assert.Equal(60, resourcesComponent.TotalResources);
+            Assert.Equal(40, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(resourcesComponent.Resources.Count, 3);
+            Assert.Equal(resourcesComponent.ResourceInfo.Count, 3);
+            Assert.Equal("wood", resourcesComponent.LeastAvailableResource);
+            Assert.True(resourcesComponent.HasResources);
+        }
+
+        [Fact]
+        public void TestConsumeResources()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+            resourcesComponent.ConsumeResources("wood", 5);
+            Assert.Equal(55, resourcesComponent.TotalResources);
+            Assert.Equal(45, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(5, resourcesComponent.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestGiveAndTake()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+
+            ResourcesComponentCore targetResourcesComponent = new();
+            targetResourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 5 },
+                    { "stone", 10 },
+                    { "iron", 15 },
+                }
+            );
+
+            resourcesComponent.GiveResources(targetResourcesComponent, "wood", 5);
+            Assert.Equal(55, resourcesComponent.TotalResources);
+            Assert.Equal(45, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(5, resourcesComponent.Resources["wood"]);
+            Assert.Equal(35, targetResourcesComponent.TotalResources);
+            Assert.Equal(65, targetResourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(10, targetResourcesComponent.Resources["wood"]);
+
+            resourcesComponent.TakeResouces(targetResourcesComponent, "wood", 5);
+            Assert.Equal(60, resourcesComponent.TotalResources);
+            Assert.Equal(40, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(10, resourcesComponent.Resources["wood"]);
+            Assert.Equal(30, targetResourcesComponent.TotalResources);
+            Assert.Equal(70, targetResourcesComponent.RemainingResourceCapacity);
+            Assert.Equal(5, targetResourcesComponent.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestNotEnoughResourcesToGive()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+
+            ResourcesComponentCore targetResourcesComponent = new();
+            targetResourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 5 },
+                    { "stone", 10 },
+                    { "iron", 15 },
+                }
+            );
+
+            Assert.Throws<ResourcesComponentCore.ResourceQuantityException>(
+                () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 15)
+            );
+        }
+
+        [Fact]
+        public void TestNotEnoughCapacityToRecieve()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new() { { "wood", 20 } }
+            );
+
+            ResourcesComponentCore targetResourcesComponent = new();
+            targetResourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new() { { "wood", 90 } }
+            );
+
+            Assert.Throws<ResourcesComponentCore.ResourceCapacityException>(
+                () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 20)
+            );
+        }
+    }
+}

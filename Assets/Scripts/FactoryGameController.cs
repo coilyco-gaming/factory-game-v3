@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+// TODO: create a completed build that folks can "play" (run? play?)
 namespace Assets.Scripts
 {
     public class FactoryGameController : GameController
@@ -13,7 +14,7 @@ namespace Assets.Scripts
         public GameObject resetButton;
         public GameObject pauseButton;
         public GameObject maxTicksButton;
-        public int HQOreBuffer = 3;
+        public int HQOreBuffer = 3; // TODO: world init settings screen for these values
         public int spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
         public int OreQuantityBase = 2000;
