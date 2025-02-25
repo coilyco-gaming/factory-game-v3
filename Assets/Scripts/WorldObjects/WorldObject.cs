@@ -15,8 +15,6 @@ namespace Assets.Scripts.WorldObjects
 
         public virtual float ZIndex => 1;
 
-        public virtual float Size => 1;
-
         public virtual StatusDataComponent Status { get; set; }
 
         public string Guid { get; set; }
@@ -79,22 +77,6 @@ namespace Assets.Scripts.WorldObjects
         protected virtual Func<StatusDataComponent.StatusData> GetStatusData()
         {
             return () => new StatusDataComponent.StatusData() { Name = this.WorldObjectType };
-        }
-
-        protected void FaceMovement(System.Numerics.Vector2 movement)
-        {
-            float angle = Mathf.Atan2(-movement.X, movement.Y) * Mathf.Rad2Deg;
-            Quaternion rotation = Quaternion.Euler(0, 0, angle);
-            this.transform.rotation = rotation;
-        }
-
-        protected void FaceLocation(System.Numerics.Vector2 target)
-        {
-            float yOffset = target.Y - this.GridPosition.Y;
-            float xOffset = target.X - this.GridPosition.X;
-            float angle = Mathf.Atan2(-xOffset, yOffset) * Mathf.Rad2Deg;
-            Quaternion rotation = Quaternion.Euler(0, 0, angle);
-            this.transform.rotation = rotation;
         }
 
         private string CreateGuid()
