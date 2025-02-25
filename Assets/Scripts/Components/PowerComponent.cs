@@ -1,7 +1,7 @@
-using System.Collections.Generic;
-
 namespace Assets.Scripts.Components.Core
 {
+    using System.Collections.Generic;
+
     public class PowerComponentCore
     {
         private string burnResource = ""; // ex: coal
@@ -66,6 +66,7 @@ namespace Assets.Scripts.Components.Unity
 
 namespace Assets.Scripts.Components.Tests
 {
+    using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Xunit;
 

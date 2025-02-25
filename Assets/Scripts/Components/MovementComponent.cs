@@ -1,5 +1,6 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
     using System.Numerics;
     using Roy_T.AStar.Graphs;
@@ -143,6 +144,24 @@ namespace Assets.Scripts.Components.Core
 
             return movement;
         }
+
+        public Quaternion FaceMovement(System.Numerics.Vector2 movement)
+        {
+            double radians = Math.Atan2(movement.X, movement.Y);
+            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(0, 0, (float)radians);
+            return rotation;
+        }
+
+        public Quaternion FaceLocation(
+            System.Numerics.Vector2 origin,
+            System.Numerics.Vector2 target
+        )
+        {
+            float yOffset = target.Y - origin.Y;
+            float xOffset = target.X - origin.X;
+            Vector2 diff = new(xOffset, yOffset);
+            return this.FaceMovement(diff);
+        }
     }
 }
 
@@ -177,12 +196,38 @@ namespace Assets.Scripts.Components.Unity
                 mapSize,
                 new List<System.Numerics.Vector2>(obstacles)
             );
+
+        public void FaceMovement(System.Numerics.Vector2 movement)
+        {
+            System.Numerics.Quaternion coreRotation = this.core.FaceMovement(movement);
+            Quaternion rotation = new(
+                coreRotation.X,
+                coreRotation.Y,
+                coreRotation.Z,
+                coreRotation.W
+            );
+            this.transform.rotation = rotation;
+        }
+
+        public void FaceLocation(System.Numerics.Vector2 origin, System.Numerics.Vector2 target)
+        {
+            System.Numerics.Quaternion coreRotation = this.core.FaceLocation(origin, target);
+            Quaternion rotation = new(
+                coreRotation.X,
+                coreRotation.Y,
+                coreRotation.Z,
+                coreRotation.W
+            );
+            this.transform.rotation = rotation;
+        }
     }
 }
 #endif
 
 namespace Assets.Scripts.Components.Tests
 {
+    using System;
+    using System.Numerics;
     using Assets.Scripts.Components.Core;
     using Xunit;
 
@@ -370,6 +415,84 @@ namespace Assets.Scripts.Components.Tests
                 mapSize
             );
             Assert.Equal(null, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement1()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(0, 0);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement2()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(0, 1);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement3()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(1, 1);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(1 * Math.PI / 4));
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement4()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(1, 0);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(2 * Math.PI / 4));
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement5()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(1, -1);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(3 * Math.PI / 4));
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceMovement6()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 movementVector = new(0, -1);
+            Quaternion actual = movement.FaceMovement(movementVector);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(4 * Math.PI / 4));
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestFaceLocation()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(0, 0);
+            System.Numerics.Vector2 target = new(1, 1);
+            Quaternion actual = movement.FaceLocation(origin, target);
+            Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(Math.PI / 4));
+            Assert.Equal(expected, actual);
         }
     }
 }
