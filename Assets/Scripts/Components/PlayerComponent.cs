@@ -28,19 +28,19 @@ namespace Assets.Scripts.Components.Unity
 
         public void Update()
         {
-            if (Input.GetKeyDown(KeyCode.W))
+            if (Input.GetKey(KeyCode.W))
             {
                 Camera.main.transform.position += Vector3.up;
             }
-            if (Input.GetKeyDown(KeyCode.A))
+            if (Input.GetKey(KeyCode.A))
             {
                 Camera.main.transform.position += Vector3.left;
             }
-            if (Input.GetKeyDown(KeyCode.S))
+            if (Input.GetKey(KeyCode.S))
             {
                 Camera.main.transform.position += Vector3.down;
             }
-            if (Input.GetKeyDown(KeyCode.D))
+            if (Input.GetKey(KeyCode.D))
             {
                 Camera.main.transform.position += Vector3.right;
             }

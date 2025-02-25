@@ -10,44 +10,49 @@ namespace Assets.Scripts.Components.Core
     {
         public void Instantiate() { }
 
-        public Vector2 DiamondSpiralPattern(Vector2 origin, Vector2 currentTarget, Vector2 mapSize)
+        public Vector2? DiamondSpiralPattern(
+            Vector2 origin,
+            Vector2 currentTarget,
+            Vector2 mapSize,
+            int depth = 0
+        )
         {
-            // TODO: handles cases where you overrun the map
-
             Vector2 changeVector = currentTarget - origin;
 
-            // case 1: (1, 1) -> (1, 2)
+            // We've check all the way around the map
+            if (depth > mapSize.X + mapSize.Y)
+            {
+                return null;
+            }
+
+            // case 1a: (1, 1) -> (1, 2): upwards, this happens exactly once
             if (changeVector.X == 0 && changeVector.Y == 0)
             {
                 currentTarget.Y += 1;
-                return currentTarget;
             }
 
-            // case 2: (1, 2) -> (2, 1)
+            // case 2a: (1, 2) -> (2, 1): towards bottom right
             if (changeVector.X >= 0 && changeVector.Y > 0)
             {
                 currentTarget.X += 1;
                 currentTarget.Y -= 1;
-                return currentTarget;
             }
 
-            // case 3: (2, 1) -> (1, 0)
+            // case 3a: (2, 1) -> (1, 0): towards bottom left
             if (changeVector.X > 0 && changeVector.Y <= 0)
             {
                 currentTarget.X -= 1;
                 currentTarget.Y -= 1;
-                return currentTarget;
             }
 
-            // case 4: (1, 0) -> (0, 1)
+            // case 4a: (1, 0) -> (0, 1): towards top left
             if (changeVector.X <= 0 && changeVector.Y < 0)
             {
                 currentTarget.X -= 1;
                 currentTarget.Y += 1;
-                return currentTarget;
             }
 
-            // case 5a: (0, 2) -> (1, 3)
+            // case 5a: (0, 2) -> (1, 3):
             //   needs to handle an origin that is farther away
             //   than our simple (1,1) origin
             //   so we an example with a (2,2) origin instead
@@ -62,7 +67,17 @@ namespace Assets.Scripts.Components.Core
                     // then add +1 to the Y
                     currentTarget.Y += 1;
                 }
-                return currentTarget;
+            }
+
+            if (
+                currentTarget.X < 0
+                || currentTarget.Y < 0
+                || currentTarget.X > mapSize.X
+                || currentTarget.Y > mapSize.Y
+            )
+            {
+                // If the target is out of bounds, recurse to find a new target
+                return this.DiamondSpiralPattern(origin, currentTarget, mapSize, depth + 1);
             }
 
             return currentTarget;
@@ -144,7 +159,7 @@ namespace Assets.Scripts.Components.Unity
 
         public void Instantiate() => this.core.Instantiate();
 
-        public System.Numerics.Vector2 DiamondSpiralPattern(
+        public System.Numerics.Vector2? DiamondSpiralPattern(
             System.Numerics.Vector2 origin,
             System.Numerics.Vector2 currentTarget,
             System.Numerics.Vector2 mapSize
@@ -182,16 +197,16 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestDiamondSpiralPatternCase1()
+        public void TestDiamondSpiralPatternCase1a()
         {
-            // case 1: (1, 1) -> (1, 2)
+            // case 1a: (1, 1) -> (1, 2)
             MovementComponentCore movement = new();
             movement.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 1);
             System.Numerics.Vector2 expected = new(1, 2);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -200,16 +215,56 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestDiamondSpiralPatternCase2()
+        public void TestDiamondSpiralPatternCase1b()
         {
-            // case 2: (1, 2) -> (2, 1)
+            // case 1b:
+            //   if we are at the top of the map
+            //   then apply case 2a style movement
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 10);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(1, 10);
+            System.Numerics.Vector2 expected = new(2, 10);
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase1c()
+        {
+            // case 1c:
+            //   if we are at the top right corner
+            //   then apply case 3a style movement
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(10, 10);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(10, 10);
+            System.Numerics.Vector2 expected = new(10, 9);
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase2a()
+        {
+            // case 2a: (1, 2) -> (2, 1)
             MovementComponentCore movement = new();
             movement.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 2);
             System.Numerics.Vector2 expected = new(2, 1);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -218,16 +273,33 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestDiamondSpiralPatternCase3()
+        public void TestDiamondSpiralPatternCase2b()
         {
-            // case 3: (2, 1) -> (1, 0)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(1, 2);
+            System.Numerics.Vector2 expected = new(2, 1);
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase3a()
+        {
+            // case 3a: (2, 1) -> (1, 0)
             MovementComponentCore movement = new();
             movement.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(2, 1);
             System.Numerics.Vector2 expected = new(1, 0);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -236,16 +308,16 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestDiamondSpiralPatternCase4()
+        public void TestDiamondSpiralPatternCase4a()
         {
-            // case 4: (1, 0) -> (0, 1)
+            // case 4a: (1, 0) -> (0, 1)
             MovementComponentCore movement = new();
             movement.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 0);
             System.Numerics.Vector2 expected = new(0, 1);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -266,7 +338,7 @@ namespace Assets.Scripts.Components.Tests
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(0, 2);
             System.Numerics.Vector2 expected = new(1, 3);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -284,12 +356,28 @@ namespace Assets.Scripts.Components.Tests
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(0, 1);
             System.Numerics.Vector2 expected = new(1, 3);
-            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
             );
             Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase6End()
+        {
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(10, 10);
+            System.Numerics.Vector2? actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(null, actual);
         }
     }
 }

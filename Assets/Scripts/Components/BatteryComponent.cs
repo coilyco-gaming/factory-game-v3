@@ -21,6 +21,9 @@ namespace Assets.Scripts.Components.Core
             this.Energy = startingEnergy;
         }
 
+        // TODO: progressively degrade the battey every time its charged
+        // TODO: mark battery as "unhealthy" when current capacity is below 50% of original capacity
+
         // Balance each battery in the list, including yourself,
         // to the same % of battery capacity.
         public void Balance(List<BatteryComponentCore> batteries)

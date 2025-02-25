@@ -388,6 +388,8 @@ namespace Assets.Scripts
         {
             // Get the list of objects at the player's position
             System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
+
+            // TODO: grab the nearby objects, not just the ones at the player's position
             List<WorldObject> worldObjects =
                 this.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
                 ?? new List<WorldObject>();

@@ -7,6 +7,8 @@ namespace Assets.Scripts.Components.Core
     {
         // PROPERTIES //
 
+        // TODO: reserve storage for certain kinds of resources
+
         public Dictionary<string, uint> Resources { get; private set; } = new();
 
         public uint TotalResourceCapacity { get; set; } = 0;
