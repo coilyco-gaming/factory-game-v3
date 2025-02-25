@@ -7,16 +7,16 @@ namespace Assets.Scripts.Components.Core
     {
         // PROPERTIES //
 
-        public Dictionary<string, int> Resources { get; set; } = null;
+        public Dictionary<string, uint> Resources { get; private set; } = new();
 
-        public int TotalResourceCapacity { get; set; } = 0;
+        public uint TotalResourceCapacity { get; set; } = 0;
 
         public virtual Dictionary<string, string> ResourceInfo
         {
             get
             {
                 Dictionary<string, string> info = new();
-                foreach (KeyValuePair<string, int> resource in this.Resources)
+                foreach (KeyValuePair<string, uint> resource in this.Resources)
                 {
                     info.Add(resource.Key, resource.Value.ToString());
                 }
@@ -24,29 +24,16 @@ namespace Assets.Scripts.Components.Core
             }
         }
 
-        public int TotalResources
+        public uint TotalResources
         {
             get
             {
-                int total = 0;
-                foreach (int resource in this.Resources.Values)
+                uint total = 0;
+                foreach (uint resource in this.Resources.Values)
                 {
                     total += resource;
                 }
                 return total;
-            }
-        }
-
-        public int RemainingResourceCapacity
-        {
-            get
-            {
-                int capacity = this.TotalResourceCapacity;
-                foreach (int resource in this.Resources.Values)
-                {
-                    capacity -= resource;
-                }
-                return capacity;
             }
         }
 
@@ -55,8 +42,8 @@ namespace Assets.Scripts.Components.Core
             get
             {
                 string leastAvilable = null;
-                int leastAvilableAmount = int.MaxValue;
-                foreach (KeyValuePair<string, int> resource in this.Resources)
+                uint leastAvilableAmount = int.MaxValue;
+                foreach (KeyValuePair<string, uint> resource in this.Resources)
                 {
                     if (resource.Value < leastAvilableAmount)
                     {
@@ -69,6 +56,19 @@ namespace Assets.Scripts.Components.Core
         }
 
         public bool HasResources => this.TotalResources > 0;
+
+        public uint RemainingResourceCapacity
+        {
+            get
+            {
+                uint capacity = this.TotalResourceCapacity;
+                foreach (uint resource in this.Resources.Values)
+                {
+                    capacity -= resource;
+                }
+                return capacity;
+            }
+        }
 
         // CLASSES //
 
@@ -93,17 +93,17 @@ namespace Assets.Scripts.Components.Core
         // FUNCTIONS //
 
         public void Instantiate(
-            int TotalResourceCapacity = 0,
-            Dictionary<string, int> ResourcesOnCreate = null
+            uint TotalResourceCapacity = 0,
+            Dictionary<string, uint> ResourcesOnCreate = null
         )
         {
             this.TotalResourceCapacity = TotalResourceCapacity;
             this.Resources = ResourcesOnCreate ?? new();
         }
 
-        public bool ConsumeResources(string resourceName, int amountToConsume)
+        public bool ConsumeResources(string resourceName, uint amountToConsume)
         {
-            int availableResources = this.Resources.GetValueOrDefault(resourceName, 0);
+            uint availableResources = this.Resources.GetValueOrDefault(resourceName, (uint)0);
             if (availableResources < amountToConsume)
             {
                 throw new ResourceException(
@@ -118,10 +118,10 @@ namespace Assets.Scripts.Components.Core
         public bool GiveResources(
             ResourcesComponentCore target,
             string resourceName,
-            int amountToGive
+            uint amountToGive
         )
         {
-            int availableResources = this.Resources.GetValueOrDefault(resourceName, 0);
+            uint availableResources = this.Resources.GetValueOrDefault(resourceName, (uint)0);
             if (availableResources < amountToGive)
             {
                 throw new ResourceQuantityException(
@@ -137,7 +137,7 @@ namespace Assets.Scripts.Components.Core
             }
 
             this.Resources[resourceName] -= amountToGive;
-            int currentResources = target.Resources.GetValueOrDefault(resourceName, 0);
+            uint currentResources = target.Resources.GetValueOrDefault(resourceName, (uint)0);
             target.Resources[resourceName] = currentResources + amountToGive;
             return true;
         }
@@ -145,11 +145,10 @@ namespace Assets.Scripts.Components.Core
         public bool TakeResouces(
             ResourcesComponentCore target,
             string resourceName,
-            int amountToTake
+            uint amountToTake
         )
         {
-            // TODO: catch the exceptions, emit them as alerts on the parent world object, then rethrow exception
-            // TODO: give should alert on the giver, take should alert on the taker
+            // TODO: catch the exceptions, emit them as alerts on both world objects, then rethrow exception
             return target.GiveResources(this, resourceName, amountToTake);
         }
     }
@@ -166,60 +165,44 @@ namespace Assets.Scripts.Components.Unity
     {
         // FIELDS //
 
-        private ResourcesComponentCore resourcesComponentCore = new();
+        public ResourcesComponentCore core = new();
 
         // PROPERTIES //
 
         // TODO: allow viewing these values in the unity inspector somehow
-        public Dictionary<string, int> Resources
-        {
-            get => this.resourcesComponentCore.Resources;
-            set => this.resourcesComponentCore.Resources = value;
-        }
+        public Dictionary<string, uint> Resources => this.core.Resources;
 
-        public virtual Dictionary<string, string> ResourceInfo =>
-            this.resourcesComponentCore.ResourceInfo;
+        public virtual Dictionary<string, string> ResourceInfo => this.core.ResourceInfo;
 
-        public int TotalResources => this.resourcesComponentCore.TotalResources;
+        public uint TotalResources => this.core.TotalResources;
 
-        public int RemainingResourceCapacity =>
-            this.resourcesComponentCore.RemainingResourceCapacity;
+        public uint RemainingResourceCapacity => this.core.RemainingResourceCapacity;
 
-        public string LeastAvailableResource => this.resourcesComponentCore.LeastAvailableResource;
+        public string LeastAvailableResource => this.core.LeastAvailableResource;
 
-        public bool HasResources => this.resourcesComponentCore.HasResources;
+        public bool HasResources => this.core.HasResources;
 
         // FUNCTIONS //
 
         public void Instantiate(
-            int TotalResourceCapacity = 0,
-            Dictionary<string, int> ResourcesOnCreate = null
-        ) => this.resourcesComponentCore.Instantiate(TotalResourceCapacity, ResourcesOnCreate);
+            uint TotalResourceCapacity = 0,
+            Dictionary<string, uint> ResourcesOnCreate = null
+        ) => this.core.Instantiate(TotalResourceCapacity, ResourcesOnCreate);
 
-        public bool ConsumeResources(string resourceName, int amountToConsume) =>
-            this.resourcesComponentCore.ConsumeResources(resourceName, amountToConsume);
+        public bool ConsumeResources(string resourceName, uint amountToConsume) =>
+            this.core.ConsumeResources(resourceName, amountToConsume);
 
         public bool GiveResources(
             ResourcesComponent target,
             string resourceName,
-            int amountToGive
-        ) =>
-            this.resourcesComponentCore.GiveResources(
-                target.resourcesComponentCore,
-                resourceName,
-                amountToGive
-            );
+            uint amountToGive
+        ) => this.core.GiveResources(target.core, resourceName, amountToGive);
 
         public bool TakeResouces(
             ResourcesComponent target,
             string resourceName,
-            int amountToTake
-        ) =>
-            this.resourcesComponentCore.TakeResouces(
-                target.resourcesComponentCore,
-                resourceName,
-                amountToTake
-            );
+            uint amountToTake
+        ) => this.core.TakeResouces(target.core, resourceName, amountToTake);
     }
 }
 #endif
@@ -244,8 +227,8 @@ namespace Assets.Scripts.Components.Tests
         {
             ResourcesComponentCore resourcesComponent = new();
             resourcesComponent.Instantiate();
-            Assert.Equal(0, resourcesComponent.TotalResources);
-            Assert.Equal(0, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)0, resourcesComponent.TotalResources);
+            Assert.Equal((uint)0, resourcesComponent.RemainingResourceCapacity);
             Assert.Equal(resourcesComponent.Resources.Count, 0);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 0);
             Assert.Null(resourcesComponent.LeastAvailableResource);
@@ -265,8 +248,8 @@ namespace Assets.Scripts.Components.Tests
                     { "iron", 30 },
                 }
             );
-            Assert.Equal(60, resourcesComponent.TotalResources);
-            Assert.Equal(40, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)60, resourcesComponent.TotalResources);
+            Assert.Equal((uint)40, resourcesComponent.RemainingResourceCapacity);
             Assert.Equal(resourcesComponent.Resources.Count, 3);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 3);
             Assert.Equal("wood", resourcesComponent.LeastAvailableResource);
@@ -287,9 +270,9 @@ namespace Assets.Scripts.Components.Tests
                 }
             );
             resourcesComponent.ConsumeResources("wood", 5);
-            Assert.Equal(55, resourcesComponent.TotalResources);
-            Assert.Equal(45, resourcesComponent.RemainingResourceCapacity);
-            Assert.Equal(5, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)55, resourcesComponent.TotalResources);
+            Assert.Equal((uint)45, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)5, resourcesComponent.Resources["wood"]);
         }
 
         [Fact]
@@ -318,20 +301,20 @@ namespace Assets.Scripts.Components.Tests
             );
 
             resourcesComponent.GiveResources(targetResourcesComponent, "wood", 5);
-            Assert.Equal(55, resourcesComponent.TotalResources);
-            Assert.Equal(45, resourcesComponent.RemainingResourceCapacity);
-            Assert.Equal(5, resourcesComponent.Resources["wood"]);
-            Assert.Equal(35, targetResourcesComponent.TotalResources);
-            Assert.Equal(65, targetResourcesComponent.RemainingResourceCapacity);
-            Assert.Equal(10, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)55, resourcesComponent.TotalResources);
+            Assert.Equal((uint)45, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)5, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)35, targetResourcesComponent.TotalResources);
+            Assert.Equal((uint)65, targetResourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)10, targetResourcesComponent.Resources["wood"]);
 
             resourcesComponent.TakeResouces(targetResourcesComponent, "wood", 5);
-            Assert.Equal(60, resourcesComponent.TotalResources);
-            Assert.Equal(40, resourcesComponent.RemainingResourceCapacity);
-            Assert.Equal(10, resourcesComponent.Resources["wood"]);
-            Assert.Equal(30, targetResourcesComponent.TotalResources);
-            Assert.Equal(70, targetResourcesComponent.RemainingResourceCapacity);
-            Assert.Equal(5, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)60, resourcesComponent.TotalResources);
+            Assert.Equal((uint)40, resourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)10, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)30, targetResourcesComponent.TotalResources);
+            Assert.Equal((uint)70, targetResourcesComponent.RemainingResourceCapacity);
+            Assert.Equal((uint)5, targetResourcesComponent.Resources["wood"]);
         }
 
         [Fact]

@@ -14,9 +14,9 @@ namespace Assets.Scripts.Components.Unity
 
     public class MovementComponent : MonoBehaviour
     {
-        private MovementComponentCore MovementComponentCore = new();
+        public readonly MovementComponentCore core = new();
 
-        public void Instantiate() => this.MovementComponentCore.Instantiate();
+        public void Instantiate() => this.core.Instantiate();
     }
 }
 #endif

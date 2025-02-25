@@ -28,7 +28,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
 
             // If the ore is empty, delete it.
-            if (this.Resources.TotalResources == 0)
+            if (!this.Resources.HasResources)
             {
                 gameController.QueueForDeletion(
                     new GameController.DeletionQueueItem(this, this.GridPosition)

@@ -14,13 +14,14 @@ namespace Assets.Scripts.Components.Unity
 
     public class ExampleComponent : MonoBehaviour
     {
-        private ExampleComponentCore ExampleComponentCore = new();
+        public readonly ExampleComponentCore core = new();
 
-        public void Instantiate() => this.ExampleComponentCore.Instantiate();
+        public void Instantiate() => this.core.Instantiate();
     }
 }
 #endif
 
+// TODO: add tree shaking to remove the tests from the build
 namespace Assets.Scripts.Components.Tests
 {
     using Assets.Scripts.Components.Core;
