@@ -1,22 +1,19 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Unity;
-using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectOre : WorldObject
     {
-        public ResourcesComponent Resources { get; set; }
         public uint Amount { get; set; }
 
-        public override void PostInstantiate(
+        public override void Instantiate(
             GameController gameController,
             GameController.SpawnQueueItem spawnQueueItem
         )
         {
-            base.PostInstantiate(gameController, spawnQueueItem);
-            this.Resources = this.AddComponent<ResourcesComponent>();
+            base.Instantiate(gameController, spawnQueueItem);
             this.Resources.Instantiate(
                 this.Amount,
                 new Dictionary<string, uint> { { this.WorldObjectType, this.Amount } }

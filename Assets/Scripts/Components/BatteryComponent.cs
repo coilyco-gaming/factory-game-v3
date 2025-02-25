@@ -1,10 +1,12 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
 
     public class BatteryComponentCore
     {
+        private static uint minimumCapacity = 100;
         private uint energy = 0;
 
         public uint Energy
@@ -15,14 +17,25 @@ namespace Assets.Scripts.Components.Core
 
         public uint Capacity { get; set; } = 0;
 
+        public double PercentEnergy =>
+            this.Capacity != 0 ? Math.Round((double)(this.Energy / (double)this.Capacity), 1) : 0;
+
+        public string PercentEnergyStatus => $"{this.PercentEnergy * 100}%";
+
         public void Instantiate(uint startingEnergy = 0, uint capacity = 0)
         {
+            // Setting a min capacity + rounding to 1 decimal place helps
+            // prevent a battery being charged infinitely.
             this.Capacity = capacity == 0 ? startingEnergy : capacity;
+            this.Capacity =
+                this.Capacity < BatteryComponentCore.minimumCapacity
+                    ? BatteryComponentCore.minimumCapacity
+                    : this.Capacity;
             this.Energy = startingEnergy;
         }
 
-        // TODO: progressively degrade the battey every time its charged
-        // TODO: mark battery as "unhealthy" when current capacity is below 50% of original capacity
+        // TODO: progressively degrade the battey every time its charged, with some cooldown
+        // TODO: mark battery as "unhealthy" when current capacity is below 33% of original capacity
 
         // Balance each battery in the list, including yourself,
         // to the same % of battery capacity.
@@ -60,17 +73,66 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
+    using Assets.Scripts.WorldObjects;
     using UnityEngine;
 
     public class BatteryComponent : MonoBehaviour
     {
         public readonly BatteryComponentCore core = new();
+        public uint Energy => this.core.Energy;
+        public double PercentEnergy => this.core.PercentEnergy;
+        public string PercentEnergyStatus => this.core.PercentEnergyStatus;
 
         public void Instantiate(uint startingEnergy = 0, uint capacity = 0) =>
             this.core.Instantiate(startingEnergy, capacity);
 
-        public void Balance(List<BatteryComponent> batteries)
+        // TODO: DRY this pattern, we do it twice
+        public void Balance(WorldObject worldObject, GameController gameController)
         {
+            List<System.Numerics.Vector2> adjacentTiles = new()
+            {
+                new System.Numerics.Vector2( // Above
+                    worldObject.GridPosition.X + 0,
+                    worldObject.GridPosition.Y + 1
+                ),
+                new System.Numerics.Vector2( // Top Right
+                    worldObject.GridPosition.X + 1,
+                    worldObject.GridPosition.Y + 1
+                ),
+                new System.Numerics.Vector2( // Right
+                    worldObject.GridPosition.X + 1,
+                    worldObject.GridPosition.Y + 0
+                ),
+                new System.Numerics.Vector2( // Bottom Right
+                    worldObject.GridPosition.X + 1,
+                    worldObject.GridPosition.Y - 1
+                ),
+                new System.Numerics.Vector2( // Below
+                    worldObject.GridPosition.X + 0,
+                    worldObject.GridPosition.Y - 1
+                ),
+                new System.Numerics.Vector2( // Bottom Left
+                    worldObject.GridPosition.X - 1,
+                    worldObject.GridPosition.Y - 1
+                ),
+                new System.Numerics.Vector2( // Left
+                    worldObject.GridPosition.X + -1,
+                    worldObject.GridPosition.Y + 0
+                ),
+                new System.Numerics.Vector2( // Top Left
+                    worldObject.GridPosition.X + -1,
+                    worldObject.GridPosition.Y + 1
+                ),
+            };
+            List<WorldObject> localWorldObjects = adjacentTiles
+                .SelectMany(adjacentTile =>
+                    gameController.GetWorldObjectsByPosition(adjacentTile)
+                    ?? Enumerable.Empty<WorldObject>()
+                )
+                .ToList();
+            List<BatteryComponent> batteries = localWorldObjects
+                .Select(localWorldObject => localWorldObject.Battery)
+                .ToList();
             this.core.Balance(batteries.Select(battery => battery.core).ToList());
         }
     }
@@ -200,6 +262,33 @@ namespace Assets.Scripts.Components.Tests
             battery.Instantiate(50, 100);
             battery.Balance(new List<BatteryComponentCore>());
             Assert.Equal((uint)50, battery.Energy);
+        }
+
+        [Fact]
+        public void TestPercentEnergy()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(50, 100);
+            Assert.Equal(0.5, battery.PercentEnergy);
+            Assert.Equal("50%", battery.PercentEnergyStatus);
+        }
+
+        [Fact]
+        public void TestPercentEnergy9s()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(99, 100);
+            Assert.Equal(1, battery.PercentEnergy);
+            Assert.Equal("100%", battery.PercentEnergyStatus);
+        }
+
+        [Fact]
+        public void TestMinCapacity()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(0, 0);
+            Assert.Equal((uint)100, battery.Capacity);
+            Assert.Equal((uint)0, battery.Energy);
         }
     }
 }

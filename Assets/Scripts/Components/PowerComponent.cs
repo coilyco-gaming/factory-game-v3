@@ -12,7 +12,7 @@ namespace Assets.Scripts.Components.Core
         private ResourcesComponentCore resources = new();
 
         public void Instantiate(
-            BatteryComponentCore battery,
+            BatteryComponentCore battery = null,
             ResourcesComponentCore resources = null,
             string burnResource = "",
             uint burnRate = 0,
@@ -28,6 +28,10 @@ namespace Assets.Scripts.Components.Core
 
         public void GeneratePower()
         {
+            if (this.battery.PercentEnergy >= 1)
+            {
+                return;
+            }
             uint resourcesToBurn = this.resources.Resources.GetValueOrDefault(
                 this.burnResource,
                 (uint)0
@@ -52,9 +56,9 @@ namespace Assets.Scripts.Components.Unity
         protected readonly PowerComponentCore core = new();
 
         public void Instantiate(
-            BatteryComponent battery,
-            ResourcesComponent resources,
-            string burnResource,
+            BatteryComponent battery = null,
+            ResourcesComponent resources = null,
+            string burnResource = "",
             uint burnRate = 0,
             uint gainRate = 0
         ) => this.core.Instantiate(battery.core, resources.core, burnResource, burnRate, gainRate);
@@ -76,7 +80,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestGeneratePowerNulls1()
         {
             PowerComponentCore power = new();
-            power.Instantiate(null, null, "", 0, 0);
+            power.Instantiate();
             power.GeneratePower();
         }
 
@@ -175,6 +179,49 @@ namespace Assets.Scripts.Components.Tests
             power.Instantiate(battery, null, "sunlight", 0, 200);
             power.GeneratePower();
             Assert.Equal((uint)100, battery.Energy);
+        }
+
+        [Fact]
+        public void TestOverchargeDoesntConsume()
+        {
+            PowerComponentCore power = new();
+            BatteryComponentCore battery = new();
+            battery.Instantiate(100, 100);
+            ResourcesComponentCore resources = new();
+            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
+            power.Instantiate(battery, resources, "coal", 1, 200);
+            power.GeneratePower();
+            Assert.Equal((uint)100, battery.Energy);
+            Assert.Equal((uint)1, resources.TotalResources);
+        }
+
+        [Fact]
+        public void TestChargingTo100Percent()
+        {
+            PowerComponentCore power = new();
+            BatteryComponentCore battery = new();
+            battery.Instantiate(0, 100);
+            power.Instantiate(battery, burnResource: "sunlight", gainRate: 1);
+            power.GeneratePower();
+            for (int i = 0; i < 100; i++)
+            {
+                power.GeneratePower();
+            }
+            Assert.Equal(1, battery.PercentEnergy);
+            Assert.Equal("100%", battery.PercentEnergyStatus);
+        }
+
+        [Fact]
+        public void TestHighGain()
+        {
+            PowerComponentCore power = new();
+            BatteryComponentCore battery = new();
+            battery.Instantiate(0, 100);
+            power.Instantiate(battery, gainRate: 100);
+            power.GeneratePower();
+            Assert.Equal((uint)100, battery.Energy);
+            Assert.Equal(1, battery.PercentEnergy);
+            Assert.Equal("100%", battery.PercentEnergyStatus);
         }
     }
 }

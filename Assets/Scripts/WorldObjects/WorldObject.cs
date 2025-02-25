@@ -16,6 +16,8 @@ namespace Assets.Scripts.WorldObjects
         public virtual float ZIndex => 1;
 
         public virtual StatusDataComponent Status { get; set; }
+        public ResourcesComponent Resources { get; set; }
+        public BatteryComponent Battery { get; set; }
 
         public string Guid { get; set; }
 
@@ -40,10 +42,13 @@ namespace Assets.Scripts.WorldObjects
             GameController.SpawnQueueItem spawnQueueItem
         )
         {
+            spawnQueueItem.instantiateCallback?.Invoke(gameController, this);
             this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.GridPosition = spawnQueueItem.gridPosition;
             this.Guid = this.CreateGuid();
             this.SetName();
+            this.Resources = this.AddComponent<ResourcesComponent>();
+            this.Battery = this.AddComponent<BatteryComponent>();
         }
 
         public virtual void PostInstantiate(
@@ -51,7 +56,7 @@ namespace Assets.Scripts.WorldObjects
             GameController.SpawnQueueItem spawnQueueItem
         )
         {
-            spawnQueueItem.callback?.Invoke(gameController, this);
+            spawnQueueItem.postInstantiateCallback?.Invoke(gameController, this);
             this.Status = this.AddComponent<StatusDataComponent>();
             this.Status.Instantiate();
             this.Status.Data = this.GetStatusData();

@@ -80,6 +80,12 @@ namespace Assets.Scripts.Components.Core
                 : base(message) { }
         }
 
+        public class ResourceContainerException : ResourceException
+        {
+            public ResourceContainerException(string message)
+                : base(message) { }
+        }
+
         public class ResourceCapacityException : ResourceException
         {
             public ResourceCapacityException(string message)
@@ -103,6 +109,20 @@ namespace Assets.Scripts.Components.Core
             this.Resources = ResourcesOnCreate ?? new();
         }
 
+        public bool CreateResources(string resourceName, uint amountToCreate)
+        {
+            if (this.RemainingResourceCapacity < amountToCreate)
+            {
+                throw new ResourceCapacityException(
+                    $"Not enough capacity to create {amountToCreate} {resourceName}"
+                );
+            }
+
+            uint currentResources = this.Resources.GetValueOrDefault(resourceName, (uint)0);
+            this.Resources[resourceName] = currentResources + amountToCreate;
+            return true;
+        }
+
         public bool ConsumeResources(string resourceName, uint amountToConsume)
         {
             uint availableResources = this.Resources.GetValueOrDefault(resourceName, (uint)0);
@@ -120,13 +140,24 @@ namespace Assets.Scripts.Components.Core
             return true;
         }
 
-        public bool GiveResources(
+        public void GiveResources(
             ResourcesComponentCore target,
             string resourceName,
             uint amountToGive
         )
         {
+            if (target == null)
+            {
+                throw new ResourceContainerException("Nowhere to give resources");
+            }
+
             uint availableResources = this.Resources.GetValueOrDefault(resourceName, (uint)0);
+
+            if (availableResources == 0)
+            {
+                throw new ResourceQuantityException($"Does not have {resourceName} to give");
+            }
+
             if (availableResources < amountToGive)
             {
                 throw new ResourceQuantityException(
@@ -144,17 +175,20 @@ namespace Assets.Scripts.Components.Core
             this.Resources[resourceName] -= amountToGive;
             uint currentResources = target.Resources.GetValueOrDefault(resourceName, (uint)0);
             target.Resources[resourceName] = currentResources + amountToGive;
-            return true;
         }
 
-        public bool TakeResouces(
+        public void TakeResouces(
             ResourcesComponentCore target,
             string resourceName,
             uint amountToTake
         )
         {
             // TODO: catch the exceptions, emit them as alerts on both world objects, then rethrow exception
-            return target.GiveResources(this, resourceName, amountToTake);
+            if (target == null)
+            {
+                throw new ResourceContainerException("No resources to take");
+            }
+            target.GiveResources(this, resourceName, amountToTake);
         }
     }
 }
@@ -194,16 +228,19 @@ namespace Assets.Scripts.Components.Unity
             Dictionary<string, uint> ResourcesOnCreate = null
         ) => this.core.Instantiate(TotalResourceCapacity, ResourcesOnCreate);
 
+        public bool CreateResources(string resourceName, uint amountToCreate) =>
+            this.core.CreateResources(resourceName, amountToCreate);
+
         public bool ConsumeResources(string resourceName, uint amountToConsume) =>
             this.core.ConsumeResources(resourceName, amountToConsume);
 
-        public bool GiveResources(
+        public void GiveResources(
             ResourcesComponent target,
             string resourceName,
             uint amountToGive
         ) => this.core.GiveResources(target.core, resourceName, amountToGive);
 
-        public bool TakeResouces(
+        public void TakeResouces(
             ResourcesComponent target,
             string resourceName,
             uint amountToTake
@@ -312,6 +349,44 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal((uint)30, targetResourcesComponent.TotalResources);
             Assert.Equal((uint)70, targetResourcesComponent.RemainingResourceCapacity);
             Assert.Equal((uint)5, targetResourcesComponent.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestTakeFromNull()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+
+            Assert.Throws<ResourcesComponentCore.ResourceContainerException>(
+                () => resourcesComponent.TakeResouces(null, "wood", 5)
+            );
+        }
+
+        [Fact]
+        public void TestGiveToNull()
+        {
+            ResourcesComponentCore resourcesComponent = new();
+            resourcesComponent.Instantiate(
+                TotalResourceCapacity: 100,
+                ResourcesOnCreate: new()
+                {
+                    { "wood", 10 },
+                    { "stone", 20 },
+                    { "iron", 30 },
+                }
+            );
+
+            Assert.Throws<ResourcesComponentCore.ResourceContainerException>(
+                () => resourcesComponent.GiveResources(null, "wood", 5)
+            );
         }
 
         [Fact]

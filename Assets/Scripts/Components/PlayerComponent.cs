@@ -28,19 +28,19 @@ namespace Assets.Scripts.Components.Unity
 
         public void Update()
         {
-            if (Input.GetKey(KeyCode.W))
+            if (this.GetKey(KeyCode.W))
             {
                 Camera.main.transform.position += Vector3.up;
             }
-            if (Input.GetKey(KeyCode.A))
+            if (this.GetKey(KeyCode.A))
             {
                 Camera.main.transform.position += Vector3.left;
             }
-            if (Input.GetKey(KeyCode.S))
+            if (this.GetKey(KeyCode.S))
             {
                 Camera.main.transform.position += Vector3.down;
             }
-            if (Input.GetKey(KeyCode.D))
+            if (this.GetKey(KeyCode.D))
             {
                 Camera.main.transform.position += Vector3.right;
             }
@@ -67,6 +67,17 @@ namespace Assets.Scripts.Components.Unity
             this.backgroundFog.transform.position = close
                 ? new Vector3(0, 0, 50)
                 : new Vector3(0, 0, 300);
+        }
+
+        // Allows for "slow" movement when pressing the key,
+        // and "fast" movement when holding shift.
+        private bool GetKey(KeyCode keyCode)
+        {
+            return Input.GetKeyDown(keyCode)
+                || (
+                    (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                    && Input.GetKey(keyCode)
+                );
         }
     }
 }

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Assets.Scripts.Components.Unity;
 using Assets.Scripts.WorldObjects;
 using Assets.Scripts.WorldObjects.FactoryGame;
+using Mono.Cecil;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,6 +32,7 @@ namespace Assets.Scripts
 
         public enum Spawnables
         {
+            HQ,
             CoalPlant,
             Drill,
             Factory,
@@ -58,6 +61,57 @@ namespace Assets.Scripts
             this.SpawnOres(Ores.Iron.ToString());
             this.SpawnOres(Ores.Copper.ToString());
             this.SpawnOres(Ores.Coal.ToString());
+
+            // Spawn some initial buildings
+            //
+            // C = Coal Plant
+            // F = Factory
+            // W = Warehouse
+            // H = HQ
+            //
+            // H C F
+            //   W W
+            //
+            // First warehouse is for factory,
+            // second warehouse is for coal plant
+
+            System.Numerics.Vector2 HQPosition = new(
+                this.Map.mapSize.x / 2,
+                this.Map.mapSize.y / 2
+            );
+
+            this.Spawn(new SpawnQueueItem(Spawnables.HQ.ToString(), HQPosition));
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.CoalPlant.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y)
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y)
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnCoalWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                )
+            );
+
             this.readyForTicks = false;
         }
 
@@ -103,7 +157,7 @@ namespace Assets.Scripts
                             new SpawnQueueItem(
                                 objectName,
                                 position,
-                                callback: this.SpawnOreCallback()
+                                instantiateCallback: this.SpawnOreCallback()
                             )
                         );
                         break;
@@ -121,6 +175,25 @@ namespace Assets.Scripts
                 uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
                 WorldObjectOre worldObjectOre = worldObject as WorldObjectOre;
                 worldObjectOre.Amount = oreQuantity;
+            };
+        }
+
+        private Action<GameController, WorldObject> SpawnCoalWarehouseCallback()
+        {
+            return (gameController, worldObject) =>
+            {
+                WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
+                worldObjectWarehouse.Resources.CreateResources(Ores.Coal.ToString(), 1000);
+            };
+        }
+
+        private Action<GameController, WorldObject> SpawnFactoryWarehouseCallback()
+        {
+            return (gameController, worldObject) =>
+            {
+                WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
+                worldObjectWarehouse.Resources.CreateResources(Ores.Iron.ToString(), 750);
+                worldObjectWarehouse.Resources.CreateResources(Ores.Copper.ToString(), 250);
             };
         }
 

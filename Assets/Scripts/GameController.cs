@@ -58,7 +58,8 @@ namespace Assets.Scripts
             public System.Numerics.Vector2 gridPosition;
             public int size;
             public Predicate<GameController> conditions;
-            public Action<GameController, WorldObject> callback;
+            public Action<GameController, WorldObject> instantiateCallback;
+            public Action<GameController, WorldObject> postInstantiateCallback;
 
             public SpawnQueueItem(
                 string name,
@@ -66,7 +67,8 @@ namespace Assets.Scripts
                 WorldObject parent = null,
                 int size = 1,
                 Predicate<GameController> conditions = null,
-                Action<GameController, WorldObject> callback = null
+                Action<GameController, WorldObject> instantiateCallback = null,
+                Action<GameController, WorldObject> postInstantiateCallback = null
             )
             {
                 this.name = name;
@@ -74,7 +76,8 @@ namespace Assets.Scripts
                 this.gridPosition = gridPosition;
                 this.size = size;
                 this.conditions = conditions;
-                this.callback = callback;
+                this.instantiateCallback = instantiateCallback;
+                this.postInstantiateCallback = postInstantiateCallback;
             }
         }
 
