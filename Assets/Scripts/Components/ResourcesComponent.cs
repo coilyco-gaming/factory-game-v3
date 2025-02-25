@@ -111,7 +111,10 @@ namespace Assets.Scripts.Components.Core
                 );
             }
 
-            this.Resources[resourceName] -= amountToConsume;
+            if (amountToConsume != 0)
+            {
+                this.Resources[resourceName] -= amountToConsume;
+            }
             return true;
         }
 

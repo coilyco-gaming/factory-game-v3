@@ -5,13 +5,20 @@ namespace Assets.Scripts.Components.Core
 
     public class BatteryComponentCore
     {
-        public uint Energy { get; set; } = 0;
+        private uint energy = 0;
+
+        public uint Energy
+        {
+            get => this.energy;
+            set => this.energy = value > this.Capacity ? this.Capacity : value;
+        }
+
         public uint Capacity { get; set; } = 0;
 
         public void Instantiate(uint startingEnergy = 0, uint capacity = 0)
         {
-            this.Energy = startingEnergy;
             this.Capacity = capacity == 0 ? startingEnergy : capacity;
+            this.Energy = startingEnergy;
         }
 
         // Balance each battery in the list, including yourself,
@@ -189,6 +196,15 @@ namespace Assets.Scripts.Components.Tests
             BatteryComponentCore battery = new();
             battery.Balance(null);
             Assert.Equal((uint)0, battery.Energy);
+        }
+
+        [Fact]
+        public void TestBalanceEmptyList()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(50, 100);
+            battery.Balance(new List<BatteryComponentCore>());
+            Assert.Equal((uint)50, battery.Energy);
         }
     }
 }

@@ -8,7 +8,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     public class WorldObjectOre : WorldObject
     {
         public ResourcesComponent Resources { get; set; }
-        public int Amount { get; set; }
+        public uint Amount { get; set; }
 
         public override void PostInstantiate(
             GameController gameController,
@@ -19,7 +19,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.Resources = this.AddComponent<ResourcesComponent>();
             this.Resources.Instantiate(
                 this.Amount,
-                new Dictionary<string, int> { { this.WorldObjectType, this.Amount } }
+                new Dictionary<string, uint> { { this.WorldObjectType, this.Amount } }
             );
         }
 

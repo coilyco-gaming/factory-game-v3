@@ -11,6 +11,15 @@
     <PackageReference Include="ReportGenerator" Version="5.4.4" />
   </ItemGroup>
 
+  <!-- !!! IMPORTANT !!! -->
+  <!-- !!! THESE VERSIONS MUST BE KEPT IN SYNC -->
+  <!-- !!! WITH THE DOWNLOADED DLLS INSIDE OF THE PLUGIN FOLDER -->
+  <!-- !!! FAILURE TO DO THIS WILL RESULT IN UNDEFINED BEHAVIOR -->
+  <!-- !!! IMPORTANT !!! -->
+  <ItemGroup>
+    <PackageReference Include="RoyT.AStar" Version="3.0.2" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Remove="Library\**" />
     <Compile Remove="Library\**" />

@@ -118,7 +118,7 @@ namespace Assets.Scripts
             {
                 float randomPercent = (float)this.random.Next(-100, 100) / 100;
                 int oreQuantityChange = (int)(randomPercent * this.OreQuantityRange);
-                int oreQuantity = this.OreQuantityBase + oreQuantityChange;
+                uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
                 WorldObjectOre worldObjectOre = worldObject as WorldObjectOre;
                 worldObjectOre.Amount = oreQuantity;
             };

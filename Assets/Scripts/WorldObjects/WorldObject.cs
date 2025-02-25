@@ -97,14 +97,6 @@ namespace Assets.Scripts.WorldObjects
             this.transform.rotation = rotation;
         }
 
-        protected System.Numerics.Vector2? PathFind(
-            GameController gameController,
-            System.Numerics.Vector2 target
-        )
-        {
-            return gameController.Map.GetMovement(gameController, this.GridPosition, target);
-        }
-
         private string CreateGuid()
         {
             long time = DateTime.UtcNow.Ticks;
