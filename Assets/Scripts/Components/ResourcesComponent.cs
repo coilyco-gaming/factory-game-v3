@@ -220,14 +220,6 @@ namespace Assets.Scripts.Components.Tests
     public class ResourcesComponentTest
     {
         [Fact]
-        public void TestTrue()
-        {
-            ResourcesComponentCore resourcesComponent = new();
-            resourcesComponent.Instantiate();
-            Assert.True(true);
-        }
-
-        [Fact]
         public void TestFieldZeroStates()
         {
             ResourcesComponentCore resourcesComponent = new();

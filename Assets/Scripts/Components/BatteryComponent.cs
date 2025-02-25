@@ -86,14 +86,6 @@ namespace Assets.Scripts.Components.Tests
     public class BatteryComponentTest
     {
         [Fact]
-        public void TestTrue()
-        {
-            BatteryComponentCore BatteryComponent = new();
-            BatteryComponent.Instantiate();
-            Assert.True(true);
-        }
-
-        [Fact]
         public void TestBalanceTwo()
         {
             BatteryComponentCore battery1 = new();

@@ -189,14 +189,6 @@ namespace Assets.Scripts.Components.Tests
     public class MovementComponentTest
     {
         [Fact]
-        public void TestTrue()
-        {
-            MovementComponentCore movement = new();
-            movement.Instantiate();
-            Assert.True(true);
-        }
-
-        [Fact]
         public void TestDiamondSpiralPatternCase1a()
         {
             // case 1a: (1, 1) -> (1, 2)
