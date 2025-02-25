@@ -16,12 +16,14 @@ namespace Assets.Scripts.Components.Core
 
             Vector2 changeVector = currentTarget - origin;
 
+            // case 1: (1, 1) -> (1, 2)
             if (changeVector.X == 0 && changeVector.Y == 0)
             {
                 currentTarget.Y += 1;
                 return currentTarget;
             }
 
+            // case 2: (1, 2) -> (2, 1)
             if (changeVector.X >= 0 && changeVector.Y > 0)
             {
                 currentTarget.X += 1;
@@ -29,6 +31,7 @@ namespace Assets.Scripts.Components.Core
                 return currentTarget;
             }
 
+            // case 3: (2, 1) -> (1, 0)
             if (changeVector.X > 0 && changeVector.Y <= 0)
             {
                 currentTarget.X -= 1;
@@ -36,6 +39,7 @@ namespace Assets.Scripts.Components.Core
                 return currentTarget;
             }
 
+            // case 4: (1, 0) -> (0, 1)
             if (changeVector.X <= 0 && changeVector.Y < 0)
             {
                 currentTarget.X -= 1;
@@ -43,14 +47,19 @@ namespace Assets.Scripts.Components.Core
                 return currentTarget;
             }
 
+            // case 5a: (0, 2) -> (1, 3)
+            //   needs to handle an origin that is farther away
+            //   than our simple (1,1) origin
+            //   so we an example with a (2,2) origin instead
             if (changeVector.X < 0 && changeVector.Y >= 0)
             {
                 currentTarget.X += 1;
                 currentTarget.Y += 1;
-                // If the change vector would return you to 0,N
-                // then add +1 to the Y
+                // case 5b: (0, 1) -> (1, 3)
                 if (currentTarget.X == origin.X)
                 {
+                    // If the change vector would return you to 0,N
+                    // then add +1 to the Y
                     currentTarget.Y += 1;
                 }
                 return currentTarget;
@@ -137,14 +146,15 @@ namespace Assets.Scripts.Components.Unity
 
         public System.Numerics.Vector2 DiamondSpiralPattern(
             System.Numerics.Vector2 origin,
-            System.Numerics.Vector2 currentTarget
-        ) => this.core.DiamondSpiralPattern(origin, currentTarget);
+            System.Numerics.Vector2 currentTarget,
+            System.Numerics.Vector2 mapSize
+        ) => this.core.DiamondSpiralPattern(origin, currentTarget, mapSize);
 
         public System.Numerics.Vector2? GetMovement(
             System.Numerics.Vector2 start,
             System.Numerics.Vector2 end,
             System.Numerics.Vector2 mapSize,
-            System.Numerics.Vector2[] obstacles
+            List<System.Numerics.Vector2> obstacles
         ) =>
             this.core.GetMovement(
                 start,
@@ -169,6 +179,117 @@ namespace Assets.Scripts.Components.Tests
             MovementComponentCore movement = new();
             movement.Instantiate();
             Assert.True(true);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase1()
+        {
+            // case 1: (1, 1) -> (1, 2)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(1, 1);
+            System.Numerics.Vector2 expected = new(1, 2);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase2()
+        {
+            // case 2: (1, 2) -> (2, 1)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(1, 2);
+            System.Numerics.Vector2 expected = new(2, 1);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase3()
+        {
+            // case 3: (2, 1) -> (1, 0)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(2, 1);
+            System.Numerics.Vector2 expected = new(1, 0);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase4()
+        {
+            // case 4: (1, 0) -> (0, 1)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(1, 0);
+            System.Numerics.Vector2 expected = new(0, 1);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase5a()
+        {
+            // case 5a: (0, 2) -> (1, 3)
+            //   needs to handle an origin that is farther away
+            //   than our simple (1,1) origin
+            //   so we an example with a (2,2) origin instead
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(2, 2);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(0, 2);
+            System.Numerics.Vector2 expected = new(1, 3);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
+        }
+
+        [Fact]
+        public void TestDiamondSpiralPatternCase5b()
+        {
+            // case 5b: (0, 1) -> (1, 3)
+            MovementComponentCore movement = new();
+            movement.Instantiate();
+            System.Numerics.Vector2 origin = new(1, 1);
+            System.Numerics.Vector2 mapSize = new(10, 10);
+            System.Numerics.Vector2 currentTarget = new(0, 1);
+            System.Numerics.Vector2 expected = new(1, 3);
+            System.Numerics.Vector2 actual = movement.DiamondSpiralPattern(
+                origin,
+                currentTarget,
+                mapSize
+            );
+            Assert.Equal(expected, actual);
         }
     }
 }
