@@ -1,14 +1,13 @@
-using System;
-using Assets.Scripts.Components.Unity;
-using Unity.VisualScripting;
-using UnityEngine;
-
-namespace Assets.Scripts.WorldObjects
+namespace Assets.Scripts.WorldObjects.Unity
 {
+    using System;
+    using Assets.Scripts.Components.Unity;
+    using Assets.Scripts.Unity;
+    using global::Unity.VisualScripting;
+    using UnityEngine;
+
     public class WorldObject : MonoBehaviour
     {
-        // FIELDS //
-
         private System.Numerics.Vector2 gridPosition;
 
         // PROPERTIES //
@@ -43,12 +42,12 @@ namespace Assets.Scripts.WorldObjects
         )
         {
             spawnQueueItem.instantiateCallback?.Invoke(gameController, this);
-            this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.GridPosition = spawnQueueItem.gridPosition;
             this.Guid = this.CreateGuid();
-            this.SetName();
+            // this.SetName();
             this.Resources = this.AddComponent<ResourcesComponent>();
             this.Battery = this.AddComponent<BatteryComponent>();
+            this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
         }
 
         public virtual void PostInstantiate(
@@ -84,7 +83,7 @@ namespace Assets.Scripts.WorldObjects
             return () => new StatusDataComponent.StatusData() { Name = this.WorldObjectType };
         }
 
-        private string CreateGuid()
+        public string CreateGuid()
         {
             long time = DateTime.UtcNow.Ticks;
             byte[] guidBytes = System.Guid.NewGuid().ToByteArray();

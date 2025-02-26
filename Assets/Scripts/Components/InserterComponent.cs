@@ -5,10 +5,11 @@
 namespace Assets.Scripts.Components.Core
 {
     using System.Collections.Generic;
+    using Assets.Scripts.Core;
 
     public class InserterComponentCore
     {
-        private ResourcesComponentCore resources = new();
+        private ResourcesComponentCore resources;
         private string resourceType = "";
         private uint insertionRate = 0;
 
@@ -18,7 +19,7 @@ namespace Assets.Scripts.Components.Core
             uint insertionRate = 0
         )
         {
-            this.resources = resources ?? new ResourcesComponentCore();
+            this.resources = resources ?? new ResourcesComponentCore(new GameContent());
             this.resourceType = resourceType;
             this.insertionRate = insertionRate;
         }
@@ -34,7 +35,7 @@ namespace Assets.Scripts.Components.Core
                 {
                     // TODO: pass in a flag to supress alerts
                     this.resources.TakeResouces(
-                        localResource ?? new ResourcesComponentCore(),
+                        localResource ?? new ResourcesComponentCore(new GameContent()),
                         this.resourceType,
                         this.insertionRate
                     );
@@ -51,10 +52,14 @@ namespace Assets.Scripts.Components.Core
 #if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.WorldObjects;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.FactoryGame;
+    using Assets.Scripts.WorldObjects.Unity;
     using UnityEngine;
 
     public class InserterComponent : MonoBehaviour
@@ -117,6 +122,11 @@ namespace Assets.Scripts.Components.Unity
                 .ToList();
             this.core.Insert(localResources.ConvertAll(localResource => localResource.core));
         }
+
+        internal void Insert(
+            WorldObjectFactory worldObjectFactory,
+            GameController gameController
+        ) => throw new NotImplementedException();
     }
 }
 #endif
@@ -142,12 +152,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertCapacityOverflow()
         {
-            ResourcesComponentCore resources = new();
-            ResourcesComponentCore localResource = new();
+            ResourcesComponentCore resources = new(new TestGameContent());
+            ResourcesComponentCore localResource = new(new TestGameContent());
             InserterComponentCore inserter = new();
 
-            resources.Instantiate(1, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource.Instantiate(1, new Dictionary<string, uint> { { "wood", 1 } });
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "wood", 1 } });
+            localResource.Instantiate(1, 1, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource });
@@ -159,12 +169,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsert()
         {
-            ResourcesComponentCore resources = new();
-            ResourcesComponentCore localResource = new();
+            ResourcesComponentCore resources = new(new TestGameContent());
+            ResourcesComponentCore localResource = new(new TestGameContent());
             InserterComponentCore inserter = new();
 
-            resources.Instantiate(2, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource.Instantiate(2, new Dictionary<string, uint> { { "wood", 1 } });
+            resources.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
+            localResource.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource });
@@ -176,14 +186,14 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertMultiple()
         {
-            ResourcesComponentCore resources = new();
-            ResourcesComponentCore localResource1 = new();
-            ResourcesComponentCore localResource2 = new();
+            ResourcesComponentCore resources = new(new TestGameContent());
+            ResourcesComponentCore localResource1 = new(new TestGameContent());
+            ResourcesComponentCore localResource2 = new(new TestGameContent());
             InserterComponentCore inserter = new();
 
-            resources.Instantiate(3, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource1.Instantiate(2, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource2.Instantiate(2, new Dictionary<string, uint> { { "wood", 1 } });
+            resources.Instantiate(3, 3, new Dictionary<string, uint> { { "wood", 1 } });
+            localResource1.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
+            localResource2.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource1, localResource2 });

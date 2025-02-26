@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Unity;
+using Assets.Scripts.Unity;
+using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -15,7 +17,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
             this.Resources.Instantiate(
-                this.Amount,
+                weightCapacity: this.Amount,
+                volumeCapacity: this.Amount,
                 new Dictionary<string, uint> { { this.WorldObjectType, this.Amount } }
             );
         }

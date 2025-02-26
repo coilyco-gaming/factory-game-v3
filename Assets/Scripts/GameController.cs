@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Components.Unity;
-using Assets.Scripts.WorldObjects;
+using Assets.Scripts.WorldObjects.Unity;
 using UnityEngine;
 
-namespace Assets.Scripts
+namespace Assets.Scripts.Unity
 {
     public class GameController : MonoBehaviour
     {
@@ -16,9 +16,13 @@ namespace Assets.Scripts
         protected int randomSeed = 0;
         protected System.Random random;
         protected bool readyForTicks = false;
-        protected int maxTicks = 0;
-        private Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObject>> worldObjects =
-            new();
+        protected Dictionary<
+            System.Numerics.Vector2,
+            Dictionary<string, WorldObject>
+        > worldObjects = new();
+        public SpriteMapComponent Map { get; set; }
+        protected PlayerComponent PlayerComponent { get; set; }
+        protected StatusUIComponent StatusUIComponent { get; set; }
         private List<DeletionQueueItem> queuedForDeletion = new();
         private List<SpawnQueueItem> queuedForSpawn = new();
         private List<MovementQueueItem> queuedForMovement = new();
@@ -27,9 +31,6 @@ namespace Assets.Scripts
         // PROPERTIES //
 
         public int Tick { get; protected set; } = 0;
-        public SpriteMapComponent Map { get; set; }
-        protected PlayerComponent PlayerComponent { get; set; }
-        private StatusUIComponent StatusUIComponent { get; set; }
 
         // CLASSES //
 
@@ -103,37 +104,14 @@ namespace Assets.Scripts
 
         public virtual void Start()
         {
-            this.Map = this.GetComponent<SpriteMapComponent>();
-            this.Map.Instantiate(this.GetComponent<Canvas>());
-
-            this.PlayerComponent = this.GetComponent<PlayerComponent>();
-            this.PlayerComponent.Instantiate(this.Map.mapSize.x, this.Map.mapSize.y);
-
-            this.StatusUIComponent = this.GetComponent<StatusUIComponent>();
-            this.StatusUIComponent.Instantiate(this.userInterface);
-
             this.Reset();
         }
 
-        public void Update()
+        public virtual void Update()
         {
-            // Update the UI state with whatever the player is looking at
-            this.WriteStatusUI();
-
-            // If we aren't ready for ticks, the main game loop won't run
-            if (!this.readyForTicks)
-            {
-                return;
-            }
-
-            // If the max ticks is set and we've reached it, stop the game loop
-            if (this.maxTicks != 0 && this.Tick >= this.maxTicks)
-            {
-                return;
-            }
-
-            // This is the main game loop
-            if (Time.time > this.lastTick + this.tickFrequency)
+            // This is the main game loop.
+            // If we aren't ready for ticks, the main game loop won't run.
+            if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
                 // Tick all objects
                 foreach (Dictionary<string, WorldObject> worldObjects in this.worldObjects.Values)
@@ -247,7 +225,6 @@ namespace Assets.Scripts
         {
             // TODO: reset every component as well
             this.Clear();
-            this.PlayerComponent.Reset();
             this.random = new System.Random(this.randomSeed);
             this.Tick = 0;
             this.readyForTicks = false;
@@ -325,7 +302,7 @@ namespace Assets.Scripts
             deletionQueueItem.worldObject = null;
         }
 
-        protected void Spawn(SpawnQueueItem spawnQueueItem)
+        protected virtual void Spawn(SpawnQueueItem spawnQueueItem)
         {
             GameObject thisGameObject = null;
             try
@@ -386,20 +363,6 @@ namespace Assets.Scripts
                 // TODO: write exception message to parent's status
                 // TODO: delete the object if you've already spawned it... at any single line in the above code
             }
-        }
-
-        private void WriteStatusUI()
-        {
-            // Get the list of objects at the player's position
-            System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
-
-            // TODO: grab the nearby objects, not just the ones at the player's position
-            List<WorldObject> worldObjects =
-                this.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
-                ?? new List<WorldObject>();
-
-            // Display the status data in the UI
-            this.StatusUIComponent.Display(worldObjects);
         }
     }
 }

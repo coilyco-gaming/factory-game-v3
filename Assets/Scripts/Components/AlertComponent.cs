@@ -2,6 +2,8 @@
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;

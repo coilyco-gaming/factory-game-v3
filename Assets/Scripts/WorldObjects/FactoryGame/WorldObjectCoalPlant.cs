@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Unity;
+using Assets.Scripts.Core;
+using Assets.Scripts.Unity;
+using Assets.Scripts.WorldObjects.Unity;
 using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
@@ -31,7 +34,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.inserters[0]
                 .Instantiate(
                     this.Resources,
-                    FactoryGameController.Ores.Coal.ToString(),
+                    FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
                 );
 
@@ -41,7 +44,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.power.Instantiate(
                 this.Battery,
                 this.Resources,
-                FactoryGameController.Ores.Coal.ToString(),
+                FactoryGameContent.Resources.Coal.ToString(),
                 burnRate: WorldObjectCoalPlant.powerBurnRate,
                 gainRate: WorldObjectCoalPlant.powerGainRate
             );

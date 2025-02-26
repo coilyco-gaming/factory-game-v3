@@ -1,44 +1,39 @@
 using System;
 using System.Collections.Generic;
-using Assets.Scripts.WorldObjects;
+using System.Linq;
+using Assets.Scripts.Components.Unity;
 using Assets.Scripts.WorldObjects.FactoryGame;
+using Assets.Scripts.WorldObjects.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 // TODO: create a completed build that folks can "play" (run? play?)
-namespace Assets.Scripts
+namespace Assets.Scripts.Unity
 {
     public class FactoryGameController : GameController
     {
         public GameObject resetButton;
         public GameObject pauseButton;
-        public int HQOreBuffer = 3; // TODO: world init settings screen for these values
+        public int HQOreBuffer = 5; // TODO: world init settings screen for these values
         public int spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
         public int OreQuantityBase = 2000;
         public int OreQuantityRange = 1000;
         private TextMeshProUGUI pauseTextComponent;
 
-        public enum Ores
-        {
-            Iron,
-            Coal,
-            Copper,
-        }
-
-        public enum Spawnables
-        {
-            Radar,
-            CoalPlant,
-            Drill,
-            Factory,
-            Warehouse,
-        }
-
         public override void Start()
         {
             base.Start();
+
+            this.Map = this.GetComponent<SpriteMapComponent>();
+            this.Map.Instantiate(this.GetComponent<Canvas>());
+
+            this.PlayerComponent = this.GetComponent<PlayerComponent>();
+            this.PlayerComponent.Instantiate(this.Map.mapSize.x, this.Map.mapSize.y);
+
+            this.StatusUIComponent = this.GetComponent<StatusUIComponent>();
+            this.StatusUIComponent.Instantiate(this.userInterface);
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -52,12 +47,19 @@ namespace Assets.Scripts
             this.Reset();
         }
 
+        public override void Update()
+        {
+            base.Update();
+            this.WriteStatusUI();
+        }
+
         protected override void Reset()
         {
             base.Reset();
-            this.SpawnOres(Ores.Iron.ToString());
-            this.SpawnOres(Ores.Copper.ToString());
-            this.SpawnOres(Ores.Coal.ToString());
+            this.PlayerComponent.Reset();
+            this.SpawnOres(FactoryGameContent.Resources.Iron.ToString());
+            this.SpawnOres(FactoryGameContent.Resources.Copper.ToString());
+            this.SpawnOres(FactoryGameContent.Resources.Coal.ToString());
 
             // Spawn some initial buildings
             //
@@ -82,52 +84,58 @@ namespace Assets.Scripts
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Radar.ToString(),
+                    FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X, HQPosition.Y), // for visual consistency
-                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Copper.ToString())
+                    postInstantiateCallback: this.SpawnRadarCallback(
+                        FactoryGameContent.Resources.Copper.ToString()
+                    )
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Radar.ToString(),
+                    FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X, HQPosition.Y + 1),
-                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Copper.ToString())
+                    postInstantiateCallback: this.SpawnRadarCallback(
+                        FactoryGameContent.Resources.Copper.ToString()
+                    )
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Radar.ToString(),
+                    FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 1),
-                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Iron.ToString())
+                    postInstantiateCallback: this.SpawnRadarCallback(
+                        FactoryGameContent.Resources.Iron.ToString()
+                    )
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.CoalPlant.ToString(),
+                    FactoryGameContent.Spawnables.CoalPlant.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y)
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.CoalPlant.ToString(),
+                    FactoryGameContent.Spawnables.CoalPlant.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 1)
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Factory.ToString(),
+                    FactoryGameContent.Spawnables.Factory.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y)
                 )
             );
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
                 )
@@ -135,7 +143,7 @@ namespace Assets.Scripts
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 2),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
                 )
@@ -143,7 +151,7 @@ namespace Assets.Scripts
 
             this.Spawn(
                 new SpawnQueueItem(
-                    Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
                 )
@@ -181,9 +189,9 @@ namespace Assets.Scripts
                             position,
                             new List<string>
                             {
-                                Ores.Iron.ToString(),
-                                Ores.Copper.ToString(),
-                                Ores.Coal.ToString(),
+                                FactoryGameContent.Resources.Iron.ToString(),
+                                FactoryGameContent.Resources.Copper.ToString(),
+                                FactoryGameContent.Resources.Coal.ToString(),
                             }
                         ) != null;
 
@@ -229,7 +237,10 @@ namespace Assets.Scripts
             return (gameController, worldObject) =>
             {
                 WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
-                worldObjectWarehouse.Resources.CreateResources(Ores.Coal.ToString(), 1000);
+                worldObjectWarehouse.Resources.CreateResources(
+                    FactoryGameContent.Resources.Coal.ToString(),
+                    1000
+                );
             };
         }
 
@@ -238,8 +249,14 @@ namespace Assets.Scripts
             return (gameController, worldObject) =>
             {
                 WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
-                worldObjectWarehouse.Resources.CreateResources(Ores.Iron.ToString(), 750);
-                worldObjectWarehouse.Resources.CreateResources(Ores.Copper.ToString(), 250);
+                worldObjectWarehouse.Resources.CreateResources(
+                    FactoryGameContent.Resources.Iron.ToString(),
+                    750
+                );
+                worldObjectWarehouse.Resources.CreateResources(
+                    FactoryGameContent.Resources.Copper.ToString(),
+                    250
+                );
             };
         }
 
@@ -255,6 +272,22 @@ namespace Assets.Scripts
             string pauseText = "Pause";
             this.pauseTextComponent.SetText(paused ? pauseText : playText);
             this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
+        }
+
+        private void WriteStatusUI()
+        {
+            // Update the UI state with whatever the player is looking at
+
+            // Get the list of objects at the player's position
+            System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
+
+            // TODO: grab the nearby objects, not just the ones at the player's position
+            List<WorldObject> worldObjects =
+                this.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
+                ?? new List<WorldObject>();
+
+            // Display the status data in the UI
+            this.StatusUIComponent.Display(worldObjects);
         }
     }
 }

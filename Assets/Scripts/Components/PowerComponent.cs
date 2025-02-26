@@ -1,6 +1,7 @@
 namespace Assets.Scripts.Components.Core
 {
     using System.Collections.Generic;
+    using Assets.Scripts.Core;
 
     public class PowerComponentCore
     {
@@ -9,7 +10,7 @@ namespace Assets.Scripts.Components.Core
         private uint gainRate = 0; // ex: gain 10 energy per tick
 
         private BatteryComponentCore battery = new();
-        private ResourcesComponentCore resources = new();
+        private ResourcesComponentCore resources;
 
         public void Instantiate(
             BatteryComponentCore battery = null,
@@ -20,7 +21,7 @@ namespace Assets.Scripts.Components.Core
         )
         {
             this.battery = battery ?? new BatteryComponentCore();
-            this.resources = resources ?? new ResourcesComponentCore();
+            this.resources = resources ?? new ResourcesComponentCore(new GameContent());
             this.burnResource = burnResource;
             this.burnRate = burnRate;
             this.gainRate = gainRate;
@@ -89,8 +90,8 @@ namespace Assets.Scripts.Components.Tests
         public void TestGeneratePowerNulls2()
         {
             PowerComponentCore power = new();
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(null, resources, "coal", 0, 0);
             power.GeneratePower();
         }
@@ -100,7 +101,7 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            ResourcesComponentCore resources = new();
+            ResourcesComponentCore resources = new(new TestGameContent());
             power.Instantiate(battery, resources, "", 0, 0);
             power.GeneratePower();
             Assert.Equal(0, battery.Energy);
@@ -113,8 +114,8 @@ namespace Assets.Scripts.Components.Tests
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
             battery.Instantiate(0, 100);
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
             Assert.Equal(10, battery.Energy);
@@ -126,8 +127,8 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 0 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "coal", 0 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
             Assert.Equal(0, battery.Energy);
@@ -139,8 +140,8 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "wood", 0 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "wood", 0 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
             Assert.Equal(0, battery.Energy);
@@ -152,8 +153,8 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 2, 10);
             power.GeneratePower();
             Assert.Equal(0, battery.Energy);
@@ -188,8 +189,8 @@ namespace Assets.Scripts.Components.Tests
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
             battery.Instantiate(100, 100);
-            ResourcesComponentCore resources = new();
-            resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
+            ResourcesComponentCore resources = new(new TestGameContent());
+            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 1, 200);
             power.GeneratePower();
             Assert.Equal(99, battery.Energy);

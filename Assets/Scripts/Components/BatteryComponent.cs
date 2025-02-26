@@ -37,7 +37,7 @@ namespace Assets.Scripts.Components.Core
 
         public bool Healthy => this.Health > BatteryComponentCore.minimumHealth * 2;
 
-        public string HealthStatus => $"{this.Health * 100}%";
+        public string HealthStatus => this.Healthy ? "Healthy" : "Unhealthy";
 
         public void Instantiate(float startingEnergy = 0, uint capacity = 0)
         {
@@ -113,7 +113,9 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.WorldObjects;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Unity;
     using UnityEngine;
 
     public class BatteryComponent : MonoBehaviour

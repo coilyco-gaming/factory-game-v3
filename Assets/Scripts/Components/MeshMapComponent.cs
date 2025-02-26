@@ -2,7 +2,9 @@
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
-    using Assets.Scripts.WorldObjects;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Unity;
     using Roy_T.AStar.Graphs;
     using Roy_T.AStar.Paths;
     using Roy_T.AStar.Primitives;

@@ -3,7 +3,7 @@ namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Assets.Scripts.WorldObjects;
+    using Assets.Scripts.WorldObjects.Unity;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;

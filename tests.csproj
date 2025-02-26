@@ -35,10 +35,24 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="Assets\Scripts\*" />
-    <Compile Remove="Assets\Scripts\*" />
-    <EmbeddedResource Remove="Assets\Scripts\*" />
-    <None Remove="Assets\Scripts\*" />
+    <Content Remove="Assets\Scripts\FactoryGameContent.cs" />
+    <Compile Remove="Assets\Scripts\FactoryGameContent.cs" />
+    <EmbeddedResource Remove="Assets\Scripts\FactoryGameContent.cs" />
+    <None Remove="Assets\Scripts\FactoryGameContent.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Scripts\FactoryGameController.cs" />
+    <Compile Remove="Assets\Scripts\FactoryGameController.cs" />
+    <EmbeddedResource Remove="Assets\Scripts\FactoryGameController.cs" />
+    <None Remove="Assets\Scripts\FactoryGameController.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Scripts\GameController.cs" />
+    <Compile Remove="Assets\Scripts\GameController.cs" />
+    <EmbeddedResource Remove="Assets\Scripts\GameController.cs" />
+    <None Remove="Assets\Scripts\GameController.cs" />
   </ItemGroup>
 
   <ItemGroup>
