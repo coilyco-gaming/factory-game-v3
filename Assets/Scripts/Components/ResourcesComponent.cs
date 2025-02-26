@@ -325,7 +325,9 @@ namespace Assets.Scripts.Components.Tests
                 { "stone", new Item("stone") },
                 { "iron", new Item("iron") },
                 { "coal", new Item("coal") },
-                { "sunlight", new Item("sunlight") },
+                { "sunlight", new Item("sunlight", 0, 0) },
+                { "large", new Item("large", volume: 999) },
+                { "heavy", new Item("heavy", weight: 999) },
             };
     }
 
@@ -516,6 +518,35 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(10u, targetResourcesComponent.RemainingVolumeCapacity);
             Assert.Throws<ResourcesComponentCore.ResourceVolumeCapacityException>(
                 () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 20)
+            );
+        }
+
+        [Fact]
+        public void TestInfiniteSunlight()
+        {
+            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            resourcesComponent.Instantiate();
+            resourcesComponent.CreateResources("sunlight", uint.MaxValue);
+            Assert.Equal(uint.MaxValue, resourcesComponent.TotalResources);
+        }
+
+        [Fact]
+        public void TestLarge()
+        {
+            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            resourcesComponent.Instantiate(weightCapacity: 100, volumeCapacity: 100);
+            Assert.Throws<ResourcesComponentCore.ResourceVolumeCapacityException>(
+                () => resourcesComponent.CreateResources("large", 1)
+            );
+        }
+
+        [Fact]
+        public void TestHeavy()
+        {
+            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            resourcesComponent.Instantiate(weightCapacity: 100, volumeCapacity: 100);
+            Assert.Throws<ResourcesComponentCore.ResourceWeightCapacityException>(
+                () => resourcesComponent.CreateResources("heavy", 1)
             );
         }
     }
