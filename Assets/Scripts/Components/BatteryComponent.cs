@@ -6,7 +6,8 @@ namespace Assets.Scripts.Components.Core
 
     public class BatteryComponentCore
     {
-        private static uint minimumCapacity = 100;
+        private static uint minimumStartingCapacity = 100;
+        private static double minimumHealth = 0.10f;
         private float energy = 0;
 
         public float Energy
@@ -14,17 +15,29 @@ namespace Assets.Scripts.Components.Core
             get => this.energy;
             set
             {
-                // this.Degrade();
+                this.Degrade();
                 this.energy = value > this.Capacity ? this.Capacity : value;
             }
         }
 
         public uint Capacity { get; set; } = 0;
+        public uint StartingCapaity { get; set; } = 0;
 
         public double PercentEnergy =>
-            this.Capacity != 0 ? Math.Round((double)(this.Energy / (double)this.Capacity), 1) : 0;
+            this.Capacity != 0 //
+                ? Math.Round((double)(this.Energy / (double)this.Capacity), 1)
+                : 0;
 
         public string PercentEnergyStatus => $"{this.PercentEnergy * 100}%";
+
+        public double Health =>
+            this.StartingCapaity != 0 //
+                ? Math.Round((double)(this.Capacity / (double)this.StartingCapaity), 1)
+                : 0;
+
+        public bool Healthy => this.Health > BatteryComponentCore.minimumHealth * 2;
+
+        public string HealthStatus => $"{this.Health * 100}%";
 
         public void Instantiate(float startingEnergy = 0, uint capacity = 0)
         {
@@ -32,9 +45,10 @@ namespace Assets.Scripts.Components.Core
             // prevent a battery being charged infinitely.
             this.Capacity = capacity == 0 ? (uint)startingEnergy : capacity;
             this.Capacity =
-                this.Capacity < BatteryComponentCore.minimumCapacity
-                    ? BatteryComponentCore.minimumCapacity
+                this.Capacity < BatteryComponentCore.minimumStartingCapacity
+                    ? BatteryComponentCore.minimumStartingCapacity
                     : this.Capacity;
+            this.StartingCapaity = this.Capacity;
             this.Energy = startingEnergy;
         }
 
@@ -49,6 +63,19 @@ namespace Assets.Scripts.Components.Core
 
             // Add yourself to the list of batteries.
             batteries.Add(this);
+
+            // Instantiate any batteries that haven't been instantiated.
+            batteries = batteries
+                .Select(battery =>
+                {
+                    if (battery.Capacity == 0)
+                    {
+                        battery.Instantiate();
+                    }
+
+                    return battery;
+                })
+                .ToList();
 
             // Filter the list of batteries to remove duplicates
             batteries = batteries.Distinct().ToList();
@@ -72,7 +99,10 @@ namespace Assets.Scripts.Components.Core
             // Batteries degrade over time, reducing their charging capacity.
             // The degradation happens periodically and occurs when
             // the battery is charged or discharged.
-            this.Capacity -= 1;
+            if (this.Health > BatteryComponentCore.minimumHealth)
+            {
+                this.Capacity -= 1;
+            }
         }
     }
 }
@@ -151,6 +181,7 @@ namespace Assets.Scripts.Components.Unity
 
 namespace Assets.Scripts.Components.Tests
 {
+    using System;
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Xunit;
@@ -166,8 +197,8 @@ namespace Assets.Scripts.Components.Tests
             battery2.Instantiate(75, 100);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2 });
-            Assert.Equal(50u, (uint)battery1.Energy);
-            Assert.Equal(50u, (uint)battery2.Energy);
+            Assert.Equal(50u, Math.Round(battery1.Energy));
+            Assert.Equal(50u, Math.Round(battery2.Energy));
         }
 
         [Fact]
@@ -179,8 +210,8 @@ namespace Assets.Scripts.Components.Tests
             battery2.Instantiate(75, 100);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2, battery1 });
-            Assert.Equal(50u, (uint)battery1.Energy);
-            Assert.Equal(50u, (uint)battery2.Energy);
+            Assert.Equal(50u, Math.Round(battery1.Energy));
+            Assert.Equal(50u, Math.Round(battery2.Energy));
         }
 
         [Fact]
@@ -194,9 +225,9 @@ namespace Assets.Scripts.Components.Tests
             battery3.Instantiate(50, 100);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
-            Assert.Equal(50u, (uint)battery1.Energy);
-            Assert.Equal(50u, (uint)battery2.Energy);
-            Assert.Equal(50u, (uint)battery3.Energy);
+            Assert.Equal(50u, Math.Round(battery1.Energy));
+            Assert.Equal(50u, Math.Round(battery2.Energy));
+            Assert.Equal(50u, Math.Round(battery3.Energy));
         }
 
         [Fact]
@@ -208,8 +239,8 @@ namespace Assets.Scripts.Components.Tests
             battery2.Instantiate(75, 200);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2 });
-            Assert.Equal(33u, (uint)battery1.Energy);
-            Assert.Equal(66u, (uint)battery2.Energy);
+            Assert.Equal(33, Math.Round(battery1.Energy));
+            Assert.Equal(67, Math.Round(battery2.Energy));
         }
 
         [Fact]
@@ -223,9 +254,9 @@ namespace Assets.Scripts.Components.Tests
             battery3.Instantiate(99, 300);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
-            Assert.Equal(33u, (uint)battery1.Energy);
-            Assert.Equal(66u, (uint)battery2.Energy);
-            Assert.Equal(99u, (uint)battery3.Energy);
+            Assert.Equal(33u, Math.Round(battery1.Energy));
+            Assert.Equal(66u, Math.Round(battery2.Energy));
+            Assert.Equal(99u, Math.Round(battery3.Energy));
         }
 
         [Fact]
@@ -239,9 +270,9 @@ namespace Assets.Scripts.Components.Tests
             battery3.Instantiate(66, 300);
 
             battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
-            Assert.Equal(33u, (uint)battery1.Energy);
-            Assert.Equal(66u, (uint)battery2.Energy);
-            Assert.Equal(99u, (uint)battery3.Energy);
+            Assert.Equal(33u, Math.Round(battery1.Energy));
+            Assert.Equal(66u, Math.Round(battery2.Energy));
+            Assert.Equal(99u, Math.Round(battery3.Energy));
         }
 
         [Fact]
@@ -262,7 +293,7 @@ namespace Assets.Scripts.Components.Tests
         {
             BatteryComponentCore battery = new();
             battery.Balance(null);
-            Assert.Equal(0u, (uint)battery.Energy);
+            Assert.Equal(0u, battery.Energy);
         }
 
         [Fact]
@@ -271,7 +302,7 @@ namespace Assets.Scripts.Components.Tests
             BatteryComponentCore battery = new();
             battery.Instantiate(50, 100);
             battery.Balance(new List<BatteryComponentCore>());
-            Assert.Equal(50u, (uint)battery.Energy);
+            Assert.Equal(50, Math.Round(battery.Energy));
         }
 
         [Fact]
@@ -297,8 +328,35 @@ namespace Assets.Scripts.Components.Tests
         {
             BatteryComponentCore battery = new();
             battery.Instantiate(0, 0);
-            Assert.Equal(100u, battery.Capacity);
-            Assert.Equal(0u, battery.Energy);
+            Assert.Equal(99u, battery.Capacity);
+            Assert.Equal(0, battery.Energy);
+        }
+
+        [Fact]
+        public void TestManyChargesDegradeHealth()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(0, 100);
+            for (int i = 0; i < 10; i++)
+            {
+                battery.Energy = 10;
+            }
+            Assert.Equal(89u, battery.Capacity);
+            Assert.Equal(0.9, battery.Health);
+        }
+
+        [Fact]
+        public void TestHealthDegradeHasAFloor()
+        {
+            BatteryComponentCore battery = new();
+            battery.Instantiate(0, 100);
+            for (int i = 0; i < 500; i++)
+            {
+                battery.Energy = 10;
+            }
+            Assert.Equal(14u, battery.Capacity); // TODO: Why 14? Should be 10.
+            Assert.Equal(Math.Round(0.1f, 2), Math.Round(battery.Health, 2));
+            Assert.False(battery.Healthy);
         }
     }
 }

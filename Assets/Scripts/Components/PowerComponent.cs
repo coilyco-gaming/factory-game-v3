@@ -70,6 +70,7 @@ namespace Assets.Scripts.Components.Unity
 
 namespace Assets.Scripts.Components.Tests
 {
+    using System;
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Xunit;
@@ -175,10 +176,10 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            battery.Instantiate(100, 100);
+            battery.Instantiate(0, 100);
             power.Instantiate(battery, null, "sunlight", 0, 200);
             power.GeneratePower();
-            Assert.Equal(100, battery.Energy);
+            Assert.Equal(98, battery.Energy);
         }
 
         [Fact]
@@ -191,7 +192,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 1, 200);
             power.GeneratePower();
-            Assert.Equal(100, battery.Energy);
+            Assert.Equal(99, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
 
@@ -217,9 +218,9 @@ namespace Assets.Scripts.Components.Tests
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
             battery.Instantiate(0, 100);
-            power.Instantiate(battery, gainRate: 100);
+            power.Instantiate(battery, gainRate: 95);
             power.GeneratePower();
-            Assert.Equal(100, battery.Energy);
+            Assert.Equal(95, battery.Energy);
             Assert.Equal(1, battery.PercentEnergy);
             Assert.Equal("100%", battery.PercentEnergyStatus);
         }
@@ -262,11 +263,11 @@ namespace Assets.Scripts.Components.Tests
             float totalEnergy =
                 battery1.Energy + battery2.Energy + battery3.Energy + battery4.Energy;
 
-            Assert.Equal(20u, (uint)totalEnergy);
-            Assert.Equal(5u, (uint)battery1.Energy);
-            Assert.Equal(5u, (uint)battery2.Energy);
-            Assert.Equal(5u, (uint)battery3.Energy);
-            Assert.Equal(5u, (uint)battery4.Energy);
+            Assert.Equal(20, Math.Round(totalEnergy));
+            Assert.Equal(5, Math.Round(battery1.Energy));
+            Assert.Equal(5, Math.Round(battery2.Energy));
+            Assert.Equal(5, Math.Round(battery3.Energy));
+            Assert.Equal(5, Math.Round(battery4.Energy));
         }
     }
 }
