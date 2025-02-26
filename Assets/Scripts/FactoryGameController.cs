@@ -5,6 +5,7 @@ using Assets.Scripts.Components.Unity;
 using Assets.Scripts.WorldObjects.FactoryGame;
 using Assets.Scripts.WorldObjects.Unity;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -22,10 +23,8 @@ namespace Assets.Scripts.Unity
         public int OreQuantityRange = 1000;
         private TextMeshProUGUI pauseTextComponent;
 
-        public override void Start()
+        public void Start()
         {
-            base.Start();
-
             this.Map = this.GetComponent<SpriteMapComponent>();
             this.Map.Instantiate(this.GetComponent<Canvas>());
 

@@ -34,7 +34,7 @@ namespace Assets.Scripts.Components.Core
                 try
                 {
                     // TODO: pass in a flag to supress alerts
-                    this.resources.TakeResouces(
+                    this.resources?.TakeResouces(
                         localResource ?? new ResourcesComponentCore(new GameContent()),
                         this.resourceType,
                         this.insertionRate
@@ -56,7 +56,6 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.FactoryGame;
     using Assets.Scripts.WorldObjects.Unity;
@@ -122,11 +121,6 @@ namespace Assets.Scripts.Components.Unity
                 .ToList();
             this.core.Insert(localResources.ConvertAll(localResource => localResource.core));
         }
-
-        internal void Insert(
-            WorldObjectFactory worldObjectFactory,
-            GameController gameController
-        ) => throw new NotImplementedException();
     }
 }
 #endif
@@ -147,6 +141,8 @@ namespace Assets.Scripts.Components.Tests
             inserter.Insert(null);
             inserter.Insert(new List<ResourcesComponentCore>());
             inserter.Insert(new List<ResourcesComponentCore>() { null });
+            inserter.Insert(new List<ResourcesComponentCore>() { new(null) });
+            inserter.Insert(new List<ResourcesComponentCore>() { new(new TestGameContent()) });
         }
 
         [Fact]
@@ -201,6 +197,14 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(3u, resources.Resources["wood"]);
             Assert.Equal(0u, localResource1.Resources["wood"]);
             Assert.Equal(0u, localResource2.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestEmptyGameContent()
+        {
+            InserterComponentCore inserter = new();
+            inserter.Instantiate();
+            inserter.Insert(new List<ResourcesComponentCore>());
         }
     }
 }

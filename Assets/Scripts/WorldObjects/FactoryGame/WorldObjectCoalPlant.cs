@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Unity;
-using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 using Unity.VisualScripting;
@@ -10,12 +9,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectCoalPlant : WorldObject
     {
-        private static uint insertionRate = 5;
-        private static uint totalResourceCapacity = 100;
+        private static uint totalVolumeCapacity = 1000;
+        private static uint totalWeightCapacity = uint.MaxValue;
         private static uint totalBatteryCapacity = 5000;
+        private static uint insertionRate = 5;
+        private List<InserterComponent> inserters;
         private static uint powerBurnRate = 5;
         private static uint powerGainRate = 100;
-        private List<InserterComponent> inserters;
         private PowerComponent power;
 
         public override void Instantiate(
@@ -24,7 +24,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Resources.Instantiate(WorldObjectCoalPlant.totalResourceCapacity);
+            this.Resources.Instantiate(
+                weightCapacity: WorldObjectCoalPlant.totalWeightCapacity,
+                volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
+            );
 
             this.inserters = new List<InserterComponent>()
             {
@@ -70,6 +73,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Name = this.WorldObjectType,
                     Info = this.Resources.ResourceInfo,
                 };
+                statusData.Info["Storage Volume"] = this.Resources.UsedVolumeString;
                 statusData.Info["Energy"] = this.Battery.PercentEnergyStatus;
                 return statusData;
             };

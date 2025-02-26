@@ -14,7 +14,7 @@ namespace Assets.Scripts.Core
             public Dictionary<string, uint> Ingredients;
 
             public Item(
-                string name,
+                string name = "",
                 uint weight = 1,
                 uint volume = 1,
                 Dictionary<string, uint> ingredients = null
@@ -23,7 +23,7 @@ namespace Assets.Scripts.Core
                 this.Name = name;
                 this.Weight = weight;
                 this.Volume = volume;
-                this.Ingredients = ingredients;
+                this.Ingredients = ingredients ?? new();
             }
         }
     }

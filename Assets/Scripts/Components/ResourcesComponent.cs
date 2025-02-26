@@ -45,7 +45,7 @@ namespace Assets.Scripts.Components.Core
 
         public bool HasResources => this.TotalResources > 0;
 
-        public uint RemainingWeightCapacity
+        public uint UsedWeightCapacity
         {
             get
             {
@@ -57,11 +57,20 @@ namespace Assets.Scripts.Components.Core
                     );
                     totalWeight += item.Weight * resourcePair.Value;
                 }
-                return this.weightCapacity - totalWeight;
+                return totalWeight;
             }
         }
 
-        public uint RemainingVolumeCapacity
+        public uint RemainingWeightCapacity => this.weightCapacity - this.UsedWeightCapacity;
+
+        private double UsedWeightPercent =>
+            this.weightCapacity != 0
+                ? Math.Round(this.UsedWeightCapacity / (double)this.weightCapacity, 2) * 100
+                : 0;
+
+        public string UsedWeightString => $"{this.UsedWeightPercent}%";
+
+        public uint UsedVolumeCapacity
         {
             get
             {
@@ -73,9 +82,18 @@ namespace Assets.Scripts.Components.Core
                     );
                     totalVolume += item.Volume * resourcePair.Value;
                 }
-                return this.volumeCapacity - totalVolume;
+                return totalVolume;
             }
         }
+
+        public uint RemainingVolumeCapacity => this.volumeCapacity - this.UsedVolumeCapacity;
+
+        private double UsedVolumePercent =>
+            this.volumeCapacity != 0
+                ? Math.Round(this.UsedVolumeCapacity / (double)this.volumeCapacity, 2) * 100
+                : 0;
+
+        public string UsedVolumeString => $"{this.UsedVolumePercent}%";
 
         // CLASSES //
 
@@ -273,6 +291,8 @@ namespace Assets.Scripts.Components.Unity
 
         // TODO: allow viewing these values in the unity inspector somehow
         public Dictionary<string, uint> Resources => this.core.Resources;
+        public string UsedVolumeString => this.core.UsedVolumeString;
+        public string UsedWeightString => this.core.UsedWeightString;
 
         public virtual Dictionary<string, string> ResourceInfo => this.core.ResourceInfo;
 
@@ -286,7 +306,12 @@ namespace Assets.Scripts.Components.Unity
             uint weightCapacity = 100,
             uint volumeCapacity = 100,
             Dictionary<string, uint> ResourcesOnCreate = null
-        ) => this.core.Instantiate(weightCapacity, volumeCapacity, ResourcesOnCreate);
+        ) =>
+            this.core.Instantiate(
+                weightCapacity: weightCapacity,
+                volumeCapacity: volumeCapacity,
+                ResourcesOnCreate
+            );
 
         public bool CreateResources(string resourceName, uint amountToCreate) =>
             this.core.CreateResources(resourceName, amountToCreate);
@@ -495,6 +520,7 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(90u, targetResourcesComponent.Resources["wood"]);
             Assert.Equal(100u, targetResourcesComponent.weightCapacity);
             Assert.Equal(10u, targetResourcesComponent.RemainingWeightCapacity);
+            Assert.Equal("90%", targetResourcesComponent.UsedWeightString);
             Assert.Throws<ResourcesComponentCore.ResourceWeightCapacityException>(
                 () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 20)
             );
@@ -516,6 +542,7 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(90u, targetResourcesComponent.Resources["wood"]);
             Assert.Equal(100u, targetResourcesComponent.volumeCapacity);
             Assert.Equal(10u, targetResourcesComponent.RemainingVolumeCapacity);
+            Assert.Equal("90%", targetResourcesComponent.UsedVolumeString);
             Assert.Throws<ResourcesComponentCore.ResourceVolumeCapacityException>(
                 () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 20)
             );
@@ -548,6 +575,16 @@ namespace Assets.Scripts.Components.Tests
             Assert.Throws<ResourcesComponentCore.ResourceWeightCapacityException>(
                 () => resourcesComponent.CreateResources("heavy", 1)
             );
+        }
+
+        [Fact]
+        public void TestFractionalPercents()
+        {
+            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            resourcesComponent.Instantiate(volumeCapacity: 1000, weightCapacity: 1000);
+            resourcesComponent.CreateResources("wood", 333);
+            Assert.Equal("33%", resourcesComponent.UsedVolumeString);
+            Assert.Equal("33%", resourcesComponent.UsedWeightString);
         }
     }
 }

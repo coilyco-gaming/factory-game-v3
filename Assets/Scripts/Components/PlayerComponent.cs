@@ -64,9 +64,9 @@ namespace Assets.Scripts.Components.Unity
 
         public void ToggleFogPosition(bool close)
         {
-            this.backgroundFog.transform.position = close
-                ? new Vector3(0, 0, 50)
-                : new Vector3(0, 0, 300);
+            // this.backgroundFog.transform.position = close
+            //     ? new Vector3(0, 0, 50)
+            //     : new Vector3(0, 0, 300);
         }
 
         // Allows for "slow" movement when pressing the key,

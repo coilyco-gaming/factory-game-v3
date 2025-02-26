@@ -7,7 +7,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectWarehouse : WorldObject
     {
-        private static uint totalResourceCapacity = 1000;
+        private static uint totalVolumeCapacity = 5000;
+        private static uint totalWeightCapacity = uint.MaxValue;
 
         public override void Instantiate(
             GameController gameController,
@@ -15,17 +16,24 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Resources.Instantiate(WorldObjectWarehouse.totalResourceCapacity);
+            this.Resources.Instantiate(
+                weightCapacity: WorldObjectWarehouse.totalWeightCapacity,
+                volumeCapacity: WorldObjectWarehouse.totalVolumeCapacity
+            );
         }
 
         protected override Func<StatusDataComponent.StatusData> GetStatusData()
         {
             return () =>
-                new StatusDataComponent.StatusData()
+            {
+                StatusDataComponent.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
                     Info = this.Resources.ResourceInfo,
                 };
+                statusData.Info["Storage Volume"] = this.Resources.UsedVolumeString;
+                return statusData;
+            };
         }
     }
 }

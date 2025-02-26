@@ -32,10 +32,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponent.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.Resources.ResourceInfo,
+                    Info = new System.Collections.Generic.Dictionary<string, string>
+                    {
+                        { "Target", this.Target },
+                        { "Energy", this.Battery.PercentEnergyStatus.ToString() },
+                    },
                 };
-                statusData.Info["Target"] = this.Target;
-                statusData.Info["Energy"] = this.Battery.PercentEnergyStatus;
                 return statusData;
             };
         }

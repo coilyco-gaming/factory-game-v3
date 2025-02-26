@@ -10,7 +10,6 @@ namespace Assets.Scripts.Unity
     public class GameController : MonoBehaviour
     {
         public GameObject spawnables;
-        public GameObject mapTiles;
         public GameObject userInterface;
         public float tickFrequency = 0.1f;
         protected int randomSeed = 0;
@@ -101,11 +100,6 @@ namespace Assets.Scripts.Unity
         }
 
         // FUNCTIONS //
-
-        public virtual void Start()
-        {
-            this.Reset();
-        }
 
         public virtual void Update()
         {
