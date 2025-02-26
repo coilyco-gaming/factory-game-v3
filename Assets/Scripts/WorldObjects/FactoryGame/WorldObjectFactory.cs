@@ -9,7 +9,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         private static uint insertionRate = 5;
         private static uint totalResourceCapacity = 100;
-        private static uint totalBatteryCapacity = 500;
+        private static uint totalBatteryCapacity = 1000;
         private List<InserterComponent> inserters;
 
         public override void Instantiate(
@@ -19,6 +19,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
             this.Resources.Instantiate(WorldObjectFactory.totalResourceCapacity);
+
+            // Iron and Copper inserters, for building robots.
             this.inserters = new List<InserterComponent>()
             {
                 this.AddComponent<InserterComponent>(),

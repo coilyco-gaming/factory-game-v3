@@ -104,11 +104,6 @@ namespace Assets.Scripts.Components.Core
 
             foreach (Vector2 obstacle in obstacles)
             {
-                // Nothing here
-                if (obstacle == null)
-                {
-                    continue;
-                }
                 // Dont block on yourself
                 if (obstacle.X == start.X && obstacle.Y == start.Y)
                 {

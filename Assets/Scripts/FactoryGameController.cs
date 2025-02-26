@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Assets.Scripts.Components.Unity;
 using Assets.Scripts.WorldObjects;
 using Assets.Scripts.WorldObjects.FactoryGame;
-using Mono.Cecil;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,7 +13,6 @@ namespace Assets.Scripts
     {
         public GameObject resetButton;
         public GameObject pauseButton;
-        public GameObject maxTicksButton;
         public int HQOreBuffer = 3; // TODO: world init settings screen for these values
         public int spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
@@ -32,7 +29,7 @@ namespace Assets.Scripts
 
         public enum Spawnables
         {
-            HQ,
+            Radar,
             CoalPlant,
             Drill,
             Factory,
@@ -50,7 +47,7 @@ namespace Assets.Scripts
             pauseComponent.onClick.AddListener(this.TogglePausePlay);
 
             this.pauseTextComponent = this.pauseButton.GetComponentInChildren<TextMeshProUGUI>();
-            this.pauseTextComponent.SetText("Play");
+            this.RenderPausePlay(true); // start paused
 
             this.Reset();
         }
@@ -67,25 +64,57 @@ namespace Assets.Scripts
             // C = Coal Plant
             // F = Factory
             // W = Warehouse
-            // H = HQ
+            // S = Radar
             //
-            // H C F
+            //   W
+            // R C R
+            // R C F
             //   W W
             //
-            // First warehouse is for factory,
-            // second warehouse is for coal plant
+            // Both coal plants have a warehouse beside them with a stockpile of coal.
+            // The factory has a warehouse beside it with a stockpile of iron and copper.
+            // There's 1 scanner for each resource: iron, copper, coal.
 
             System.Numerics.Vector2 HQPosition = new(
                 this.Map.mapSize.x / 2,
                 this.Map.mapSize.y / 2
             );
 
-            this.Spawn(new SpawnQueueItem(Spawnables.HQ.ToString(), HQPosition));
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Radar.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y), // for visual consistency
+                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Copper.ToString())
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Radar.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y + 1),
+                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Copper.ToString())
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Radar.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 1),
+                    postInstantiateCallback: this.SpawnRadarCallback(Ores.Iron.ToString())
+                )
+            );
 
             this.Spawn(
                 new SpawnQueueItem(
                     Spawnables.CoalPlant.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y)
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.CoalPlant.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 1)
                 )
             );
 
@@ -100,6 +129,14 @@ namespace Assets.Scripts
                 new SpawnQueueItem(
                     Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnCoalWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem(
+                    Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 2),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
                 )
             );
@@ -164,6 +201,15 @@ namespace Assets.Scripts
                     }
                 }
             }
+        }
+
+        private Action<GameController, WorldObject> SpawnRadarCallback(string target)
+        {
+            return (gameController, worldObject) =>
+            {
+                WorldObjectRadar worldObjectRadar = worldObject as WorldObjectRadar;
+                worldObjectRadar.Target = target;
+            };
         }
 
         private Action<GameController, WorldObject> SpawnOreCallback()

@@ -117,6 +117,9 @@ namespace Assets.Scripts
 
         public void Update()
         {
+            // Update the UI state with whatever the player is looking at
+            this.WriteStatusUI();
+
             // If we aren't ready for ticks, the main game loop won't run
             if (!this.readyForTicks)
             {
@@ -132,9 +135,6 @@ namespace Assets.Scripts
             // This is the main game loop
             if (Time.time > this.lastTick + this.tickFrequency)
             {
-                // Update the UI state with whatever the player is looking at
-                this.WriteStatusUI();
-
                 // Tick all objects
                 foreach (Dictionary<string, WorldObject> worldObjects in this.worldObjects.Values)
                 {
@@ -340,14 +340,15 @@ namespace Assets.Scripts
                     }
                 }
 
-                // Spawning the object is a complex multi-step process!
-                Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.name); // TODO: find objects once, then cache
+                // TODO: find spawnables once, then cache
+                Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.name);
                 GameObject gameObject = spawnablesTransform.gameObject;
                 thisGameObject = Instantiate(gameObject, new Vector2(), Quaternion.identity);
-                thisGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
-                WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
 
-                // Initialize the object with its custom code
+                // TODO: spawn a game object to hold each world object type
+                // TODO: assign the thisGameObject to be the child of that world object type
+                WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
+                thisGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
 
                 // Instantiate is a custom function on each world object, it only conceptaully relates to Unity's Instantiate
                 // This base Instantiate function (eg. not PostInstantiate) is responsible for setting simple values like

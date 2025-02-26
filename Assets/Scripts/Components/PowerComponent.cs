@@ -102,7 +102,7 @@ namespace Assets.Scripts.Components.Tests
             ResourcesComponentCore resources = new();
             power.Instantiate(battery, resources, "", 0, 0);
             power.GeneratePower();
-            Assert.Equal((uint)0, battery.Energy);
+            Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
 
@@ -116,7 +116,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
-            Assert.Equal((uint)10, battery.Energy);
+            Assert.Equal(10, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
 
@@ -129,7 +129,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 0 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
-            Assert.Equal((uint)0, battery.Energy);
+            Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
 
@@ -142,7 +142,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "wood", 0 } });
             power.Instantiate(battery, resources, "coal", 1, 10);
             power.GeneratePower();
-            Assert.Equal((uint)0, battery.Energy);
+            Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
 
@@ -155,7 +155,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 2, 10);
             power.GeneratePower();
-            Assert.Equal((uint)0, battery.Energy);
+            Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
 
@@ -167,7 +167,7 @@ namespace Assets.Scripts.Components.Tests
             battery.Instantiate(0, 100);
             power.Instantiate(battery, null, "sunlight", 0, 10);
             power.GeneratePower();
-            Assert.Equal((uint)10, battery.Energy);
+            Assert.Equal(10, battery.Energy);
         }
 
         [Fact]
@@ -178,7 +178,7 @@ namespace Assets.Scripts.Components.Tests
             battery.Instantiate(100, 100);
             power.Instantiate(battery, null, "sunlight", 0, 200);
             power.GeneratePower();
-            Assert.Equal((uint)100, battery.Energy);
+            Assert.Equal(100, battery.Energy);
         }
 
         [Fact]
@@ -191,7 +191,7 @@ namespace Assets.Scripts.Components.Tests
             resources.Instantiate(1, new Dictionary<string, uint> { { "coal", 1 } });
             power.Instantiate(battery, resources, "coal", 1, 200);
             power.GeneratePower();
-            Assert.Equal((uint)100, battery.Energy);
+            Assert.Equal(100, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
 
@@ -219,9 +219,54 @@ namespace Assets.Scripts.Components.Tests
             battery.Instantiate(0, 100);
             power.Instantiate(battery, gainRate: 100);
             power.GeneratePower();
-            Assert.Equal((uint)100, battery.Energy);
+            Assert.Equal(100, battery.Energy);
             Assert.Equal(1, battery.PercentEnergy);
             Assert.Equal("100%", battery.PercentEnergyStatus);
+        }
+
+        [Fact]
+        public void TestTwoGeneratorsFourConsumers()
+        {
+            PowerComponentCore power1 = new();
+            BatteryComponentCore battery1 = new();
+            battery1.Instantiate();
+            power1.Instantiate(battery1, gainRate: 10);
+
+            BatteryComponentCore battery2 = new();
+            PowerComponentCore power2 = new();
+            battery2.Instantiate();
+            power2.Instantiate(battery2, gainRate: 10);
+
+            BatteryComponentCore battery3 = new();
+            BatteryComponentCore battery4 = new();
+            battery3.Instantiate();
+            battery4.Instantiate();
+
+            power1.GeneratePower();
+            battery1.Balance(
+                new List<BatteryComponentCore> { battery1, battery2, battery3, battery4 }
+            );
+
+            power2.GeneratePower();
+            battery2.Balance(
+                new List<BatteryComponentCore> { battery1, battery2, battery3, battery4 }
+            );
+
+            battery3.Balance(
+                new List<BatteryComponentCore> { battery1, battery2, battery3, battery4 }
+            );
+            battery4.Balance(
+                new List<BatteryComponentCore> { battery1, battery2, battery3, battery4 }
+            );
+
+            float totalEnergy =
+                battery1.Energy + battery2.Energy + battery3.Energy + battery4.Energy;
+
+            Assert.Equal(20u, (uint)totalEnergy);
+            Assert.Equal(5u, (uint)battery1.Energy);
+            Assert.Equal(5u, (uint)battery2.Energy);
+            Assert.Equal(5u, (uint)battery3.Energy);
+            Assert.Equal(5u, (uint)battery4.Energy);
         }
     }
 }

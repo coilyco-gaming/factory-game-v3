@@ -9,9 +9,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         private static uint insertionRate = 5;
         private static uint totalResourceCapacity = 100;
-        private static uint totalBatteryCapacity = 500;
-        private static uint powerBurnRate = 1;
-        private static uint powerGainRate = 10;
+        private static uint totalBatteryCapacity = 5000;
+        private static uint powerBurnRate = 5;
+        private static uint powerGainRate = 100;
         private List<InserterComponent> inserters;
         private PowerComponent power;
 

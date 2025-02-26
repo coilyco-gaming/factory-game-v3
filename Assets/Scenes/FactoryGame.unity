@@ -2233,7 +2233,7 @@ GameObject:
   - component: {fileID: 1306989972}
   - component: {fileID: 1306989973}
   m_Layer: 0
-  m_Name: HQ
+  m_Name: Radar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2378,10 +2378,9 @@ MonoBehaviour:
   spawnables: {fileID: 646330575}
   mapTiles: {fileID: 0}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.025
+  tickFrequency: 0.1
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
-  maxTicksButton: {fileID: 0}
   HQOreBuffer: 5
   spawnAttempts: 5
   oreSpawnFactor: 1
