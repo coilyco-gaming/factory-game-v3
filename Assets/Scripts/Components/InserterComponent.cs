@@ -19,7 +19,7 @@ namespace Assets.Scripts.Components.Core
             uint insertionRate = 0
         )
         {
-            this.resources = resources ?? new ResourcesComponentCore(new GameContent());
+            this.resources = resources ?? new ResourcesComponentCore(new GameContent(), 0, 0);
             this.resourceType = resourceType;
             this.insertionRate = insertionRate;
         }
@@ -35,7 +35,7 @@ namespace Assets.Scripts.Components.Core
                 {
                     // TODO: pass in a flag to supress alerts
                     this.resources?.TakeResouces(
-                        localResource ?? new ResourcesComponentCore(new GameContent()),
+                        localResource ?? new ResourcesComponentCore(new GameContent(), 0, 0),
                         this.resourceType,
                         this.insertionRate
                     );
@@ -141,9 +141,17 @@ namespace Assets.Scripts.Components.Tests
             inserter.Insert(null);
             inserter.Insert(new List<ResourcesComponentCore>());
             inserter.Insert(new List<ResourcesComponentCore>() { null });
-            inserter.Insert(new List<ResourcesComponentCore>() { new(null) });
             inserter.Insert(
-                new List<ResourcesComponentCore>() { new(new TestResourcesGameContent()) }
+                new List<ResourcesComponentCore>()
+                {
+                    new(null, weightCapacity: 0, volumeCapacity: 0),
+                }
+            );
+            inserter.Insert(
+                new List<ResourcesComponentCore>()
+                {
+                    new(new TestResourcesGameContent(), weightCapacity: 100, volumeCapacity: 100),
+                }
             );
         }
 

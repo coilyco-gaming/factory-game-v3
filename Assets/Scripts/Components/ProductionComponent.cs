@@ -302,7 +302,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGetDesiredResoucesWithOffsets()
         {
-            ResourcesComponentCore resouces = new(new TestResourcesGameContent());
+            ResourcesComponentCore resouces = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resouces.CreateResources("wood", 50);
 
             ProductionComponentCore production = new(

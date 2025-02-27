@@ -133,8 +133,8 @@ namespace Assets.Scripts.Components.Core
 
         public ResourcesComponentCore(
             GameContent gameContent,
-            uint weightCapacity = 100,
-            uint volumeCapacity = 100
+            uint weightCapacity,
+            uint volumeCapacity
         )
         {
             this.GameContent = gameContent;
@@ -357,7 +357,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFieldZeroStates()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             Assert.Equal((uint)0, resourcesComponent.TotalResources);
             Assert.Equal(resourcesComponent.Resources.Count, 0);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 0);
@@ -367,7 +371,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestResourcesOnInit()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -380,7 +388,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestConsumeResources()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -392,12 +404,20 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGiveAndTake()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
 
-            ResourcesComponentCore targetResourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             targetResourcesComponent.CreateResources("wood", 5);
             targetResourcesComponent.CreateResources("stone", 10);
             targetResourcesComponent.CreateResources("iron", 15);
@@ -418,7 +438,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTakeFromNull()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -431,7 +455,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGiveToNull()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -444,9 +472,17 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughResourcesToGive()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
 
-            ResourcesComponentCore targetResourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             targetResourcesComponent.CreateResources("wood", 5);
             targetResourcesComponent.CreateResources("stone", 10);
             targetResourcesComponent.CreateResources("iron", 15);
@@ -459,7 +495,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughCapacityToRecieveWeight()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 20);
 
             ResourcesComponentCore targetResourcesComponent = new(
@@ -481,7 +521,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughCapacityToRecieveVolume()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("wood", 20);
 
             ResourcesComponentCore targetResourcesComponent = new(
@@ -503,7 +547,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInfiniteSunlight()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             resourcesComponent.CreateResources("sunlight", uint.MaxValue);
             Assert.Equal(uint.MaxValue, resourcesComponent.TotalResources);
         }

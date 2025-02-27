@@ -21,7 +21,13 @@ namespace Assets.Scripts.Components.Core
         )
         {
             this.battery = battery ?? new BatteryComponentCore();
-            this.resources = resources ?? new ResourcesComponentCore(new GameContent());
+            this.resources =
+                resources
+                ?? new ResourcesComponentCore(
+                    new GameContent(),
+                    weightCapacity: 0,
+                    volumeCapacity: 0
+                );
             this.burnResource = burnResource;
             this.burnRate = burnRate;
             this.gainRate = gainRate;
@@ -101,7 +107,11 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power = new();
             BatteryComponentCore battery = new();
-            ResourcesComponentCore resources = new(new TestResourcesGameContent());
+            ResourcesComponentCore resources = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
             power.Instantiate(battery, resources, "", 0, 0);
             power.GeneratePower();
             Assert.Equal(0, battery.Energy);
