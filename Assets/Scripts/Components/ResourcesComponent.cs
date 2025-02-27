@@ -337,7 +337,7 @@ namespace Assets.Scripts.Components.Tests
     using Assets.Scripts.Core;
     using Xunit;
 
-    public class TestGameContent : GameContent
+    public class TestResourcesGameContent : GameContent
     {
         public override Dictionary<string, Item> Items { get; } =
             new()
@@ -357,7 +357,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFieldZeroStates()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             Assert.Equal((uint)0, resourcesComponent.TotalResources);
             Assert.Equal(resourcesComponent.Resources.Count, 0);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 0);
@@ -367,7 +367,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestResourcesOnInit()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -380,7 +380,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestConsumeResources()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -392,12 +392,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGiveAndTake()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
 
-            ResourcesComponentCore targetResourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore targetResourcesComponent = new(new TestResourcesGameContent());
             targetResourcesComponent.CreateResources("wood", 5);
             targetResourcesComponent.CreateResources("stone", 10);
             targetResourcesComponent.CreateResources("iron", 15);
@@ -418,7 +418,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTakeFromNull()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -431,7 +431,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGiveToNull()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 10);
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
@@ -444,9 +444,9 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughResourcesToGive()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
 
-            ResourcesComponentCore targetResourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore targetResourcesComponent = new(new TestResourcesGameContent());
             targetResourcesComponent.CreateResources("wood", 5);
             targetResourcesComponent.CreateResources("stone", 10);
             targetResourcesComponent.CreateResources("iron", 15);
@@ -459,11 +459,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughCapacityToRecieveWeight()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 20);
 
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 200
             );
@@ -481,11 +481,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNotEnoughCapacityToRecieveVolume()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("wood", 20);
 
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 200,
                 volumeCapacity: 100
             );
@@ -503,7 +503,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInfiniteSunlight()
         {
-            ResourcesComponentCore resourcesComponent = new(new TestGameContent());
+            ResourcesComponentCore resourcesComponent = new(new TestResourcesGameContent());
             resourcesComponent.CreateResources("sunlight", uint.MaxValue);
             Assert.Equal(uint.MaxValue, resourcesComponent.TotalResources);
         }
@@ -512,7 +512,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestLarge()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
@@ -527,13 +527,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestGiveOneLarge()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 1000,
                 volumeCapacity: 1000
             );
             resourcesComponent.CreateResources("large", 1);
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
@@ -550,7 +550,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestHeavy()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
@@ -565,13 +565,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestGiveOneHeavy()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 1000,
                 volumeCapacity: 1000
             );
             resourcesComponent.CreateResources("heavy", 1);
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
@@ -588,7 +588,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestFractionalPercents()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 1000,
                 weightCapacity: 1000
             );
@@ -601,7 +601,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestOversupplyCreatesPartial()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 100,
                 weightCapacity: 100
             );
@@ -616,13 +616,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestOversupplyGivesPartial()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 100,
                 weightCapacity: 100
             );
             resourcesComponent.CreateResources("wood", 100);
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 100,
                 weightCapacity: 100
             );
@@ -640,13 +640,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestGivesAllPossible()
         {
             ResourcesComponentCore resourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 100,
                 weightCapacity: 100
             );
             resourcesComponent.CreateResources("wood", 50);
             ResourcesComponentCore targetResourcesComponent = new(
-                new TestGameContent(),
+                new TestResourcesGameContent(),
                 volumeCapacity: 200,
                 weightCapacity: 200
             );

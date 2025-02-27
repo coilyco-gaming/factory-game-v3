@@ -142,15 +142,17 @@ namespace Assets.Scripts.Components.Tests
             inserter.Insert(new List<ResourcesComponentCore>());
             inserter.Insert(new List<ResourcesComponentCore>() { null });
             inserter.Insert(new List<ResourcesComponentCore>() { new(null) });
-            inserter.Insert(new List<ResourcesComponentCore>() { new(new TestGameContent()) });
+            inserter.Insert(
+                new List<ResourcesComponentCore>() { new(new TestResourcesGameContent()) }
+            );
         }
 
         [Fact]
         public void TestInsertCapacityOverflow()
         {
-            ResourcesComponentCore resources = new(new TestGameContent(), 1, 1);
+            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource = new(new TestGameContent(), 1, 1);
+            ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 1, 1);
             localResource.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
 
@@ -164,9 +166,9 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsert()
         {
-            ResourcesComponentCore resources = new(new TestGameContent(), 2, 2);
+            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 2, 2);
             resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource = new(new TestGameContent(), 2, 2);
+            ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 2, 2);
             localResource.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
 
@@ -180,11 +182,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertMultiple()
         {
-            ResourcesComponentCore resources = new(new TestGameContent(), 3, 3);
+            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 3, 3);
             resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource1 = new(new TestGameContent(), 2, 2);
+            ResourcesComponentCore localResource1 = new(new TestResourcesGameContent(), 2, 2);
             localResource1.CreateResources("wood", 1);
-            ResourcesComponentCore localResource2 = new(new TestGameContent(), 2, 2);
+            ResourcesComponentCore localResource2 = new(new TestResourcesGameContent(), 2, 2);
             localResource2.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
 
