@@ -31,6 +31,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 this.AddComponent<InserterComponent>(),
                 this.AddComponent<InserterComponent>(),
+                this.AddComponent<InserterComponent>(),
             };
             this.inserters[0]
                 .Instantiate(
@@ -39,6 +40,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     WorldObjectFactory.insertionRate
                 );
             this.inserters[1]
+                .Instantiate(
+                    this.Resources,
+                    FactoryGameContent.Resources.Stone.ToString(),
+                    WorldObjectFactory.insertionRate
+                );
+            this.inserters[2]
                 .Instantiate(
                     this.Resources,
                     FactoryGameContent.Resources.Copper.ToString(),

@@ -253,6 +253,10 @@ namespace Assets.Scripts.Unity
                     750
                 );
                 worldObjectWarehouse.Resources.CreateResources(
+                    FactoryGameContent.Resources.Stone.ToString(),
+                    500
+                );
+                worldObjectWarehouse.Resources.CreateResources(
                     FactoryGameContent.Resources.Copper.ToString(),
                     250
                 );
