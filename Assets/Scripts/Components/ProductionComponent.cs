@@ -1,10 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Assets.Scripts.Core;
-
 namespace Assets.Scripts.Components.Core
 {
+    using System.Collections.Generic;
+    using Assets.Scripts.Core;
+
     public class ProductionComponentCore
     {
         public GameContent.Item Product;
@@ -83,6 +81,7 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Unity
 {
     using Assets.Scripts.Components.Core;
+    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using UnityEngine;
 
@@ -104,6 +103,7 @@ namespace Assets.Scripts.Components.Tests
 {
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
+    using Assets.Scripts.Core;
     using Xunit;
     using Xunit.Abstractions;
 
