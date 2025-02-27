@@ -148,12 +148,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertCapacityOverflow()
         {
-            ResourcesComponentCore resources = new(new TestGameContent());
-            ResourcesComponentCore localResource = new(new TestGameContent());
+            ResourcesComponentCore resources = new(new TestGameContent(), 1, 1);
+            resources.CreateResources("wood", 1);
+            ResourcesComponentCore localResource = new(new TestGameContent(), 1, 1);
+            localResource.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
-
-            resources.Instantiate(1, 1, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource.Instantiate(1, 1, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource });
@@ -165,12 +164,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsert()
         {
-            ResourcesComponentCore resources = new(new TestGameContent());
-            ResourcesComponentCore localResource = new(new TestGameContent());
+            ResourcesComponentCore resources = new(new TestGameContent(), 2, 2);
+            resources.CreateResources("wood", 1);
+            ResourcesComponentCore localResource = new(new TestGameContent(), 2, 2);
+            localResource.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
-
-            resources.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource });
@@ -182,14 +180,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertMultiple()
         {
-            ResourcesComponentCore resources = new(new TestGameContent());
-            ResourcesComponentCore localResource1 = new(new TestGameContent());
-            ResourcesComponentCore localResource2 = new(new TestGameContent());
+            ResourcesComponentCore resources = new(new TestGameContent(), 3, 3);
+            resources.CreateResources("wood", 1);
+            ResourcesComponentCore localResource1 = new(new TestGameContent(), 2, 2);
+            localResource1.CreateResources("wood", 1);
+            ResourcesComponentCore localResource2 = new(new TestGameContent(), 2, 2);
+            localResource2.CreateResources("wood", 1);
             InserterComponentCore inserter = new();
-
-            resources.Instantiate(3, 3, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource1.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
-            localResource2.Instantiate(2, 2, new Dictionary<string, uint> { { "wood", 1 } });
 
             inserter.Instantiate(resources, "wood", 1);
             inserter.Insert(new List<ResourcesComponentCore> { localResource1, localResource2 });
