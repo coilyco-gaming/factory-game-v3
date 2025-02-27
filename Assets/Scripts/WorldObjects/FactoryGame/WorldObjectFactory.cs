@@ -26,13 +26,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
 
-            this.production = this.AddComponent<ProductionComponent>();
-            this.production.Instantiate(this.productType, this.productQuantity);
-
             this.Resources.Instantiate(
                 weightCapacity: WorldObjectFactory.totalWeightCapacity,
                 volumeCapacity: WorldObjectFactory.totalVolumeCapacity
             );
+
+            this.production = this.AddComponent<ProductionComponent>();
+            this.production.Instantiate(this.Resources, this.productType, this.productQuantity);
 
             // Iron and Copper inserters, for building robots.
             this.inserters = new List<InserterComponent>()
