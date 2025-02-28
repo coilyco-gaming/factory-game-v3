@@ -8,12 +8,14 @@ namespace Assets.Scripts.Components.Core
         public GameContent.Item Product;
         public uint Quantity;
         public List<ProductionQueueRequests> Requests = new();
+        public bool outputBufferFull = false;
         private GameContent gameContent;
         private ResourcesComponentCore resources;
 
         public class ProductionQueueRequests
         {
             public GameContent.Item Item;
+            public uint CraftProgress;
             public uint Quantity;
         }
 
@@ -74,6 +76,66 @@ namespace Assets.Scripts.Components.Core
 
             return;
         }
+
+        public void Produce()
+        {
+            // TODO: craft time
+            // TODO: craft ingredients
+            // TODO: craft multiple at once
+
+            if (this.Quantity == 0)
+            {
+                return;
+            }
+
+            if (this.outputBufferFull)
+            {
+                this.resources.CreateResources(this.Product.Name, 1);
+                if (this.Quantity > 0)
+                {
+                    this.Quantity -= 1;
+                }
+                this.outputBufferFull = false;
+                return;
+            }
+
+            // Try to craft the desired quantity of product.
+            uint desiredQuantity = this.Quantity;
+            for (uint i = 0; i < desiredQuantity; i++)
+            {
+                // Check if we can make the desired product directly.
+                bool canCraft = true;
+                foreach (KeyValuePair<string, uint> ingredient in this.Product.Ingredients)
+                {
+                    if (
+                        !this.resources.Resources.ContainsKey(ingredient.Key)
+                        || this.resources.Resources[ingredient.Key] < ingredient.Value
+                    )
+                    {
+                        canCraft = false;
+                        break;
+                    }
+                }
+
+                // If we can craft the product, do so.
+                if (canCraft)
+                {
+                    foreach (KeyValuePair<string, uint> ingredient in this.Product.Ingredients)
+                    {
+                        this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
+                    }
+                    try
+                    {
+                        this.resources.CreateResources(this.Product.Name, 1);
+                        this.Quantity -= 1;
+                    }
+                    catch (ResourcesComponentCore.ResourceException exc)
+                    {
+                        this.outputBufferFull = true;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -127,6 +189,14 @@ namespace Assets.Scripts.Components.Tests
                             { "planks", 5 },
                             { "nails", 5 },
                         }
+                    )
+                },
+                {
+                    "house",
+                    new Item(
+                        "house",
+                        volume: 1000,
+                        ingredients: new Dictionary<string, uint> { { "wall", 4 } }
                     )
                 },
             };
@@ -367,6 +437,126 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(0u, requests["wood"]);
             Assert.Equal(20u, requests["nails"]);
             Assert.Equal(20u, requests["planks"]);
+        }
+
+        [Fact]
+        public void TestSimpleProduction()
+        {
+            ResourcesComponentCore resources = new ResourcesComponentCore(
+                new TestResourcesGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+            resources.CreateResources("wood", 5);
+
+            Assert.Equal(5u, resources.Resources["wood"]);
+            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                "planks",
+                1
+            );
+            production.Produce();
+
+            Assert.Equal(0u, resources.Resources["wood"]);
+            Assert.Equal(1u, resources.Resources["planks"]);
+        }
+
+        [Fact]
+        public void TestCraftsNailsWhenWoodAlreadyPresent()
+        {
+            ResourcesComponentCore resources = new ResourcesComponentCore(
+                new TestResourcesGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+            resources.CreateResources("wood", 5);
+
+            Assert.Equal(5u, resources.Resources["wood"]);
+            Assert.Equal(0u, resources.Resources.GetValueOrDefault("nails", 0u));
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                "nails",
+                1
+            );
+            production.Produce();
+
+            Assert.Equal(5u, resources.Resources["wood"]);
+            Assert.Equal(1u, resources.Resources["nails"]);
+        }
+
+        [Fact]
+        public void TestOutputBuffer()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+            resources.CreateResources("wall", 4);
+            Assert.Equal(4u, resources.Resources["wall"]);
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                "house",
+                1
+            );
+            production.Produce();
+            Assert.True(production.outputBufferFull);
+            Assert.Equal(0u, resources.Resources["house"]);
+            Assert.Equal(0u, resources.Resources["wall"]);
+        }
+
+        [Fact]
+        public void TestCraftMultiple()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+            resources.CreateResources("wood", 20);
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                "planks",
+                2
+            );
+            production.Produce();
+            production.Produce();
+            production.Produce(); // Should do nothing
+
+            Assert.Equal(10u, resources.Resources["wood"]);
+            Assert.Equal(2u, resources.Resources["planks"]);
+        }
+
+        [Fact]
+        public void TestCraftMultipleAtOnce()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 4000,
+                volumeCapacity: 4000
+            );
+            resources.CreateResources("wood", 20);
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                "planks",
+                2
+            );
+            production.Produce(); // Should make 2 at once
+
+            Assert.Equal(0u, production.Quantity);
+            Assert.Equal(10u, resources.Resources["wood"]);
+            Assert.Equal(2u, resources.Resources["planks"]);
         }
     }
 }

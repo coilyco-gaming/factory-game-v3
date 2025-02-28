@@ -55,6 +55,10 @@ namespace Assets.Scripts.Components.Core
                     GameContent.Item item = this.GameContent.Items.GetValueOrDefault(
                         resourcePair.Key
                     );
+                    if (item == null)
+                    {
+                        continue;
+                    }
                     totalWeight += item.Weight * resourcePair.Value;
                 }
                 return totalWeight;
@@ -80,6 +84,10 @@ namespace Assets.Scripts.Components.Core
                     GameContent.Item item = this.GameContent.Items.GetValueOrDefault(
                         resourcePair.Key
                     );
+                    if (item == null)
+                    {
+                        continue;
+                    }
                     totalVolume += item.Volume * resourcePair.Value;
                 }
                 return totalVolume;

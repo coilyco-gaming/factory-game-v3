@@ -18,6 +18,7 @@ namespace Assets.Scripts.Unity
                         Products.BuildingMaterials.ToString(),
                         weight: 20,
                         volume: 5,
+                        craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 10 },
@@ -29,6 +30,7 @@ namespace Assets.Scripts.Unity
                     Products.Motors.ToString(),
                     new Item(
                         Products.Motors.ToString(),
+                        craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 5 },
@@ -40,6 +42,7 @@ namespace Assets.Scripts.Unity
                     Products.Circuits.ToString(),
                     new Item(
                         Products.Circuits.ToString(),
+                        craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Copper.ToString(), 5 },
@@ -52,6 +55,7 @@ namespace Assets.Scripts.Unity
                         Products.Frames.ToString(),
                         weight: 10,
                         volume: 10,
+                        craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Iron.ToString(), 10 },
@@ -64,6 +68,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Warehouse.ToString(),
                         weight: 300,
                         volume: 150,
+                        craftTime: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -77,6 +82,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Radar.ToString(),
                         weight: 150,
                         volume: 75,
+                        craftTime: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 5 },
@@ -91,6 +97,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.CoalPlant.ToString(),
                         weight: 300,
                         volume: 150,
+                        craftTime: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -105,6 +112,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Mine.ToString(),
                         weight: 50,
                         volume: 50,
+                        craftTime: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -118,6 +126,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Factory.ToString(),
                         weight: 300,
                         volume: 150,
+                        craftTime: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
