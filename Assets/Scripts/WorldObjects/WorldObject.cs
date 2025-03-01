@@ -15,6 +15,7 @@ namespace Assets.Scripts.WorldObjects.Core
 
         public ResourcesComponentCore Resources { get; set; }
         public BatteryComponentCore Battery { get; set; }
+        public StatusDataComponentCore Status { get; set; }
 
         public string Guid { get; set; }
 
@@ -67,6 +68,7 @@ namespace Assets.Scripts.WorldObjects.Core
 namespace Assets.Scripts.WorldObjects.Unity
 {
     using System;
+    using Assets.Scripts.Components.Core;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
@@ -82,7 +84,6 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         public virtual float ZIndex => 1;
 
-        public virtual StatusDataComponent Status { get; set; }
         public ResourcesComponent Resources { get; set; }
         public BatteryComponent Battery { get; set; }
 
@@ -132,9 +133,7 @@ namespace Assets.Scripts.WorldObjects.Unity
         )
         {
             this.core.PostInstantiate(gameController.core, spawnQueueItem);
-            this.Status = this.AddComponent<StatusDataComponent>();
-            this.Status.Instantiate();
-            this.Status.Data = this.GetStatusData();
+            this.core.Status = new() { Data = this.GetStatusData() };
         }
 
         public void MoveTo(GameController gameController, System.Numerics.Vector2 movement)
@@ -154,9 +153,9 @@ namespace Assets.Scripts.WorldObjects.Unity
                 $"{this.WorldObjectType} ({this.GridPosition.X}, {this.GridPosition.Y})";
         }
 
-        protected virtual Func<StatusDataComponent.StatusData> GetStatusData()
+        protected virtual Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
-            return () => new StatusDataComponent.StatusData() { Name = this.WorldObjectType };
+            return () => new StatusDataComponentCore.StatusData() { Name = this.WorldObjectType };
         }
     }
 }

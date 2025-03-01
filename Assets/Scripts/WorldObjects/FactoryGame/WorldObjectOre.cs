@@ -1,5 +1,5 @@
 using System;
-using Assets.Scripts.Components.Unity;
+using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
@@ -33,10 +33,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
         }
 
-        protected override Func<StatusDataComponent.StatusData> GetStatusData()
+        protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-                new StatusDataComponent.StatusData()
+                new StatusDataComponentCore.StatusData()
                 {
                     Name = this.WorldObjectType,
                     Info = this.Resources.ResourceInfo,

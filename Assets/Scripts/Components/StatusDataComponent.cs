@@ -1,11 +1,9 @@
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
+namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
-    using UnityEngine;
 
-    public class StatusDataComponent : MonoBehaviour
+    public class StatusDataComponentCore
     {
         // PROPERTIES //
 
@@ -19,8 +17,5 @@ namespace Assets.Scripts.Components.Unity
             public Dictionary<string, string> Info { get; set; } = null;
             public List<Dictionary<int, string>> Alerts { get; set; } = null;
         }
-
-        public void Instantiate() { }
     }
 }
-#endif

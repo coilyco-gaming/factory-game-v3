@@ -3,7 +3,8 @@ namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
     using System.Linq;
-    using Assets.Scripts.WorldObjects.Unity;
+    using Assets.Scripts.Components.Core;
+    using Assets.Scripts.WorldObjects.Core;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;
@@ -47,7 +48,7 @@ namespace Assets.Scripts.Components.Unity
             this.textMeshPro.overflowMode = TextOverflowModes.Truncate;
         }
 
-        public void Display(List<WorldObject> worldObjects)
+        public void Display(List<WorldObjectCore> worldObjects)
         {
             // Nothing is here
             if (worldObjects == null)
@@ -56,14 +57,14 @@ namespace Assets.Scripts.Components.Unity
             }
 
             // Get the status data from each object
-            List<StatusDataComponent.StatusData> statusDataList =
+            List<StatusDataComponentCore.StatusData> statusDataList =
                 worldObjects
                     ?.Where(worldObject => worldObject != null)
                     .Where(worldObject => worldObject.Status != null)
                     .Where(worldObject => worldObject.Status.Data != null)
                     .Select(worldObject => worldObject.Status.Data?.Invoke())
                     .Where(data => data != null)
-                    .ToList() ?? new List<StatusDataComponent.StatusData>();
+                    .ToList() ?? new List<StatusDataComponentCore.StatusData>();
 
             if (statusDataList.Count == 0)
             {

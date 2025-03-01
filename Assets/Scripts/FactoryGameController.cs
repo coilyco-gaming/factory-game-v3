@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Assets.Scripts.Components.Unity;
 using Assets.Scripts.Core;
 using Assets.Scripts.WorldObjects.Core;
@@ -50,7 +51,7 @@ namespace Assets.Scripts.Unity
         public override void Update()
         {
             base.Update();
-            // this.WriteStatusUI();
+            this.WriteStatusUI();
         }
 
         protected override void Reset()
@@ -282,20 +283,20 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
         }
 
-        // private void WriteStatusUI()
-        // {
-        //     // Update the UI state with whatever the player is looking at
+        private void WriteStatusUI()
+        {
+            // Update the UI state with whatever the player is looking at
 
-        //     // Get the list of objects at the player's position
-        //     System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
+            // Get the list of objects at the player's position
+            System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
 
-        //     // TODO: grab the nearby objects, not just the ones at the player's position
-        //     List<WorldObjectCore> worldObjects =
-        //         this.core.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
-        //         ?? new List<WorldObjectCore>();
+            // TODO: grab the nearby objects, not just the ones at the player's position
+            List<WorldObjectCore> worldObjects =
+                this.core.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
+                ?? new List<WorldObjectCore>();
 
-        //     // Display the status data in the UI
-        //     this.StatusUIComponent.Display(worldObjects);
-        // }
+            // Display the status data in the UI
+            this.StatusUIComponent.Display(worldObjects);
+        }
     }
 }
