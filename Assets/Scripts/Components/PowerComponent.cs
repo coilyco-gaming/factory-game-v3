@@ -230,8 +230,8 @@ namespace Assets.Scripts.Components.Tests
             power.Instantiate(battery, gainRate: 95);
             power.GeneratePower();
             Assert.Equal(95, battery.Energy);
-            Assert.Equal(1, battery.PercentEnergy);
-            Assert.Equal("100%", battery.PercentEnergyStatus);
+            Assert.Equal(Math.Round(0.97, 2), Math.Round(battery.PercentEnergy, 2));
+            Assert.Equal("97%", battery.PercentEnergyStatus);
         }
 
         [Fact]

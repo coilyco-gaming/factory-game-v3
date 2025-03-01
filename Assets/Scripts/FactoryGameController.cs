@@ -74,6 +74,8 @@ namespace Assets.Scripts.Unity
             // Both coal plants have a warehouse beside them with a stockpile of coal.
             // The factory has a warehouse beside it with a stockpile of iron and copper.
             // There's 1 scanner for each resource: iron, copper, coal.
+            //
+            // TODO: a proper HQ building that has enhanced capabilities
 
             System.Numerics.Vector2 HQPosition = new(
                 this.Map.mapSize.x / 2,

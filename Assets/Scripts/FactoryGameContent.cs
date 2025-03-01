@@ -68,7 +68,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Warehouse.ToString(),
                         weight: 300,
                         volume: 150,
-                        craftTime: 100,
+                        craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -82,7 +82,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Radar.ToString(),
                         weight: 150,
                         volume: 75,
-                        craftTime: 100,
+                        craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 5 },
@@ -97,7 +97,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.CoalPlant.ToString(),
                         weight: 300,
                         volume: 150,
-                        craftTime: 100,
+                        craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -112,7 +112,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Mine.ToString(),
                         weight: 50,
                         volume: 50,
-                        craftTime: 100,
+                        craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
@@ -126,7 +126,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.Factory.ToString(),
                         weight: 300,
                         volume: 150,
-                        craftTime: 100,
+                        craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },

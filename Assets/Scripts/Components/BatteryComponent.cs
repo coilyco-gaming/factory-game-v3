@@ -25,14 +25,14 @@ namespace Assets.Scripts.Components.Core
 
         public double PercentEnergy =>
             this.Capacity != 0 //
-                ? Math.Round((double)(this.Energy / (double)this.Capacity), 1)
+                ? Math.Round((double)(this.Energy / (double)this.Capacity), 2)
                 : 0;
 
         public string PercentEnergyStatus => $"{this.PercentEnergy * 100}%";
 
         public double Health =>
             this.StartingCapaity != 0 //
-                ? Math.Round((double)(this.Capacity / (double)this.StartingCapaity), 1)
+                ? Math.Round((double)(this.Capacity / (double)this.StartingCapaity), 2)
                 : 0;
 
         public bool Healthy => this.Health > BatteryComponentCore.minimumHealth * 2;
@@ -312,8 +312,8 @@ namespace Assets.Scripts.Components.Tests
         {
             BatteryComponentCore battery = new();
             battery.Instantiate(50, 100);
-            Assert.Equal(0.5, battery.PercentEnergy);
-            Assert.Equal("50%", battery.PercentEnergyStatus);
+            Assert.Equal(Math.Round(0.51f, 2), battery.PercentEnergy);
+            Assert.Equal("51%", battery.PercentEnergyStatus);
         }
 
         [Fact]
@@ -344,7 +344,7 @@ namespace Assets.Scripts.Components.Tests
                 battery.Energy = 10;
             }
             Assert.Equal(89u, battery.Capacity);
-            Assert.Equal(0.9, battery.Health);
+            Assert.Equal(Math.Round(0.89, 2), Math.Round(battery.Health, 2));
         }
 
         [Fact]
@@ -356,7 +356,7 @@ namespace Assets.Scripts.Components.Tests
             {
                 battery.Energy = 10;
             }
-            Assert.Equal(14u, battery.Capacity); // TODO: Why 14? Should be 10.
+            Assert.Equal(10u, battery.Capacity);
             Assert.Equal(Math.Round(0.1f, 2), Math.Round(battery.Health, 2));
             Assert.False(battery.Healthy);
         }

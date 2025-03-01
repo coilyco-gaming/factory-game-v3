@@ -1,5 +1,6 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
     using Assets.Scripts.Core;
 
@@ -8,6 +9,18 @@ namespace Assets.Scripts.Components.Core
         public GameContent.Item Product;
         public uint Quantity;
         public List<ProductionQueueRequests> Requests = new();
+        public uint currentCraftProgress = 0;
+
+        public double PercentCraftProgress =>
+            this.Product.CraftTime != 0
+                ? Math.Round(
+                    (double)(this.currentCraftProgress / (double)this.Product.CraftTime),
+                    2
+                )
+                : 0;
+
+        public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
+
         public bool outputBufferFull = false;
         private GameContent gameContent;
         private ResourcesComponentCore resources;
@@ -79,9 +92,8 @@ namespace Assets.Scripts.Components.Core
 
         public void Produce()
         {
-            // TODO: craft time
-            // TODO: craft ingredients
-            // TODO: craft multiple at once
+            // TODO: craft times (eg. dont craft immediately)
+            // TODO: craft ingredients instead of just the end product
 
             if (this.Quantity == 0)
             {
@@ -99,40 +111,55 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
-            // Try to craft the desired quantity of product.
-            uint desiredQuantity = this.Quantity;
-            for (uint i = 0; i < desiredQuantity; i++)
+            // If we have already started a craft, continue it.
+            if (this.currentCraftProgress > 0)
             {
-                // Check if we can make the desired product directly.
-                bool canCraft = true;
+                this.currentCraftProgress += 1;
+                if (this.currentCraftProgress >= this.Product.CraftTime)
+                {
+                    this.resources.CreateResources(this.Product.Name, 1);
+                    this.Quantity -= 1;
+                    this.currentCraftProgress = 0;
+                }
+                return;
+            }
+
+            // Try to craft the desired product.
+            bool canCraft = true;
+            foreach (KeyValuePair<string, uint> ingredient in this.Product.Ingredients)
+            {
+                if (
+                    !this.resources.Resources.ContainsKey(ingredient.Key)
+                    || this.resources.Resources[ingredient.Key] < ingredient.Value
+                )
+                {
+                    canCraft = false;
+                    break;
+                }
+            }
+
+            // If we can craft the product, do so.
+            if (canCraft)
+            {
                 foreach (KeyValuePair<string, uint> ingredient in this.Product.Ingredients)
                 {
-                    if (
-                        !this.resources.Resources.ContainsKey(ingredient.Key)
-                        || this.resources.Resources[ingredient.Key] < ingredient.Value
-                    )
-                    {
-                        canCraft = false;
-                        break;
-                    }
+                    this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
                 }
-
-                // If we can craft the product, do so.
-                if (canCraft)
+                try
                 {
-                    foreach (KeyValuePair<string, uint> ingredient in this.Product.Ingredients)
-                    {
-                        this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
-                    }
-                    try
+                    if (this.Product.CraftTime == 1)
                     {
                         this.resources.CreateResources(this.Product.Name, 1);
                         this.Quantity -= 1;
                     }
-                    catch (ResourcesComponentCore.ResourceException exc)
+                    else
                     {
-                        this.outputBufferFull = true;
+                        this.currentCraftProgress += 1;
                     }
+                }
+                catch (ResourcesComponentCore.ResourceException)
+                {
+                    this.outputBufferFull = true;
                 }
             }
         }
@@ -234,6 +261,23 @@ namespace Assets.Scripts.Components.Tests
                             { "nails", 4 },
                             { "frame", 1 },
                         }
+                    )
+                },
+            };
+    }
+
+    public class TestProductionCraftTime : GameContent
+    {
+        public override Dictionary<string, Item> Items { get; } =
+            new()
+            {
+                { "wood", new Item("wood") },
+                {
+                    "planks",
+                    new Item(
+                        "planks",
+                        craftTime: 3,
+                        ingredients: new Dictionary<string, uint> { { "wood", 5 } }
                     )
                 },
             };
@@ -537,26 +581,37 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestCraftMultipleAtOnce()
+        public void TestWithCraftTime()
         {
             ResourcesComponentCore resources = new(
-                new TestProductionGameContent(),
-                weightCapacity: 4000,
-                volumeCapacity: 4000
+                new TestProductionCraftTime(),
+                weightCapacity: 500,
+                volumeCapacity: 500
             );
-            resources.CreateResources("wood", 20);
+            resources.CreateResources("wood", 5);
 
             ProductionComponentCore production = new(
-                new TestProductionGameContent(),
+                new TestProductionCraftTime(),
                 resources,
                 "planks",
-                2
+                1
             );
-            production.Produce(); // Should make 2 at once
 
-            Assert.Equal(0u, production.Quantity);
-            Assert.Equal(10u, resources.Resources["wood"]);
-            Assert.Equal(2u, resources.Resources["planks"]);
+            production.Produce();
+            Assert.Equal(0u, resources.Resources["wood"]);
+            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(1u, production.currentCraftProgress);
+            Assert.Equal("33%", production.PrecentProgressStatus);
+
+            production.Produce();
+            Assert.Equal(0u, resources.Resources["wood"]);
+            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(2u, production.currentCraftProgress);
+            Assert.Equal("67%", production.PrecentProgressStatus);
+
+            production.Produce();
+            Assert.Equal(0u, resources.Resources["wood"]);
+            Assert.Equal(1u, resources.Resources["planks"]);
         }
     }
 }
