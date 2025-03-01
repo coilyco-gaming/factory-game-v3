@@ -6,6 +6,7 @@ namespace Assets.Scripts.Components.Core
 
     public class ProductionComponentCore
     {
+        public static uint BufferQuantity = 2; // hold enough input buffer for 2 crafts
         public GameContent.Item Product;
         public uint Quantity;
         public List<ProductionQueueRequests> Requests = new();
@@ -35,13 +36,11 @@ namespace Assets.Scripts.Components.Core
         public ProductionComponentCore(
             GameContent gameContent,
             ResourcesComponentCore resources,
-            string product,
-            uint quantity
+            string product
         )
         {
             this.gameContent = gameContent;
             this.Product = this.gameContent.Items[product];
-            this.Quantity = quantity;
             this.resources = resources;
         }
 
@@ -52,7 +51,7 @@ namespace Assets.Scripts.Components.Core
                 resource = new ProductionQueueRequests
                 {
                     Item = this.Product,
-                    Quantity = this.Quantity,
+                    Quantity = ProductionComponentCore.BufferQuantity,
                 };
                 this.Requests = new();
             }
@@ -95,18 +94,9 @@ namespace Assets.Scripts.Components.Core
             // TODO: craft times (eg. dont craft immediately)
             // TODO: craft ingredients instead of just the end product
 
-            if (this.Quantity == 0)
-            {
-                return;
-            }
-
             if (this.outputBufferFull)
             {
                 this.resources.CreateResources(this.Product.Name, 1);
-                if (this.Quantity > 0)
-                {
-                    this.Quantity -= 1;
-                }
                 this.outputBufferFull = false;
                 return;
             }
@@ -118,7 +108,6 @@ namespace Assets.Scripts.Components.Core
                 if (this.currentCraftProgress >= this.Product.CraftTime)
                 {
                     this.resources.CreateResources(this.Product.Name, 1);
-                    this.Quantity -= 1;
                     this.currentCraftProgress = 0;
                 }
                 return;
@@ -150,7 +139,6 @@ namespace Assets.Scripts.Components.Core
                     if (this.Product.CraftTime == 1)
                     {
                         this.resources.CreateResources(this.Product.Name, 1);
-                        this.Quantity -= 1;
                     }
                     else
                     {
@@ -180,9 +168,9 @@ namespace Assets.Scripts.Components.Unity
         public GameContent.Item Product => this.core.Product;
         public uint Quantity => this.core.Quantity;
 
-        public void Instantiate(ResourcesComponent resources, string product, uint quantity)
+        public void Instantiate(ResourcesComponent resources, string product)
         {
-            this.core = new(new FactoryGameContent(), resources.core, product, quantity);
+            this.core = new(new FactoryGameContent(), resources.core, product);
         }
     }
 }
@@ -296,138 +284,9 @@ namespace Assets.Scripts.Components.Tests
         public void TestGetBaseDesiredResouces()
         {
             ProductionComponentCore production = new(
-                new TestProductionGameContent(),
+                new TestProductionGameContent(), //
                 null,
-                "wall",
-                4
-            );
-            production.GetDesiredResouces();
-
-            Dictionary<string, uint> requests = new();
-            foreach (
-                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
-            )
-            {
-                if (!requests.ContainsKey(resource.Item.Name))
-                {
-                    requests[resource.Item.Name] = 0;
-                }
-                requests[resource.Item.Name] += resource.Quantity;
-            }
-
-            Assert.Equal(100u, requests["wood"]);
-            Assert.Equal(20u, requests["nails"]);
-        }
-
-        [Fact]
-        public void TestGetDesiredResouces()
-        {
-            ProductionComponentCore production = new(
-                new TestProductionGameContent(),
-                null,
-                "wall",
-                4
-            );
-            production.GetDesiredResouces();
-
-            Dictionary<string, uint> requests = new();
-            foreach (
-                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
-            )
-            {
-                if (!requests.ContainsKey(resource.Item.Name))
-                {
-                    requests[resource.Item.Name] = 0;
-                }
-                requests[resource.Item.Name] += resource.Quantity;
-            }
-
-            Assert.Equal(100u, requests["wood"]);
-            Assert.Equal(20u, requests["nails"]);
-            Assert.Equal(20u, requests["planks"]);
-        }
-
-        [Fact]
-        public void TestGetDesiredResoucesWithIron()
-        {
-            ProductionComponentCore production = new(
-                new TestProductionGameContentWithIron(),
-                null,
-                "wall",
-                4
-            );
-            production.GetDesiredResouces();
-
-            Dictionary<string, uint> requests = new();
-            foreach (
-                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
-            )
-            {
-                if (!requests.ContainsKey(resource.Item.Name))
-                {
-                    requests[resource.Item.Name] = 0;
-                }
-                requests[resource.Item.Name] += resource.Quantity;
-            }
-
-            Assert.Equal(80u, requests["wood"]);
-            Assert.Equal(16u, requests["planks"]);
-            Assert.Equal(96u, requests["nails"]);
-            Assert.Equal(80u, requests["wood"]);
-            Assert.Equal(160u, requests["iron"]);
-        }
-
-        [Fact]
-        public void TestGetDesiredResoucesWithIronOversupply()
-        {
-            ResourcesComponentCore resources = new(
-                new TestProductionGameContentWithIron(),
-                weightCapacity: 200,
-                volumeCapacity: 200
-            );
-            resources.CreateResources("iron", 200);
-
-            ProductionComponentCore production = new(
-                new TestProductionGameContentWithIron(),
-                resources,
-                "wall",
-                4
-            );
-            production.GetDesiredResouces();
-
-            Dictionary<string, uint> requests = new();
-            foreach (
-                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
-            )
-            {
-                if (!requests.ContainsKey(resource.Item.Name))
-                {
-                    requests[resource.Item.Name] = 0;
-                }
-                requests[resource.Item.Name] += resource.Quantity;
-            }
-
-            Assert.Equal(80u, requests["wood"]);
-            Assert.Equal(16u, requests["planks"]);
-            Assert.Equal(96u, requests["nails"]);
-            Assert.Equal(80u, requests["wood"]);
-        }
-
-        [Fact]
-        public void TestGetDesiredResoucesWithOffsets()
-        {
-            ResourcesComponentCore resouces = new(
-                new TestResourcesGameContent(),
-                weightCapacity: 100,
-                volumeCapacity: 100
-            );
-            resouces.CreateResources("wood", 50);
-
-            ProductionComponentCore production = new(
-                new TestProductionGameContent(),
-                resouces,
-                "wall",
-                4
+                "wall"
             );
             production.GetDesiredResouces();
 
@@ -444,8 +303,132 @@ namespace Assets.Scripts.Components.Tests
             }
 
             Assert.Equal(50u, requests["wood"]);
-            Assert.Equal(20u, requests["nails"]);
-            Assert.Equal(20u, requests["planks"]);
+            Assert.Equal(10u, requests["nails"]);
+        }
+
+        [Fact]
+        public void TestGetDesiredResouces()
+        {
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(), //
+                null,
+                "wall"
+            );
+            production.GetDesiredResouces();
+
+            Dictionary<string, uint> requests = new();
+            foreach (
+                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
+            )
+            {
+                if (!requests.ContainsKey(resource.Item.Name))
+                {
+                    requests[resource.Item.Name] = 0;
+                }
+                requests[resource.Item.Name] += resource.Quantity;
+            }
+
+            Assert.Equal(50u, requests["wood"]);
+            Assert.Equal(10u, requests["nails"]);
+            Assert.Equal(10u, requests["planks"]);
+        }
+
+        [Fact]
+        public void TestGetDesiredResoucesWithIron()
+        {
+            ProductionComponentCore production = new(
+                new TestProductionGameContentWithIron(),
+                null,
+                "wall"
+            );
+            production.GetDesiredResouces();
+
+            Dictionary<string, uint> requests = new();
+            foreach (
+                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
+            )
+            {
+                if (!requests.ContainsKey(resource.Item.Name))
+                {
+                    requests[resource.Item.Name] = 0;
+                }
+                requests[resource.Item.Name] += resource.Quantity;
+            }
+
+            Assert.Equal(40u, requests["wood"]);
+            Assert.Equal(8u, requests["planks"]);
+            Assert.Equal(48u, requests["nails"]);
+            Assert.Equal(40u, requests["wood"]);
+            Assert.Equal(80u, requests["iron"]);
+        }
+
+        [Fact]
+        public void TestGetDesiredResoucesWithIronOversupply()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContentWithIron(),
+                weightCapacity: 200,
+                volumeCapacity: 200
+            );
+            resources.CreateResources("iron", 200);
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContentWithIron(),
+                resources,
+                "wall"
+            );
+            production.GetDesiredResouces();
+
+            Dictionary<string, uint> requests = new();
+            foreach (
+                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
+            )
+            {
+                if (!requests.ContainsKey(resource.Item.Name))
+                {
+                    requests[resource.Item.Name] = 0;
+                }
+                requests[resource.Item.Name] += resource.Quantity;
+            }
+
+            Assert.Equal(40u, requests["wood"]);
+            Assert.Equal(8u, requests["planks"]);
+            Assert.Equal(48u, requests["nails"]);
+            Assert.Equal(40u, requests["wood"]);
+        }
+
+        [Fact]
+        public void TestGetDesiredResoucesWithOffsets()
+        {
+            ResourcesComponentCore resouces = new(
+                new TestResourcesGameContent(),
+                weightCapacity: 100,
+                volumeCapacity: 100
+            );
+            resouces.CreateResources("wood", 25);
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resouces,
+                "wall"
+            );
+            production.GetDesiredResouces();
+
+            Dictionary<string, uint> requests = new();
+            foreach (
+                ProductionComponentCore.ProductionQueueRequests resource in production.Requests
+            )
+            {
+                if (!requests.ContainsKey(resource.Item.Name))
+                {
+                    requests[resource.Item.Name] = 0;
+                }
+                requests[resource.Item.Name] += resource.Quantity;
+            }
+
+            Assert.Equal(25u, requests["wood"]);
+            Assert.Equal(10u, requests["nails"]);
+            Assert.Equal(10u, requests["planks"]);
         }
 
         [Fact]
@@ -461,8 +444,7 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resouces,
-                "wall",
-                4
+                "wall"
             );
             production.GetDesiredResouces();
 
@@ -479,14 +461,14 @@ namespace Assets.Scripts.Components.Tests
             }
 
             Assert.Equal(0u, requests["wood"]);
-            Assert.Equal(20u, requests["nails"]);
-            Assert.Equal(20u, requests["planks"]);
+            Assert.Equal(10u, requests["nails"]);
+            Assert.Equal(10u, requests["planks"]);
         }
 
         [Fact]
         public void TestSimpleProduction()
         {
-            ResourcesComponentCore resources = new ResourcesComponentCore(
+            ResourcesComponentCore resources = new(
                 new TestResourcesGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
@@ -499,8 +481,7 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
-                "planks",
-                1
+                "planks"
             );
             production.Produce();
 
@@ -511,7 +492,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestCraftsNailsWhenWoodAlreadyPresent()
         {
-            ResourcesComponentCore resources = new ResourcesComponentCore(
+            ResourcesComponentCore resources = new(
                 new TestResourcesGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
@@ -524,8 +505,7 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
-                "nails",
-                1
+                "nails"
             );
             production.Produce();
 
@@ -547,8 +527,7 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
-                "house",
-                1
+                "house"
             );
             production.Produce();
             Assert.True(production.outputBufferFull);
@@ -569,15 +548,14 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
-                "planks",
-                2
+                "planks"
             );
             production.Produce();
             production.Produce();
-            production.Produce(); // Should do nothing
+            production.Produce();
 
-            Assert.Equal(10u, resources.Resources["wood"]);
-            Assert.Equal(2u, resources.Resources["planks"]);
+            Assert.Equal(5u, resources.Resources["wood"]);
+            Assert.Equal(3u, resources.Resources["planks"]);
         }
 
         [Fact]
@@ -593,8 +571,7 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionCraftTime(),
                 resources,
-                "planks",
-                1
+                "planks"
             );
 
             production.Produce();
