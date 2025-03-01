@@ -161,6 +161,7 @@ namespace Assets.Scripts.Components.Core
                     new GameContent.Item("")
                 ) ?? new GameContent.Item("");
 
+            uint originalAmountToCreate = amountToCreate;
             uint weightToCreate = amountToCreate * item.Weight;
             uint volumeToCreate = amountToCreate * item.Volume;
             uint currentResources = this.Resources.GetValueOrDefault(resourceName, 0u);
@@ -170,7 +171,7 @@ namespace Assets.Scripts.Components.Core
                 amountToCreate = (uint)(this.RemainingWeightCapacity / (float)item.Weight);
                 this.Resources[resourceName] = currentResources + amountToCreate;
                 throw new ResourceWeightCapacityException(
-                    $"Not enough weight capacity to create {amountToCreate} {resourceName}"
+                    $"Not enough weight capacity to create {originalAmountToCreate} {resourceName}"
                 );
             }
 
@@ -179,7 +180,7 @@ namespace Assets.Scripts.Components.Core
                 amountToCreate = (uint)(this.RemainingVolumeCapacity / (float)item.Volume);
                 this.Resources[resourceName] = currentResources + amountToCreate;
                 throw new ResourceVolumeCapacityException(
-                    $"Not enough volume capacity to create {amountToCreate} {resourceName}"
+                    $"Not enough volume capacity to create {originalAmountToCreate} {resourceName}"
                 );
             }
 
@@ -224,6 +225,7 @@ namespace Assets.Scripts.Components.Core
                     new GameContent.Item("")
                 ) ?? new GameContent.Item("");
 
+            uint originalAmountToGive = amountToGive;
             uint weightToGive = amountToGive * item.Weight;
             uint volumeToGive = amountToGive * item.Volume;
             uint currentResources = target.Resources.GetValueOrDefault(resourceName, (uint)0);
@@ -247,7 +249,7 @@ namespace Assets.Scripts.Components.Core
                 this.Resources[resourceName] -= amountToGive;
                 target.Resources[resourceName] = currentResources + amountToGive;
                 throw new ResourceWeightCapacityException(
-                    $"Not enough weight capacity to give {amountToGive} {resourceName}"
+                    $"Not enough weight capacity to give {originalAmountToGive} {resourceName}"
                 );
             }
 
@@ -257,7 +259,7 @@ namespace Assets.Scripts.Components.Core
                 this.Resources[resourceName] -= amountToGive;
                 target.Resources[resourceName] = currentResources + amountToGive;
                 throw new ResourceVolumeCapacityException(
-                    $"Not enough volume capacity to give {amountToGive} {resourceName}"
+                    $"Not enough volume capacity to give {originalAmountToGive} {resourceName}"
                 );
             }
 
