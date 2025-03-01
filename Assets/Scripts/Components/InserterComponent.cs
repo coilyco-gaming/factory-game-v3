@@ -57,6 +57,7 @@ namespace Assets.Scripts.Components.Unity
     using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.FactoryGame;
     using Assets.Scripts.WorldObjects.Unity;
     using UnityEngine;
@@ -110,16 +111,16 @@ namespace Assets.Scripts.Components.Unity
                     worldObject.GridPosition.Y + 1
                 ),
             };
-            List<WorldObject> localWorldObjects = adjacentTiles
+            List<WorldObjectCore> localWorldObjects = adjacentTiles
                 .SelectMany(adjacentTile =>
                     gameController.GetWorldObjectsByPosition(adjacentTile)
-                    ?? Enumerable.Empty<WorldObject>()
+                    ?? Enumerable.Empty<WorldObjectCore>()
                 )
                 .ToList();
-            List<ResourcesComponent> localResources = localWorldObjects
+            List<ResourcesComponentCore> localResources = localWorldObjects
                 .Select(localWorldObject => localWorldObject.Resources)
                 .ToList();
-            this.core.Insert(localResources.ConvertAll(localResource => localResource.core));
+            this.core.Insert(localResources.ConvertAll(localResource => localResource));
         }
     }
 }

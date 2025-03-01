@@ -239,18 +239,18 @@ namespace Assets.Scripts.Components.Tests
         {
             PowerComponentCore power1 = new();
             BatteryComponentCore battery1 = new();
-            battery1.Instantiate();
+            battery1.Instantiate(capacity: 100);
             power1.Instantiate(battery1, gainRate: 10);
 
             BatteryComponentCore battery2 = new();
             PowerComponentCore power2 = new();
-            battery2.Instantiate();
+            battery2.Instantiate(capacity: 100);
             power2.Instantiate(battery2, gainRate: 10);
 
             BatteryComponentCore battery3 = new();
             BatteryComponentCore battery4 = new();
-            battery3.Instantiate();
-            battery4.Instantiate();
+            battery3.Instantiate(capacity: 100);
+            battery4.Instantiate(capacity: 100);
 
             power1.GeneratePower();
             battery1.Balance(

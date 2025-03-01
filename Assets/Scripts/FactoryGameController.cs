@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Assets.Scripts.Components.Unity;
+using Assets.Scripts.Core;
+using Assets.Scripts.WorldObjects.Core;
 using Assets.Scripts.WorldObjects.FactoryGame;
-using Assets.Scripts.WorldObjects.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -22,8 +22,10 @@ namespace Assets.Scripts.Unity
         public int OreQuantityRange = 1000;
         private TextMeshProUGUI pauseTextComponent;
 
-        public void Start()
+        public override void Start()
         {
+            base.Start();
+
             this.Map = this.GetComponent<SpriteMapComponent>();
             this.Map.Instantiate(this.GetComponent<Canvas>());
 
@@ -48,7 +50,7 @@ namespace Assets.Scripts.Unity
         public override void Update()
         {
             base.Update();
-            this.WriteStatusUI();
+            // this.WriteStatusUI();
         }
 
         protected override void Reset()
@@ -83,7 +85,7 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X, HQPosition.Y), // for visual consistency
                     postInstantiateCallback: this.SpawnRadarCallback(
@@ -93,7 +95,7 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X, HQPosition.Y + 1),
                     postInstantiateCallback: this.SpawnRadarCallback(
@@ -103,7 +105,7 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 1),
                     postInstantiateCallback: this.SpawnRadarCallback(
@@ -113,28 +115,28 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.CoalPlant.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y)
                 )
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.CoalPlant.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 1)
                 )
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Factory.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y)
                 )
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
@@ -142,7 +144,7 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 2),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
@@ -150,7 +152,7 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new SpawnQueueItem(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
@@ -181,12 +183,12 @@ namespace Assets.Scripts.Unity
                     {
                         continue;
                     }
-                    System.Numerics.Vector2 position = new(x, y);
+                    System.Numerics.Vector2 gridPosition = new(x, y);
 
                     // Only spawn if there isn't already in ore at this position
                     bool oreAtPosition =
                         this.GetWorldObjectsByPositionAndType(
-                            position,
+                            gridPosition,
                             new List<string>
                             {
                                 FactoryGameContent.Resources.Iron.ToString(),
@@ -199,9 +201,9 @@ namespace Assets.Scripts.Unity
                     if (!oreAtPosition)
                     {
                         this.Spawn(
-                            new SpawnQueueItem(
+                            new GameControllerCore.SpawnQueueItem(
                                 objectName,
-                                position,
+                                gridPosition,
                                 instantiateCallback: this.SpawnOreCallback()
                             )
                         );
@@ -211,32 +213,33 @@ namespace Assets.Scripts.Unity
             }
         }
 
-        private Action<GameController, WorldObject> SpawnRadarCallback(string target)
+        private Action<GameControllerCore, WorldObjectCore> SpawnRadarCallback(string target)
         {
             return (gameController, worldObject) =>
             {
-                WorldObjectRadar worldObjectRadar = worldObject as WorldObjectRadar;
+                WorldObjectRadar worldObjectRadar = worldObject.backref as WorldObjectRadar;
                 worldObjectRadar.Target = target;
             };
         }
 
-        private Action<GameController, WorldObject> SpawnOreCallback()
+        private Action<GameControllerCore, WorldObjectCore> SpawnOreCallback()
         {
             return (gameController, worldObject) =>
             {
                 float randomPercent = (float)this.random.Next(-100, 100) / 100;
                 int oreQuantityChange = (int)(randomPercent * this.OreQuantityRange);
                 uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
-                WorldObjectOre worldObjectOre = worldObject as WorldObjectOre;
+                WorldObjectOre worldObjectOre = worldObject.backref as WorldObjectOre;
                 worldObjectOre.Amount = oreQuantity;
             };
         }
 
-        private Action<GameController, WorldObject> SpawnCoalWarehouseCallback()
+        private Action<GameControllerCore, WorldObjectCore> SpawnCoalWarehouseCallback()
         {
             return (gameController, worldObject) =>
             {
-                WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
+                WorldObjectWarehouse worldObjectWarehouse =
+                    worldObject.backref as WorldObjectWarehouse;
                 worldObjectWarehouse.Resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
                     1000
@@ -244,11 +247,12 @@ namespace Assets.Scripts.Unity
             };
         }
 
-        private Action<GameController, WorldObject> SpawnFactoryWarehouseCallback()
+        private Action<GameControllerCore, WorldObjectCore> SpawnFactoryWarehouseCallback()
         {
             return (gameController, worldObject) =>
             {
-                WorldObjectWarehouse worldObjectWarehouse = worldObject as WorldObjectWarehouse;
+                WorldObjectWarehouse worldObjectWarehouse =
+                    worldObject.backref as WorldObjectWarehouse;
                 worldObjectWarehouse.Resources.CreateResources(
                     FactoryGameContent.Resources.Iron.ToString(),
                     750
@@ -278,20 +282,20 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
         }
 
-        private void WriteStatusUI()
-        {
-            // Update the UI state with whatever the player is looking at
+        // private void WriteStatusUI()
+        // {
+        //     // Update the UI state with whatever the player is looking at
 
-            // Get the list of objects at the player's position
-            System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
+        //     // Get the list of objects at the player's position
+        //     System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
 
-            // TODO: grab the nearby objects, not just the ones at the player's position
-            List<WorldObject> worldObjects =
-                this.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
-                ?? new List<WorldObject>();
+        //     // TODO: grab the nearby objects, not just the ones at the player's position
+        //     List<WorldObjectCore> worldObjects =
+        //         this.core.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
+        //         ?? new List<WorldObjectCore>();
 
-            // Display the status data in the UI
-            this.StatusUIComponent.Display(worldObjects);
-        }
+        //     // Display the status data in the UI
+        //     this.StatusUIComponent.Display(worldObjects);
+        // }
     }
 }

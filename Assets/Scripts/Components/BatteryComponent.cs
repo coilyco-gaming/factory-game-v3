@@ -6,7 +6,7 @@ namespace Assets.Scripts.Components.Core
 
     public class BatteryComponentCore
     {
-        private static uint minimumStartingCapacity = 100;
+        private static uint minimumStartingCapacity = 5; // The electrical capacity of empty air... or something. This is really here to prevent infinite charging and NaNs.
         private static double minimumHealth = 0.10f;
         private float energy = 0;
 
@@ -66,19 +66,17 @@ namespace Assets.Scripts.Components.Core
 
             // Instantiate any batteries that haven't been instantiated.
             batteries = batteries
+                .Where(battery => battery != null)
                 .Select(battery =>
                 {
                     if (battery.Capacity == 0)
                     {
                         battery.Instantiate();
                     }
-
                     return battery;
                 })
+                .Distinct()
                 .ToList();
-
-            // Filter the list of batteries to remove duplicates
-            batteries = batteries.Distinct().ToList();
 
             // Calculate the total energy and total capacity of all batteries.
             uint totalEnergy = (uint)batteries.Sum(battery => battery.Energy);
@@ -113,8 +111,8 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.Unity;
     using UnityEngine;
 
@@ -166,16 +164,16 @@ namespace Assets.Scripts.Components.Unity
                     worldObject.GridPosition.Y + 1
                 ),
             };
-            List<WorldObject> localWorldObjects = adjacentTiles
+            List<WorldObjectCore> localWorldObjects = adjacentTiles
                 .SelectMany(adjacentTile =>
                     gameController.GetWorldObjectsByPosition(adjacentTile)
-                    ?? Enumerable.Empty<WorldObject>()
+                    ?? Enumerable.Empty<WorldObjectCore>()
                 )
                 .ToList();
-            List<BatteryComponent> batteries = localWorldObjects
+            List<BatteryComponentCore> batteries = localWorldObjects
                 .Select(localWorldObject => localWorldObject.Battery)
                 .ToList();
-            this.core.Balance(batteries.Select(battery => battery.core).ToList());
+            this.core.Balance(batteries.Select(battery => battery).ToList());
         }
     }
 }
@@ -201,6 +199,29 @@ namespace Assets.Scripts.Components.Tests
             battery1.Balance(new List<BatteryComponentCore> { battery2 });
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
+        }
+
+        [Fact]
+        public void TestBalanceWithNulls()
+        {
+            BatteryComponentCore battery1 = new();
+            battery1.Instantiate(startingEnergy: 25, capacity: 100);
+            BatteryComponentCore battery2 = new();
+            battery2.Instantiate(startingEnergy: 75, capacity: 100);
+
+            battery1.Balance(new List<BatteryComponentCore> { battery2, null, null, null });
+            Assert.Equal(50u, Math.Round(battery1.Energy));
+            Assert.Equal(50u, Math.Round(battery2.Energy));
+        }
+
+        [Fact]
+        public void TestBalanceOnlyNulls()
+        {
+            BatteryComponentCore battery1 = new();
+            battery1.Instantiate(startingEnergy: 25, capacity: 100);
+
+            battery1.Balance(new List<BatteryComponentCore> { null, null, null });
+            Assert.Equal(25u, Math.Round(battery1.Energy));
         }
 
         [Fact]
@@ -330,7 +351,7 @@ namespace Assets.Scripts.Components.Tests
         {
             BatteryComponentCore battery = new();
             battery.Instantiate(0, 0);
-            Assert.Equal(99u, battery.Capacity);
+            Assert.Equal(4u, battery.Capacity);
             Assert.Equal(0, battery.Energy);
         }
 

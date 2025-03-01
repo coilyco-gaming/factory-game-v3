@@ -21,7 +21,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
         public override void Instantiate(
             GameController gameController,
-            GameController.SpawnQueueItem spawnQueueItem
+            GameControllerCore.SpawnQueueItem spawnQueueItem
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
@@ -32,7 +32,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             );
 
             this.production = this.AddComponent<ProductionComponent>();
-            this.production.Instantiate(this.Resources, this.productType, this.productQuantity);
+            this.production.Instantiate(this.Resources, this.productType);
 
             // Iron and Copper inserters, for building robots.
             this.inserters = new List<InserterComponent>()

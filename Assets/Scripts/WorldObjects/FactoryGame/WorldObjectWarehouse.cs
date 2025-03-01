@@ -1,5 +1,6 @@
 using System;
 using Assets.Scripts.Components.Unity;
+using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -12,7 +13,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
         public override void Instantiate(
             GameController gameController,
-            GameController.SpawnQueueItem spawnQueueItem
+            GameControllerCore.SpawnQueueItem spawnQueueItem
         )
         {
             base.Instantiate(gameController, spawnQueueItem);

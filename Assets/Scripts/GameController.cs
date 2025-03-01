@@ -1,35 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Assets.Scripts.Components.Unity;
-using Assets.Scripts.WorldObjects.Unity;
-using UnityEngine;
-
-namespace Assets.Scripts.Unity
+namespace Assets.Scripts.Core
 {
-    public class GameController : MonoBehaviour
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.WorldObjects.Core;
+
+    public class GameControllerCore
     {
-        public GameObject spawnables;
-        public GameObject userInterface;
-        public float tickFrequency = 0.1f;
-        protected int randomSeed = 0;
-        protected System.Random random;
-        protected bool readyForTicks = false;
-        protected Dictionary<
+        public Dictionary<
             System.Numerics.Vector2,
-            Dictionary<string, WorldObject>
+            Dictionary<string, WorldObjectCore>
         > worldObjects = new();
-        public SpriteMapComponent Map { get; set; }
-        protected PlayerComponent PlayerComponent { get; set; }
-        protected StatusUIComponent StatusUIComponent { get; set; }
-        private List<DeletionQueueItem> queuedForDeletion = new();
-        private List<SpawnQueueItem> queuedForSpawn = new();
-        private List<MovementQueueItem> queuedForMovement = new();
-        private float lastTick = 0;
-
-        // PROPERTIES //
-
-        public int Tick { get; protected set; } = 0;
+        public List<DeletionQueueItem> queuedForDeletion = new();
+        public List<SpawnQueueItem> queuedForSpawn = new();
+        public List<MovementQueueItem> queuedForMovement = new();
 
         // CLASSES //
 
@@ -41,10 +25,10 @@ namespace Assets.Scripts.Unity
 
         public class DeletionQueueItem
         {
-            public WorldObject worldObject;
+            public WorldObjectCore worldObject;
             public System.Numerics.Vector2 position;
 
-            public DeletionQueueItem(WorldObject worldObject, System.Numerics.Vector2 position)
+            public DeletionQueueItem(WorldObjectCore worldObject, System.Numerics.Vector2 position)
             {
                 this.worldObject = worldObject;
                 this.position = position;
@@ -54,21 +38,21 @@ namespace Assets.Scripts.Unity
         public class SpawnQueueItem
         {
             public string name;
-            public WorldObject parent;
+            public WorldObjectCore parent;
             public System.Numerics.Vector2 gridPosition;
             public int size;
-            public Predicate<GameController> conditions;
-            public Action<GameController, WorldObject> instantiateCallback;
-            public Action<GameController, WorldObject> postInstantiateCallback;
+            public Predicate<GameControllerCore> conditions;
+            public Action<GameControllerCore, WorldObjectCore> instantiateCallback;
+            public Action<GameControllerCore, WorldObjectCore> postInstantiateCallback;
 
             public SpawnQueueItem(
                 string name,
                 System.Numerics.Vector2 gridPosition,
-                WorldObject parent = null,
+                WorldObjectCore parent = null,
                 int size = 1,
-                Predicate<GameController> conditions = null,
-                Action<GameController, WorldObject> instantiateCallback = null,
-                Action<GameController, WorldObject> postInstantiateCallback = null
+                Predicate<GameControllerCore> conditions = null,
+                Action<GameControllerCore, WorldObjectCore> instantiateCallback = null,
+                Action<GameControllerCore, WorldObjectCore> postInstantiateCallback = null
             )
             {
                 this.name = name;
@@ -85,12 +69,12 @@ namespace Assets.Scripts.Unity
         {
             public System.Numerics.Vector2 oldPosition;
             public System.Numerics.Vector2 newPosition;
-            public WorldObject worldObject;
+            public WorldObjectCore worldObject;
 
             public MovementQueueItem(
                 System.Numerics.Vector2 oldPosition,
                 System.Numerics.Vector2 newPosition,
-                WorldObject worldObject
+                WorldObjectCore worldObject
             )
             {
                 this.oldPosition = oldPosition;
@@ -101,70 +85,17 @@ namespace Assets.Scripts.Unity
 
         // FUNCTIONS //
 
-        public virtual void Update()
-        {
-            // This is the main game loop.
-            // If we aren't ready for ticks, the main game loop won't run.
-            if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
-            {
-                // Tick all objects
-                foreach (Dictionary<string, WorldObject> worldObjects in this.worldObjects.Values)
-                {
-                    foreach (WorldObject worldObject in worldObjects.Values)
-                    {
-                        worldObject.Tick(this);
-                    }
-                }
-
-                // Delete queued objects
-                if (this.queuedForDeletion != null)
-                {
-                    foreach (DeletionQueueItem deletionQueueItem in this.queuedForDeletion)
-                    {
-                        this.Delete(deletionQueueItem);
-                    }
-                    this.queuedForDeletion.Clear();
-                }
-
-                // TODO: make sure an object isnt being moved while being deleted.
-                // TODO: LERP the movement of objects
-                // Move queued objects
-                if (this.queuedForMovement != null)
-                {
-                    foreach (MovementQueueItem movementQueueItem in this.queuedForMovement)
-                    {
-                        this.Move(movementQueueItem);
-                    }
-                    this.queuedForMovement.Clear();
-                }
-
-                // Spawn queued objects
-                if (this.queuedForSpawn != null)
-                {
-                    foreach (SpawnQueueItem spawnQueueItem in this.queuedForSpawn)
-                    {
-                        this.Spawn(spawnQueueItem);
-                    }
-                    this.queuedForSpawn.Clear();
-                }
-
-                // Handle ticks
-                this.lastTick = Time.time;
-                this.Tick++;
-            }
-        }
-
         public Dictionary<
             System.Numerics.Vector2,
-            Dictionary<string, WorldObject>
+            Dictionary<string, WorldObjectCore>
         > GetWorldObjects()
         {
             return this.worldObjects;
         }
 
-        public List<WorldObject> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
+        public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
         {
-            Dictionary<string, WorldObject> worldObjects = this.worldObjects.GetValueOrDefault(
+            Dictionary<string, WorldObjectCore> worldObjects = this.worldObjects.GetValueOrDefault(
                 position,
                 null
             );
@@ -172,12 +103,12 @@ namespace Assets.Scripts.Unity
             return worldObjects?.Values.ToList();
         }
 
-        public List<WorldObject> GetWorldObjectsByPositionAndType(
+        public List<WorldObjectCore> GetWorldObjectsByPositionAndType(
             System.Numerics.Vector2 position,
             List<string> types
         )
         {
-            List<WorldObject> worldObjects = this.GetWorldObjectsByPosition(position);
+            List<WorldObjectCore> worldObjects = this.GetWorldObjectsByPosition(position);
 
             // Nothing is here
             if (worldObjects == null)
@@ -186,8 +117,8 @@ namespace Assets.Scripts.Unity
             }
 
             // Find the things that match the type
-            List<WorldObject> matchingWorldObjects = new();
-            foreach (WorldObject worldObject in worldObjects)
+            List<WorldObjectCore> matchingWorldObjects = new();
+            foreach (WorldObjectCore worldObject in worldObjects)
             {
                 if (types.Contains(worldObject.WorldObjectType))
                 {
@@ -214,6 +145,166 @@ namespace Assets.Scripts.Unity
             this.queuedForSpawn ??= new List<SpawnQueueItem>();
             this.queuedForSpawn.Add(spawnQueueItem);
         }
+    }
+}
+
+namespace Assets.Scripts.Unity
+{
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.Components.Unity;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
+    using Assets.Scripts.WorldObjects.Unity;
+    using UnityEngine;
+
+    public class GameController : MonoBehaviour
+    {
+        public GameControllerCore core;
+
+        public GameObject spawnables;
+        public GameObject userInterface;
+        public float tickFrequency = 0.1f;
+        protected int randomSeed = 0;
+        protected System.Random random;
+        protected bool readyForTicks = false;
+        public SpriteMapComponent Map { get; set; }
+        protected PlayerComponent PlayerComponent { get; set; }
+        protected StatusUIComponent StatusUIComponent { get; set; }
+        private float lastTick = 0;
+
+        // PROPERTIES //
+
+        public int Tick { get; protected set; } = 0;
+
+        // FUNCTIONS //
+
+        public virtual void Start()
+        {
+            this.core = new GameControllerCore();
+        }
+
+        public virtual void Update()
+        {
+            // This is the main game loop.
+            // If we aren't ready for ticks, the main game loop won't run.
+            if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
+            {
+                // Tick all objects
+                foreach (
+                    Dictionary<string, WorldObjectCore> worldObjects in this.core
+                        .worldObjects
+                        .Values
+                )
+                {
+                    foreach (WorldObjectCore worldObject in worldObjects.Values)
+                    {
+                        (worldObject.backref as WorldObject).Tick(this);
+                    }
+                }
+
+                // Delete queued objects
+                if (this.core.queuedForDeletion != null)
+                {
+                    foreach (
+                        GameControllerCore.DeletionQueueItem deletionQueueItem in this.core.queuedForDeletion
+                    )
+                    {
+                        this.Delete(deletionQueueItem);
+                    }
+                    this.core.queuedForDeletion.Clear();
+                }
+
+                // TODO: make sure an object isnt being moved while being deleted.
+                // TODO: LERP the movement of objects
+                // Move queued objects
+                if (this.core.queuedForMovement != null)
+                {
+                    foreach (
+                        GameControllerCore.MovementQueueItem movementQueueItem in this.core.queuedForMovement
+                    )
+                    {
+                        this.Move(movementQueueItem);
+                    }
+                    this.core.queuedForMovement.Clear();
+                }
+
+                // Spawn queued objects
+                if (this.core.queuedForSpawn != null)
+                {
+                    foreach (
+                        GameControllerCore.SpawnQueueItem spawnQueueItem in this.core.queuedForSpawn
+                    )
+                    {
+                        this.Spawn(spawnQueueItem);
+                    }
+                    this.core.queuedForSpawn.Clear();
+                }
+
+                // Handle ticks
+                this.lastTick = Time.time;
+                this.Tick++;
+            }
+        }
+
+        public Dictionary<
+            System.Numerics.Vector2,
+            Dictionary<string, WorldObjectCore>
+        > GetWorldObjects()
+        {
+            return this.core.worldObjects;
+        }
+
+        public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
+        {
+            Dictionary<string, WorldObjectCore> worldObjects =
+                this.core.worldObjects.GetValueOrDefault(position, null);
+
+            return worldObjects?.Values.ToList();
+        }
+
+        public List<WorldObjectCore> GetWorldObjectsByPositionAndType(
+            System.Numerics.Vector2 position,
+            List<string> types
+        )
+        {
+            List<WorldObjectCore> worldObjects = this.GetWorldObjectsByPosition(position);
+
+            // Nothing is here
+            if (worldObjects == null)
+            {
+                return null;
+            }
+
+            // Find the things that match the type
+            List<WorldObjectCore> matchingWorldObjects = new();
+            foreach (WorldObjectCore worldObject in worldObjects)
+            {
+                if (types.Contains(worldObject.WorldObjectType))
+                {
+                    matchingWorldObjects.Add(worldObject);
+                }
+            }
+            return matchingWorldObjects;
+        }
+
+        public void QueueForMovement(GameControllerCore.MovementQueueItem movementQueueItem)
+        {
+            this.core.queuedForMovement ??= new List<GameControllerCore.MovementQueueItem>();
+            this.core.queuedForMovement.Add(movementQueueItem);
+        }
+
+        public void QueueForDeletion(GameControllerCore.DeletionQueueItem deletionQueueItem)
+        {
+            this.core.queuedForDeletion ??= new List<GameControllerCore.DeletionQueueItem>();
+            this.core.queuedForDeletion.Add(deletionQueueItem);
+        }
+
+        public void QueueForSpawn(GameControllerCore.SpawnQueueItem spawnQueueItem)
+        {
+            this.core.queuedForSpawn ??= new List<GameControllerCore.SpawnQueueItem>();
+            this.core.queuedForSpawn.Add(spawnQueueItem);
+        }
 
         protected virtual void Reset()
         {
@@ -227,17 +318,19 @@ namespace Assets.Scripts.Unity
         protected void Clear()
         {
             // TODO: reset UI state as well, which probably require the UI all be held in a single state object
-            foreach (Dictionary<string, WorldObject> worldObjects in this.worldObjects.Values)
+            foreach (
+                Dictionary<string, WorldObjectCore> worldObjects in this.core.worldObjects.Values
+            )
             {
-                foreach (WorldObject worldObject in worldObjects.Values)
+                foreach (WorldObjectCore worldObject in worldObjects.Values)
                 {
-                    Destroy(worldObject.gameObject);
+                    Destroy((worldObject.backref as WorldObject).gameObject);
                 }
             }
-            this.worldObjects.Clear();
+            this.core.worldObjects.Clear(); //TODO: do we need to set the worldObjects to null?
         }
 
-        protected void Move(MovementQueueItem movementQueueItem)
+        protected void Move(GameControllerCore.MovementQueueItem movementQueueItem)
         {
             // Don't try to move an object that doesn't exist or has been deleted
             if (movementQueueItem.worldObject == null)
@@ -245,31 +338,31 @@ namespace Assets.Scripts.Unity
                 return;
             }
             // Remove the object from the old position, if it exists there
-            if (this.worldObjects.GetValueOrDefault(movementQueueItem.oldPosition) != null)
+            if (this.core.worldObjects.GetValueOrDefault(movementQueueItem.oldPosition) != null)
             {
-                this.worldObjects[movementQueueItem.oldPosition]
+                this.core.worldObjects[movementQueueItem.oldPosition]
                     .Remove(movementQueueItem.worldObject.Guid);
             }
             // Initialize the new position if it doesn't exist, this happens frequently
-            if (this.worldObjects.GetValueOrDefault(movementQueueItem.newPosition) == null)
+            if (this.core.worldObjects.GetValueOrDefault(movementQueueItem.newPosition) == null)
             {
-                this.worldObjects[movementQueueItem.newPosition] =
-                    new Dictionary<string, WorldObject>();
+                this.core.worldObjects[movementQueueItem.newPosition] =
+                    new Dictionary<string, WorldObjectCore>();
             }
             // Add the object to the new position
-            this.worldObjects[movementQueueItem.newPosition][movementQueueItem.worldObject.Guid] =
-                movementQueueItem.worldObject;
-            movementQueueItem.worldObject.GridPosition = movementQueueItem.newPosition;
-            movementQueueItem.worldObject.SetName();
+            this.core.worldObjects[movementQueueItem.newPosition][
+                movementQueueItem.worldObject.Guid
+            ] = movementQueueItem.worldObject;
+            (movementQueueItem.worldObject.backref as WorldObject).GridPosition =
+                movementQueueItem.newPosition;
+            // movementQueueItem.worldObject.SetName();
         }
 
-        protected void Delete(DeletionQueueItem deletionQueueItem)
+        protected void Delete(GameControllerCore.DeletionQueueItem deletionQueueItem)
         {
             // Get this position
-            Dictionary<string, WorldObject> worldObjects = this.worldObjects.GetValueOrDefault(
-                deletionQueueItem.position,
-                null
-            );
+            Dictionary<string, WorldObjectCore> worldObjects =
+                this.core.worldObjects.GetValueOrDefault(deletionQueueItem.position, null);
 
             // Nothing is here
             if (worldObjects == null)
@@ -278,7 +371,7 @@ namespace Assets.Scripts.Unity
             }
 
             // Find the thing
-            WorldObject worldObject = worldObjects.GetValueOrDefault(
+            WorldObjectCore worldObject = worldObjects.GetValueOrDefault(
                 deletionQueueItem.worldObject.Guid,
                 null
             );
@@ -290,13 +383,13 @@ namespace Assets.Scripts.Unity
             }
 
             // Delete the thing
-            Destroy(worldObject.gameObject);
-            this.worldObjects[deletionQueueItem.position]
+            // Destroy(worldObject.gameObject);
+            this.core.worldObjects[deletionQueueItem.position]
                 .Remove(deletionQueueItem.worldObject.Guid);
             deletionQueueItem.worldObject = null;
         }
 
-        protected virtual void Spawn(SpawnQueueItem spawnQueueItem)
+        protected virtual void Spawn(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
             GameObject thisGameObject = null;
             try
@@ -304,7 +397,7 @@ namespace Assets.Scripts.Unity
                 // If spawn conditions are set and aren't met, don't spawn
                 if (spawnQueueItem.conditions != null)
                 {
-                    if (!spawnQueueItem.conditions.Invoke(this))
+                    if (!spawnQueueItem.conditions.Invoke(this.core))
                     {
                         // TODO: write to UI state as an error message
                         return;
@@ -333,21 +426,22 @@ namespace Assets.Scripts.Unity
                 worldObject.PostInstantiate(this, spawnQueueItem);
 
                 // Initialize the dictionary if it doesn't exist, this will only happen once
-                this.worldObjects ??=
-                    new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObject>>();
+                this.core.worldObjects ??=
+                    new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
 
                 // Initialize the current position if it doesn't exist, this happens frequently
                 // Null coallesce doesn't work here, not totally sure why
-                if (this.worldObjects.GetValueOrDefault(spawnQueueItem.gridPosition) == null)
+                if (this.core.worldObjects.GetValueOrDefault(spawnQueueItem.gridPosition) == null)
                 {
-                    this.worldObjects[spawnQueueItem.gridPosition] =
-                        new Dictionary<string, WorldObject>();
+                    this.core.worldObjects[spawnQueueItem.gridPosition] =
+                        new Dictionary<string, WorldObjectCore>();
                 }
 
-                // Be chaotic and assume that the GetGuid() is unique
-                this.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] = worldObject;
+                // We assume that the GetGuid() is unique enough to not cause a collision here
+                this.core.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] =
+                    worldObject.core;
             }
-            catch (SpawnException ex)
+            catch (GameControllerCore.SpawnException ex)
             {
                 if (thisGameObject != null)
                 {

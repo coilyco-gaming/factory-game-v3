@@ -4,6 +4,7 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.Unity;
     using Roy_T.AStar.Graphs;
     using Roy_T.AStar.Paths;
@@ -166,7 +167,7 @@ namespace Assets.Scripts.Components.Unity
             foreach (
                 KeyValuePair<
                     System.Numerics.Vector2,
-                    Dictionary<string, WorldObject>
+                    Dictionary<string, WorldObjectCore>
                 > worldObjects in gameComponent.GetWorldObjects()
             )
             {
