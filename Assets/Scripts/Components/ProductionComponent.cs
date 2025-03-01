@@ -6,7 +6,7 @@ namespace Assets.Scripts.Components.Core
 
     public class ProductionComponentCore
     {
-        public static uint BufferQuantity = 2; // hold enough input buffer for 2 crafts
+        public static uint InputBufferMultiplier = 2; // hold enough input buffer for 2 crafts
         public GameContent.Item Product;
         public uint Quantity;
         public List<ProductionQueueRequests> Requests = new();
@@ -51,7 +51,7 @@ namespace Assets.Scripts.Components.Core
                 resource = new ProductionQueueRequests
                 {
                     Item = this.Product,
-                    Quantity = ProductionComponentCore.BufferQuantity,
+                    Quantity = ProductionComponentCore.InputBufferMultiplier,
                 };
                 this.Requests = new();
             }
