@@ -11,7 +11,7 @@ namespace Assets.Scripts.Components.Core
         public GameContent.Item ProductItem => this.gameContent.Items[this.Product];
         public uint Quantity;
         public Dictionary<string, uint> Requests = new();
-        public Dictionary<string, uint> Craftables = new();
+        public Dictionary<string, uint> Intermediates = new();
         public uint currentCraftProgress = 0;
 
         public double PercentCraftProgress =>
@@ -64,7 +64,7 @@ namespace Assets.Scripts.Components.Core
                     Quantity = ProductionComponentCore.InputBufferMultiplier,
                 };
                 this.Requests = new();
-                this.Craftables = new();
+                this.Intermediates = new();
             }
 
             // If the item has ingredients, get the desired resources for each ingredient.
@@ -102,14 +102,15 @@ namespace Assets.Scripts.Components.Core
                 }
                 this.Requests[resource.Item.Name] += desiredResources;
 
-                // If the resource is craftable, add it to the list of craftables.
-                if (resource.Item.Ingredients.Count != 0)
+                // If the resource is craftable, add it to the list of Intermediates.
+                // Unless it is the final product.
+                if (resource.Item.Ingredients.Count != 0 && resource.Item.Name != this.Product)
                 {
-                    if (!this.Craftables.ContainsKey(resource.Item.Name))
+                    if (!this.Intermediates.ContainsKey(resource.Item.Name))
                     {
-                        this.Craftables[resource.Item.Name] = 0;
+                        this.Intermediates[resource.Item.Name] = 0;
                     }
-                    this.Craftables[resource.Item.Name] += desiredResources;
+                    this.Intermediates[resource.Item.Name] += desiredResources;
                 }
             }
         }
@@ -411,22 +412,18 @@ namespace Assets.Scripts.Components.Tests
             production.GetDesiredResouces();
 
             Assert.Equal(6, production.Requests.Count);
-            Assert.Equal(4, production.Craftables.Count);
-            Assert.Equal( //
-                production.Requests["wall"],
-                production.Craftables["wall"]
-            );
+            Assert.Equal(3, production.Intermediates.Count);
             Assert.Equal( //
                 production.Requests["planks"],
-                production.Craftables["planks"]
+                production.Intermediates["planks"]
             );
             Assert.Equal( //
                 production.Requests["nails"],
-                production.Craftables["nails"]
+                production.Intermediates["nails"]
             );
             Assert.Equal( //
                 production.Requests["frame"],
-                production.Craftables["frame"]
+                production.Intermediates["frame"]
             );
         }
 
