@@ -186,9 +186,12 @@ namespace Assets.Scripts.Components.Tests
             BatteryComponentCore battery3 = this.Battery(gameController, 50, 100);
 
             battery1.Balance(new WorldObjectCore(null), gameController);
-            Assert.Equal(50u, Math.Round(battery1.Energy));
-            Assert.Equal(50u, Math.Round(battery2.Energy));
-            Assert.Equal(50u, Math.Round(battery3.Energy));
+            battery2.Balance(new WorldObjectCore(null), gameController);
+            battery3.Balance(new WorldObjectCore(null), gameController);
+
+            Assert.Equal(38u, Math.Round(battery1.Energy));
+            Assert.Equal(56u, Math.Round(battery2.Energy));
+            Assert.Equal(55u, Math.Round(battery3.Energy));
         }
 
         [Fact]
