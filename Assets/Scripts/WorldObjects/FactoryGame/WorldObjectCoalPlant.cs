@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.Components.Unity;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
-using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {

@@ -173,6 +173,7 @@ namespace Assets.Scripts.Core
     }
 }
 
+#if UNITY_6000
 namespace Assets.Scripts.Unity
 {
     using System.Collections.Generic;
@@ -461,3 +462,4 @@ namespace Assets.Scripts.Unity
         }
     }
 }
+#endif

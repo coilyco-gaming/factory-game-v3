@@ -15,7 +15,7 @@ namespace Assets.Scripts.Components.Core
         private string resourceType = "";
         private uint insertionRate = 0;
 
-        public void Instantiate(
+        public InserterComponentCore(
             ResourcesComponentCore resources = null,
             string resourceType = "",
             uint insertionRate = 0
@@ -59,93 +59,200 @@ namespace Assets.Scripts.Components.Core
     }
 }
 
-// namespace Assets.Scripts.Components.Tests
-// {
-//     using System.Collections.Generic;
-//     using Assets.Scripts.Components.Core;
-//     using Xunit;
+namespace Assets.Scripts.Components.Tests
+{
+    using System.Collections.Generic;
+    using Assets.Scripts.Components.Core;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
+    using Xunit;
 
-//     public class InserterComponentTest
-//     {
-//         [Fact]
-//         public void TestNulls()
-//         {
-//             InserterComponentCore inserter = new();
-//             inserter.Instantiate();
-//             inserter.Insert(null);
-//             inserter.Insert(new List<ResourcesComponentCore>());
-//             inserter.Insert(new List<ResourcesComponentCore>() { null });
-//             inserter.Insert(
-//                 new List<ResourcesComponentCore>()
-//                 {
-//                     new(null, weightCapacity: 0, volumeCapacity: 0),
-//                 }
-//             );
-//             inserter.Insert(
-//                 new List<ResourcesComponentCore>()
-//                 {
-//                     new(new TestResourcesGameContent(), weightCapacity: 100, volumeCapacity: 100),
-//                 }
-//             );
-//         }
+    public class InserterComponentTest
+    {
+        public WorldObjectCore WorldObject(
+            GameControllerCore gameController,
+            System.Numerics.Vector2 gridPosition,
+            List<InserterComponentCore> inserters = null,
+            ResourcesComponentCore resources = null
+        )
+        {
+            WorldObjectCore worldObject = new(null)
+            {
+                Inserters = inserters,
+                Resources = resources,
+                GridPosition = gridPosition,
+            };
+            worldObject.Guid = worldObject.CreateGuid();
+            gameController.worldObjects[worldObject.GridPosition] = new()
+            {
+                [worldObject.Guid] = worldObject,
+            };
+            return worldObject;
+        }
 
-//         [Fact]
-//         public void TestInsertCapacityOverflow()
-//         {
-//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
-//             resources.CreateResources("wood", 1);
-//             ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 1, 1);
-//             localResource.CreateResources("wood", 1);
-//             InserterComponentCore inserter = new();
+        [Fact]
+        public void TestNullsAndZero()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-//             inserter.Instantiate(resources, "wood", 1);
-//             inserter.Insert(new List<ResourcesComponentCore> { localResource });
+            // object 0
+            WorldObjectCore worldObject0 = this.WorldObject(
+                gameController,
+                new System.Numerics.Vector2(0, 0),
+                new List<InserterComponentCore>() { new() }
+            );
 
-//             Assert.Equal(1u, resources.Resources["wood"]);
-//             Assert.Equal(1u, localResource.Resources["wood"]);
-//         }
+            // object 1
+            WorldObjectCore worldObject1 = this.WorldObject(
+                gameController,
+                new System.Numerics.Vector2(1, 0),
+                new List<InserterComponentCore>() { new() },
+                null
+            );
 
-//         [Fact]
-//         public void TestInsert()
-//         {
-//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 2, 2);
-//             resources.CreateResources("wood", 1);
-//             ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 2, 2);
-//             localResource.CreateResources("wood", 1);
-//             InserterComponentCore inserter = new();
+            // object 2
+            WorldObjectCore worldObject2 = this.WorldObject(
+                gameController,
+                new System.Numerics.Vector2(0, 1),
+                new List<InserterComponentCore>() { new() },
+                null
+            );
 
-//             inserter.Instantiate(resources, "wood", 1);
-//             inserter.Insert(new List<ResourcesComponentCore> { localResource });
+            // logic under test
+            worldObject0.Inserters[0].Insert(worldObject0, gameController); // TODO: assign a "parent" on every component
+            worldObject1.Inserters[0].Insert(worldObject1, gameController); // TODO: the parent is the world object
+            worldObject2.Inserters[0].Insert(worldObject2, gameController);
+        }
 
-//             Assert.Equal(2u, resources.Resources["wood"]);
-//             Assert.Equal(0u, localResource.Resources["wood"]);
-//         }
+        [Fact]
+        public void TestInsertCapacityOverflow()
+        {
+            GameControllerCore gameController = new();
+            gameController.worldObjects ??=
+                new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
 
-//         [Fact]
-//         public void TestInsertMultiple()
-//         {
-//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 3, 3);
-//             resources.CreateResources("wood", 1);
-//             ResourcesComponentCore localResource1 = new(new TestResourcesGameContent(), 2, 2);
-//             localResource1.CreateResources("wood", 1);
-//             ResourcesComponentCore localResource2 = new(new TestResourcesGameContent(), 2, 2);
-//             localResource2.CreateResources("wood", 1);
-//             InserterComponentCore inserter = new();
+            // object 0
+            ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 1, 1);
+            resources0.CreateResources("wood", 1);
+            WorldObjectCore worldObject0 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources0,
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            gameController.worldObjects[worldObject0.GridPosition][worldObject0.Guid] =
+                worldObject0;
 
-//             inserter.Instantiate(resources, "wood", 1);
-//             inserter.Insert(new List<ResourcesComponentCore> { localResource1, localResource2 });
+            // object 1
+            ResourcesComponentCore resources1 = new(new TestResourcesGameContent(), 1, 1);
+            resources1.CreateResources("wood", 1);
+            WorldObjectCore worldObject1 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources1,
+                GridPosition = new System.Numerics.Vector2(1, 0),
+            };
+            gameController.worldObjects[worldObject1.GridPosition][worldObject1.Guid] =
+                worldObject1;
 
-//             Assert.Equal(3u, resources.Resources["wood"]);
-//             Assert.Equal(0u, localResource1.Resources["wood"]);
-//             Assert.Equal(0u, localResource2.Resources["wood"]);
-//         }
+            // logic under test
+            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject1.Inserters[0].Insert(worldObject1, gameController);
 
-//         [Fact]
-//         public void TestEmptyGameContent()
-//         {
-//             InserterComponentCore inserter = new();
-//             inserter.Instantiate();
-//             inserter.Insert(new List<ResourcesComponentCore>());
-//         }
-//     }
-// }
+            // assertions
+            Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
+            Assert.Equal(1u, worldObject1.Resources.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestInsert()
+        {
+            GameControllerCore gameController = new();
+            gameController.worldObjects ??=
+                new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
+
+            // object 0
+            ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 2, 2);
+            resources0.CreateResources("wood", 1);
+            WorldObjectCore worldObject0 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources0,
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            gameController.worldObjects[worldObject0.GridPosition][worldObject0.Guid] =
+                worldObject0;
+
+            // object 1
+            ResourcesComponentCore resources1 = new(new TestResourcesGameContent(), 2, 2);
+            resources1.CreateResources("wood", 1);
+            WorldObjectCore worldObject1 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources1,
+                GridPosition = new System.Numerics.Vector2(1, 0),
+            };
+            gameController.worldObjects[worldObject1.GridPosition][worldObject1.Guid] =
+                worldObject1;
+
+            // logic under test
+            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+
+            // assertions
+            Assert.Equal(2u, worldObject0.Resources.Resources["wood"]);
+            Assert.Equal(0u, worldObject1.Resources.Resources["wood"]);
+        }
+
+        [Fact]
+        public void TestInsertMultiple()
+        {
+            GameControllerCore gameController = new();
+            gameController.worldObjects ??=
+                new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
+
+            // object 0
+            ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 3, 3);
+            resources0.CreateResources("wood", 1);
+            WorldObjectCore worldObject0 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources0,
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            gameController.worldObjects[worldObject0.GridPosition][worldObject0.Guid] =
+                worldObject0;
+
+            // object 1
+            ResourcesComponentCore resources1 = new(new TestResourcesGameContent(), 2, 2);
+            resources1.CreateResources("wood", 1);
+            WorldObjectCore worldObject1 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources1,
+                GridPosition = new System.Numerics.Vector2(1, 0),
+            };
+            gameController.worldObjects[worldObject1.GridPosition][worldObject1.Guid] =
+                worldObject1;
+
+            // object 2
+            ResourcesComponentCore resources2 = new(new TestResourcesGameContent(), 2, 2);
+            resources1.CreateResources("wood", 1);
+            WorldObjectCore worldObject2 = new(null)
+            {
+                Inserters = new() { new(resourceType: "wood", insertionRate: 1) },
+                Resources = resources2,
+                GridPosition = new System.Numerics.Vector2(0, 1),
+            };
+            gameController.worldObjects[worldObject2.GridPosition][worldObject2.Guid] =
+                worldObject2;
+
+            // logic under test
+            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+
+            // assertions
+            Assert.Equal(3u, worldObject0.Resources.Resources["wood"]);
+            Assert.Equal(0u, worldObject1.Resources.Resources["wood"]);
+            Assert.Equal(0u, worldObject1.Resources.Resources["wood"]);
+        }
+    }
+}

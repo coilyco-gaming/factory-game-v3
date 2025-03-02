@@ -69,15 +69,14 @@ namespace Assets.Scripts.WorldObjects.Core
     }
 }
 
+#if UNITY_6000
 namespace Assets.Scripts.WorldObjects.Unity
 {
     using System;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Core;
-    using global::Unity.VisualScripting;
     using UnityEngine;
 
     public class WorldObject : MonoBehaviour
@@ -158,3 +157,4 @@ namespace Assets.Scripts.WorldObjects.Unity
         }
     }
 }
+#endif
