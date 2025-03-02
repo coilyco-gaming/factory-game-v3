@@ -17,13 +17,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            // this.core.Battery.Instantiate(capacity: WorldObjectRadar.totalBatteryCapacity);
+            this.core.Battery = new(capacity: WorldObjectRadar.totalBatteryCapacity);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            // this.core.Battery.Balance(this, gameController);
+            this.core.Battery.Balance(gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()

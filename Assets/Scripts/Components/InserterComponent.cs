@@ -71,25 +71,22 @@ namespace Assets.Scripts.Components.Tests
 
     public class InserterComponentTest
     {
-        public WorldObjectCore WorldObject(
+        private WorldObjectCore WorldObject(
             GameControllerCore gameController,
             System.Numerics.Vector2 gridPosition,
             List<InserterComponentCore> inserters = null,
             ResourcesComponentCore resources = null
         )
         {
-            WorldObjectCore worldObject = new(null)
+            WorldObjectCore core = new(null)
             {
                 Inserters = inserters,
                 Resources = resources,
-                GridPosition = gridPosition,
+                GridPosition = gridPosition, // TODO: why can't these all be at the same grid position?
             };
-            worldObject.Guid = worldObject.CreateGuid();
-            gameController.worldObjects[worldObject.GridPosition] = new()
-            {
-                [worldObject.Guid] = worldObject,
-            };
-            return worldObject;
+            core.Guid = core.CreateGuid();
+            gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
+            return core;
         }
 
         [Fact]

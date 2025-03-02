@@ -28,21 +28,21 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
             );
 
-            this.core.Inserters = new List<InserterComponentCore>() { new(), new(), new(), new() };
-            this.core.Inserters[0]
-                .Instantiate(
+            this.core.Inserters = new List<InserterComponentCore>()
+            {
+                new(
                     this.core.Resources,
                     FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
-                );
-            this.core.Inserters[1]
-                .Instantiate(
+                ),
+                new(
                     this.core.Resources,
                     FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
-                );
+                ),
+            };
 
-            // this.core.Battery.Instantiate(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
+            this.core.Battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
 
             // this.core.Power = new PowerComponentCore();
             // this.core.Power.Instantiate(
@@ -62,7 +62,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 inserter?.Insert(this.core, gameController.core);
             }
             // this.core.Power.GeneratePower();
-            // this.core.Battery.Balance(this, gameController);
+            this.core.Battery.Balance(this, gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()

@@ -3,6 +3,8 @@ namespace Assets.Scripts.Components.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
 
     public class BatteryComponentCore
     {
@@ -54,9 +56,16 @@ namespace Assets.Scripts.Components.Core
 
         // Balance each battery in the list, including yourself,
         // to the same % of battery capacity.
-        public void Balance(List<BatteryComponentCore> batteries)
+        public void Balance(WorldObjectCore worldObject, GameControllerCore gameController)
         {
-            batteries ??= new List<BatteryComponentCore>();
+            List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
+                worldObject.GridPosition
+            );
+
+            List<BatteryComponentCore> batteries = localWorldObjects
+                .Select(localWorldObject => localWorldObject.Battery)
+                .Distinct()
+                .ToList();
 
             // Add yourself to the list of batteries.
             batteries.Add(this);
@@ -91,58 +100,41 @@ namespace Assets.Scripts.Components.Core
     }
 }
 
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using System.Collections.Generic;
-    using System.Linq;
-    using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Unity;
-    using Assets.Scripts.WorldObjects.Core;
-    using Assets.Scripts.WorldObjects.Unity;
-    using UnityEngine;
-
-    public class BatteryComponent : MonoBehaviour
-    {
-        public readonly BatteryComponentCore core = new();
-        public float Energy => this.core.Energy;
-        public double PercentEnergy => this.core.PercentEnergy;
-        public string PercentEnergyStatus => this.core.PercentEnergyStatus;
-
-        public void Instantiate(uint startingEnergy = 0, uint capacity = 0) =>
-            this.core.Instantiate(startingEnergy, capacity);
-
-        // TODO: DRY this pattern, we do it twice
-        public void Balance(WorldObject worldObject, GameController gameController)
-        {
-            List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
-                worldObject.core.GridPosition
-            );
-            List<BatteryComponentCore> batteries = localWorldObjects
-                .Select(localWorldObject => localWorldObject.Battery)
-                .ToList();
-            this.core.Balance(batteries);
-        }
-    }
-}
-#endif
-
 namespace Assets.Scripts.Components.Tests
 {
     using System;
-    using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
     using Xunit;
 
     public class BatteryComponentTest
     {
+        private BatteryComponentCore Battery(
+            GameControllerCore gameController,
+            uint energy,
+            uint capacity
+        )
+        {
+            WorldObjectCore core = new(null)
+            {
+                Battery = new BatteryComponentCore(energy, capacity),
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            core.Guid = core.CreateGuid();
+            gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
+            return core.Battery;
+        }
+
         [Fact]
         public void TestBalanceTwo()
         {
-            BatteryComponentCore battery1 = new(25, 100);
-            BatteryComponentCore battery2 = new(75, 100);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -150,10 +142,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceWithNulls()
         {
-            BatteryComponentCore battery1 = new(25, 100);
-            BatteryComponentCore battery2 = new(75, 100);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2, null, null, null });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -161,19 +155,23 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceOnlyNulls()
         {
-            BatteryComponentCore battery1 = new(25, 100);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { null, null, null });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(25u, Math.Round(battery1.Energy));
         }
 
         [Fact]
         public void TestBalanceTwoWithDuplicate()
         {
-            BatteryComponentCore battery1 = new(25, 100);
-            BatteryComponentCore battery2 = new(75, 100);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2, battery1 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -181,11 +179,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThree()
         {
-            BatteryComponentCore battery1 = new(25, 100);
-            BatteryComponentCore battery2 = new(75, 100);
-            BatteryComponentCore battery3 = new(50, 100);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
+            BatteryComponentCore battery3 = this.Battery(gameController, 50, 100);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
             Assert.Equal(50u, Math.Round(battery3.Energy));
@@ -194,10 +194,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceTwoWithDifferentCapacity()
         {
-            BatteryComponentCore battery1 = new(25, 100);
-            BatteryComponentCore battery2 = new(75, 200);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 75, 200);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(33, Math.Round(battery1.Energy));
             Assert.Equal(67, Math.Round(battery2.Energy));
         }
@@ -205,11 +207,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThreeWithDifferentCapacity()
         {
-            BatteryComponentCore battery1 = new(33, 100);
-            BatteryComponentCore battery2 = new(66, 200);
-            BatteryComponentCore battery3 = new(99, 300);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 33, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 66, 200);
+            BatteryComponentCore battery3 = this.Battery(gameController, 99, 300);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(33u, Math.Round(battery1.Energy));
             Assert.Equal(66u, Math.Round(battery2.Energy));
             Assert.Equal(99u, Math.Round(battery3.Energy));
@@ -218,11 +222,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThreeWithDifferentCapacityTwo()
         {
-            BatteryComponentCore battery1 = new(66, 100);
-            BatteryComponentCore battery2 = new(66, 200);
-            BatteryComponentCore battery3 = new(66, 300);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2, battery3 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 66, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 66, 200);
+            BatteryComponentCore battery3 = this.Battery(gameController, 66, 300);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(33u, Math.Round(battery1.Energy));
             Assert.Equal(66u, Math.Round(battery2.Energy));
             Assert.Equal(99u, Math.Round(battery3.Energy));
@@ -231,10 +237,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceTwoEmptyBatteries()
         {
-            BatteryComponentCore battery1 = new(0, 100);
-            BatteryComponentCore battery2 = new(0, 200);
+            GameControllerCore gameController = new() { worldObjects = new() };
 
-            battery1.Balance(new List<BatteryComponentCore> { battery2 });
+            BatteryComponentCore battery1 = this.Battery(gameController, 0, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 0, 200);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(0u, (uint)battery1.Energy);
             Assert.Equal(0u, (uint)battery2.Energy);
         }
@@ -242,16 +250,18 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceMisconfiguredCapacity()
         {
+            GameControllerCore gameController = new() { worldObjects = new() };
             BatteryComponentCore battery = new();
-            battery.Balance(null);
+            battery.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(0u, battery.Energy);
         }
 
         [Fact]
         public void TestBalanceEmptyList()
         {
+            GameControllerCore gameController = new() { worldObjects = new() };
             BatteryComponentCore battery = new(50, 100);
-            battery.Balance(new List<BatteryComponentCore>());
+            battery.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(50, Math.Round(battery.Energy));
         }
 

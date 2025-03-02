@@ -54,7 +54,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
 
-            // this.core.Battery.Instantiate(capacity: WorldObjectFactory.totalBatteryCapacity);
+            this.core.Battery = new(capacity: WorldObjectFactory.totalBatteryCapacity);
         }
 
         public override void Tick(GameController gameController)
@@ -64,7 +64,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter?.Insert(this.core, gameController.core);
             }
-            // this.core.Battery.Balance(this, gameController);
+            this.core.Battery.Balance(this, gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
