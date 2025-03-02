@@ -9,7 +9,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// TODO: create a completed build that folks can "play" (run? play?)
 namespace Assets.Scripts.Unity
 {
     public class FactoryGameController : GameController
@@ -71,13 +70,20 @@ namespace Assets.Scripts.Unity
             //
             //   W
             // R C R
-            // R C F
-            //   W W
+            // R C F F F F
+            //   W W W W W
             //
             // Both coal plants have a warehouse beside them with a stockpile of coal.
-            // The factory has a warehouse beside it with a stockpile of iron and copper.
             // There's 1 scanner for each resource: iron, copper, coal.
             //
+            // The factories are chained like so:
+            //      W W W W
+            //      F F F F
+            //      ^ ^ ^ ^
+            //      | | | BuildingMaterials
+            //      | | Motors
+            //      | Circuits
+            //      Frames
             // TODO: a proper HQ building that has enhanced capabilities
 
             System.Numerics.Vector2 HQPosition = new(
@@ -118,7 +124,8 @@ namespace Assets.Scripts.Unity
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.CoalPlant.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y)
+                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y),
+                    postInstantiateCallback: this.SpawnCoalPlantCallback()
                 )
             );
 
@@ -132,7 +139,40 @@ namespace Assets.Scripts.Unity
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y)
+                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Products.Frames.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Products.Circuits.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Products.Motors.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 5, HQPosition.Y),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Products.BuildingMaterials.ToString()
+                    )
                 )
             );
 
@@ -156,6 +196,30 @@ namespace Assets.Scripts.Unity
                 new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Warehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y - 1),
+                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 5, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
                 )
             );
@@ -214,6 +278,28 @@ namespace Assets.Scripts.Unity
             }
         }
 
+        private Action<GameControllerCore, WorldObjectCore> SpawnFactoryCallback(string product)
+        {
+            return (gameController, worldObject) =>
+            {
+                WorldObjectFactory worldObjectFactory = worldObject.backref as WorldObjectFactory;
+                worldObjectFactory.productType = product;
+            };
+        }
+
+        private Action<GameControllerCore, WorldObjectCore> SpawnCoalPlantCallback()
+        {
+            return (gameController, worldObject) =>
+            {
+                WorldObjectCoalPlant worldObjectCoalPlant =
+                    worldObject.backref as WorldObjectCoalPlant;
+                worldObjectCoalPlant.core.Resources.CreateResources(
+                    FactoryGameContent.Resources.Coal.ToString(),
+                    100 // jumpstart the inserters
+                );
+            };
+        }
+
         private Action<GameControllerCore, WorldObjectCore> SpawnRadarCallback(string target)
         {
             return (gameController, worldObject) =>
@@ -243,7 +329,7 @@ namespace Assets.Scripts.Unity
                     worldObject.backref as WorldObjectWarehouse;
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
-                    1000
+                    5000
                 );
             };
         }
@@ -256,15 +342,15 @@ namespace Assets.Scripts.Unity
                     worldObject.backref as WorldObjectWarehouse;
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Iron.ToString(),
-                    750
+                    2000
                 );
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Stone.ToString(),
-                    500
+                    1000
                 );
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Copper.ToString(),
-                    250
+                    500
                 );
             };
         }

@@ -41,9 +41,13 @@ namespace Assets.Scripts.Components.Core
             string product
         )
         {
+            this.resources =
+                resources
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "ProductionComponentCore requires a ResourcesComponentCore"
+                );
             this.gameContent = gameContent;
             this.Product = product;
-            this.resources = resources;
         }
 
         public void GetDesiredResouces(ProductionQueueRequests resource = null)
@@ -121,9 +125,13 @@ namespace Assets.Scripts.Components.Core
 
             if (this.outputBufferFull)
             {
-                this.resources.CreateResources(this.ProductItem.Name, 1);
-                this.outputBufferFull = false;
-                return;
+                try
+                {
+                    this.resources.CreateResources(this.ProductItem.Name, 1);
+                    this.outputBufferFull = false;
+                }
+                catch (ResourcesComponentCore.ResourceException) { }
+                return; // TODO: output buffer is full and won't clear without intervention
             }
 
             // If we have already started a craft, continue it.
@@ -178,28 +186,6 @@ namespace Assets.Scripts.Components.Core
         }
     }
 }
-
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Core;
-    using Assets.Scripts.Unity;
-    using UnityEngine;
-
-    public class ProductionComponent : MonoBehaviour
-    {
-        public ProductionComponentCore core;
-        public GameContent.Item ProductItem => this.core.ProductItem;
-        public uint Quantity => this.core.Quantity;
-
-        public void Instantiate(ResourcesComponent resources, string product)
-        {
-            this.core = new(new FactoryGameContent(), resources.core, product);
-        }
-    }
-}
-#endif
 
 namespace Assets.Scripts.Components.Tests
 {
@@ -310,7 +296,7 @@ namespace Assets.Scripts.Components.Tests
         {
             ProductionComponentCore production = new(
                 new TestProductionGameContent(), //
-                null,
+                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
                 "wall"
             );
             production.GetDesiredResouces();
@@ -324,7 +310,7 @@ namespace Assets.Scripts.Components.Tests
         {
             ProductionComponentCore production = new(
                 new TestProductionGameContent(), //
-                null,
+                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
                 "wall"
             );
             production.GetDesiredResouces();
@@ -339,7 +325,7 @@ namespace Assets.Scripts.Components.Tests
         {
             ProductionComponentCore production = new(
                 new TestProductionGameContentWithIron(),
-                null,
+                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
                 "wall"
             );
             production.GetDesiredResouces();

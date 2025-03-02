@@ -28,21 +28,23 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
             );
 
+            this.core.Battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
+
             this.core.Inserters = new List<InserterComponentCore>()
             {
                 new(
+                    this.core.Battery,
                     this.core.Resources,
                     FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
                 ),
                 new(
+                    this.core.Battery,
                     this.core.Resources,
                     FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
                 ),
             };
-
-            this.core.Battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
 
             this.core.Power = new PowerComponentCore(
                 this.core.Battery,
@@ -58,7 +60,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
             foreach (InserterComponentCore inserter in this.core.Inserters)
             {
-                inserter?.Insert(this.core, gameController.core);
+                inserter.Insert(this.core, gameController.core);
             }
             this.core.Power.GeneratePower();
             this.core.Battery.Balance(this.core, gameController.core);

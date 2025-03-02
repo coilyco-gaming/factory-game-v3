@@ -20,13 +20,15 @@ namespace Assets.Scripts.Components.Core
             uint gainRate = 0
         )
         {
-            this.battery = battery ?? new BatteryComponentCore();
+            this.battery =
+                battery
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "PowerComponentCore requires a BatteryComponentCore"
+                );
             this.resources =
                 resources
-                ?? new ResourcesComponentCore(
-                    new GameContent(),
-                    weightCapacity: 0,
-                    volumeCapacity: 0
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "PowerComponentCore requires a ResourcesComponentCore"
                 );
             this.burnResource = burnResource;
             this.burnRate = burnRate;
@@ -70,6 +72,7 @@ namespace Assets.Scripts.Components.Tests
         )
         {
             BatteryComponentCore battery = new(startingEnergy, capacity);
+            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             WorldObjectCore core = new(null)
             {
                 Battery = battery,
@@ -77,27 +80,11 @@ namespace Assets.Scripts.Components.Tests
             };
             if (gainRate != 0)
             {
-                core.Power = new PowerComponentCore(battery, null, gainRate: gainRate);
+                core.Power = new PowerComponentCore(battery, resources, gainRate: gainRate);
             }
             core.Guid = core.CreateGuid();
             gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
             return core;
-        }
-
-        [Fact]
-        public void TestGeneratePowerNulls1()
-        {
-            PowerComponentCore power = new(null, null, "", 0, 0);
-            power.GeneratePower();
-        }
-
-        [Fact]
-        public void TestGeneratePowerNulls2()
-        {
-            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
-            resources.CreateResources("coal", 1);
-            PowerComponentCore power = new(null, resources, "coal", 0, 0);
-            power.GeneratePower();
         }
 
         [Fact]
@@ -165,7 +152,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestSolarPower()
         {
             BatteryComponentCore battery = new(0, 100);
-            PowerComponentCore power = new(battery, null, "sunlight", 0, 10);
+            PowerComponentCore power = new(
+                battery,
+                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
+                "sunlight",
+                0,
+                10
+            );
             power.GeneratePower();
             Assert.Equal(10, battery.Energy);
         }
@@ -174,7 +167,13 @@ namespace Assets.Scripts.Components.Tests
         public void TestOvercharge()
         {
             BatteryComponentCore battery = new(0, 100);
-            PowerComponentCore power = new(battery, null, "sunlight", 0, 200);
+            PowerComponentCore power = new(
+                battery,
+                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
+                "sunlight",
+                0,
+                200
+            );
             power.GeneratePower();
             Assert.Equal(98, battery.Energy);
         }
@@ -195,7 +194,12 @@ namespace Assets.Scripts.Components.Tests
         public void TestChargingTo100Percent()
         {
             BatteryComponentCore battery = new(0, 100);
-            PowerComponentCore power = new(battery, null, burnResource: "sunlight", gainRate: 1);
+            PowerComponentCore power = new(
+                battery,
+                new ResourcesComponentCore(new TestProductionCraftTime(), 1, 1),
+                burnResource: "sunlight",
+                gainRate: 1
+            );
             power.GeneratePower();
             for (int i = 0; i < 100; i++)
             {
@@ -209,7 +213,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestHighGain()
         {
             BatteryComponentCore battery = new(0, 100);
-            PowerComponentCore power = new(battery, null, gainRate: 95);
+            PowerComponentCore power = new(
+                battery,
+                new ResourcesComponentCore(new TestProductionCraftTime(), 1, 1),
+                gainRate: 95
+            );
             power.GeneratePower();
             Assert.Equal(95, battery.Energy);
             Assert.Equal(Math.Round(0.97, 2), Math.Round(battery.PercentEnergy, 2));

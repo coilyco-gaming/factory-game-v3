@@ -17,6 +17,12 @@ namespace Assets.Scripts.Core
 
         // CLASSES //
 
+        public class MisconfigurationException : Exception
+        {
+            public MisconfigurationException(string message)
+                : base(message) { }
+        }
+
         public class SpawnException : Exception
         {
             public SpawnException(string message)

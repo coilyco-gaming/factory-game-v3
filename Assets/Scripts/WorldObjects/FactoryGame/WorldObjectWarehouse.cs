@@ -8,7 +8,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectWarehouse : WorldObject
     {
-        private static uint totalVolumeCapacity = 5000;
+        private static uint totalVolumeCapacity = 10000;
         private static uint totalWeightCapacity = uint.MaxValue;
 
         public override void Instantiate(

@@ -14,6 +14,7 @@ namespace Assets.Scripts.Components.Core
         // PROPERTIES //
 
         // TODO: reserve storage for certain kinds of resources
+        // TODO: specifically: make factories reserve space for their I/O
 
         public Dictionary<string, uint> Resources { get; private set; } = new();
 
