@@ -35,25 +35,24 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 FactoryGameContent.Products.BuildingMaterials.ToString()
             );
 
-            this.core.Inserters = new List<InserterComponentCore>() { new(), new(), new(), new() };
-            this.core.Inserters[0]
-                .Instantiate(
+            this.core.Inserters = new List<InserterComponentCore>()
+            {
+                new(
                     this.core.Resources,
                     FactoryGameContent.Resources.Iron.ToString(),
                     WorldObjectFactory.insertionRate
-                );
-            this.core.Inserters[1]
-                .Instantiate(
+                ),
+                new(
                     this.core.Resources,
                     FactoryGameContent.Resources.Stone.ToString(),
                     WorldObjectFactory.insertionRate
-                );
-            this.core.Inserters[2]
-                .Instantiate(
+                ),
+                new(
                     this.core.Resources,
                     FactoryGameContent.Resources.Copper.ToString(),
                     WorldObjectFactory.insertionRate
-                );
+                ),
+            };
 
             // this.core.Battery.Instantiate(capacity: WorldObjectFactory.totalBatteryCapacity);
         }

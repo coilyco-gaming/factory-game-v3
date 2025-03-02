@@ -122,8 +122,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestGeneratePower()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(0, 100);
+            BatteryComponentCore battery = new(0, 100);
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("coal", 1);
             power.Instantiate(battery, resources, "coal", 1, 10);
@@ -173,8 +172,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestSolarPower()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(0, 100);
+            BatteryComponentCore battery = new(0, 100);
             power.Instantiate(battery, null, "sunlight", 0, 10);
             power.GeneratePower();
             Assert.Equal(10, battery.Energy);
@@ -184,8 +182,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestOvercharge()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(0, 100);
+            BatteryComponentCore battery = new(0, 100);
             power.Instantiate(battery, null, "sunlight", 0, 200);
             power.GeneratePower();
             Assert.Equal(98, battery.Energy);
@@ -195,8 +192,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestOverchargeDoesntConsume()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(100, 100);
+            BatteryComponentCore battery = new(100, 100);
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("coal", 1);
             power.Instantiate(battery, resources, "coal", 1, 200);
@@ -209,8 +205,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestChargingTo100Percent()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(0, 100);
+            BatteryComponentCore battery = new(0, 100);
             power.Instantiate(battery, burnResource: "sunlight", gainRate: 1);
             power.GeneratePower();
             for (int i = 0; i < 100; i++)
@@ -225,8 +220,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestHighGain()
         {
             PowerComponentCore power = new();
-            BatteryComponentCore battery = new();
-            battery.Instantiate(0, 100);
+            BatteryComponentCore battery = new(0, 100);
             power.Instantiate(battery, gainRate: 95);
             power.GeneratePower();
             Assert.Equal(95, battery.Energy);
@@ -238,19 +232,15 @@ namespace Assets.Scripts.Components.Tests
         public void TestTwoGeneratorsFourConsumers()
         {
             PowerComponentCore power1 = new();
-            BatteryComponentCore battery1 = new();
-            battery1.Instantiate(capacity: 100);
+            BatteryComponentCore battery1 = new(0, 100);
             power1.Instantiate(battery1, gainRate: 10);
 
-            BatteryComponentCore battery2 = new();
+            BatteryComponentCore battery2 = new(0, 100);
             PowerComponentCore power2 = new();
-            battery2.Instantiate(capacity: 100);
             power2.Instantiate(battery2, gainRate: 10);
 
-            BatteryComponentCore battery3 = new();
-            BatteryComponentCore battery4 = new();
-            battery3.Instantiate(capacity: 100);
-            battery4.Instantiate(capacity: 100);
+            BatteryComponentCore battery3 = new(0, 100);
+            BatteryComponentCore battery4 = new(0, 100);
 
             power1.GeneratePower();
             battery1.Balance(
