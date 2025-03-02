@@ -11,9 +11,10 @@ namespace Assets.Scripts.Components.Core
 
     public class InserterComponentCore
     {
+        public string resourceType = "";
+        public bool enabled = true;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
-        private string resourceType = "";
         private uint insertionRate = 0;
 
         public InserterComponentCore(
@@ -39,6 +40,11 @@ namespace Assets.Scripts.Components.Core
 
         public void Insert(WorldObjectCore worldObject, GameControllerCore gameController)
         {
+            if (!this.enabled)
+            {
+                return;
+            }
+
             List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
                 worldObject.GridPosition
             );

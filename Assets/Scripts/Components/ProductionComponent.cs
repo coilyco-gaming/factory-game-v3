@@ -2,6 +2,7 @@ namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Assets.Scripts.Core;
 
     public class ProductionComponentCore
@@ -51,23 +52,38 @@ namespace Assets.Scripts.Components.Core
         {
             this.gameContent = gameContent;
             this.Product = product;
-            this.resources =
-                resources
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Production component requires a resource component"
-                );
+
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Production component requires a battery component"
                 );
+
+            this.resources =
+                resources
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "Production component requires a resource component"
+                );
+            this.resources.reservedCapacity = this.ProductItem.Ingredients.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value * ProductionComponentCore.InputBufferMultiplier
+            );
+            this.resources.reservedCapacity[this.Product] = 1;
+
             if (inserters == null || inserters.Count != this.ProductItem.Ingredients.Count)
             {
                 throw new GameControllerCore.MisconfigurationException(
                     @$"Production component requires a list of inserters.
                        The number of inserters ({inserters.Count}) must match
-                    the number of ingredients ({this.ProductItem.Ingredients.Count})."
+                    the number of ingredients ({this.ProductItem.Ingredients.Count})
+                    for the product {this.Product}
+                    "
                 );
+            }
+            // TODO: production manages the "enabled state" (new concept) of inserters
+            for (int i = 0; i < inserters.Count; i++)
+            {
+                inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
             }
             this.inserters = inserters;
         }
@@ -148,6 +164,7 @@ namespace Assets.Scripts.Components.Core
                 try
                 {
                     this.resources.CreateResources(this.ProductItem.Name, 1);
+                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
                     this.outputBufferFull = false;
                 }
                 catch (ResourcesComponentCore.ResourceException) { }
@@ -163,6 +180,7 @@ namespace Assets.Scripts.Components.Core
                     this.resources.CreateResources(this.ProductItem.Name, 1);
                     this.currentCraftProgress = 0;
                 }
+                this.battery.Energy -= ProductionComponentCore.PowerUsage;
                 return;
             }
 
@@ -202,6 +220,7 @@ namespace Assets.Scripts.Components.Core
                 {
                     this.outputBufferFull = true;
                 }
+                this.battery.Energy -= ProductionComponentCore.PowerUsage;
             }
         }
     }
@@ -739,18 +758,21 @@ namespace Assets.Scripts.Components.Tests
             );
 
             production.Produce();
+            Assert.Equal(89u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(1u, production.currentCraftProgress);
             Assert.Equal("33%", production.PrecentProgressStatus);
 
             production.Produce();
+            Assert.Equal(79u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(2u, production.currentCraftProgress);
             Assert.Equal("67%", production.PrecentProgressStatus);
 
             production.Produce();
+            Assert.Equal(69u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(1u, resources.Resources["planks"]);
         }

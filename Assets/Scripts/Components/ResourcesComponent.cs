@@ -7,8 +7,21 @@ namespace Assets.Scripts.Components.Core
     public class ResourcesComponentCore
     {
         // FIELDS //
+        private static uint reservedInputBufferMultiplier = 2;
+        private static uint reservedOuputBufferMultiplier = 4;
         public uint weightCapacity = 0;
         public uint volumeCapacity = 0;
+
+        // When in "reserved capacity" mode, the component gains adopt new constaints.
+        // Setting the reserved capacity != null actives this mode.
+        // In this mode, resources can only be added or removed if they match one of
+        // the reserved resources. This is useful for factories, where the I/O
+        // must be managed carefully. Additionally, the reserved capacity operates
+        // with a buffer value with manages how much extra capacity is reserved.
+        // When the reserved capacity excedes (input value * buffer), the
+        // resourced can now be released from the component.
+
+        public Dictionary<string, uint> reservedCapacity = new();
         private GameContent GameContent;
 
         // PROPERTIES //
@@ -122,6 +135,18 @@ namespace Assets.Scripts.Components.Core
                 : base(message) { }
         }
 
+        public class ResourceReservedCapacitySpaceException : ResourceException
+        {
+            public ResourceReservedCapacitySpaceException(string message)
+                : base(message) { }
+        }
+
+        public class ResourceReservedCapacityQuantityException : ResourceException
+        {
+            public ResourceReservedCapacityQuantityException(string message)
+                : base(message) { }
+        }
+
         public class ResourceWeightCapacityException : ResourceException
         {
             public ResourceWeightCapacityException(string message)
@@ -147,12 +172,14 @@ namespace Assets.Scripts.Components.Core
         public ResourcesComponentCore(
             GameContent gameContent,
             uint weightCapacity,
-            uint volumeCapacity
+            uint volumeCapacity,
+            Dictionary<string, uint> reservedCapacity = null
         )
         {
             this.GameContent = gameContent;
             this.weightCapacity = weightCapacity;
             this.volumeCapacity = volumeCapacity;
+            this.reservedCapacity = reservedCapacity;
         }
 
         // FUNCTIONS //
@@ -170,6 +197,13 @@ namespace Assets.Scripts.Components.Core
             uint weightToCreate = amountToCreate * item.Weight;
             uint volumeToCreate = amountToCreate * item.Volume;
             uint currentResources = this.Resources.GetValueOrDefault(resourceName, 0u);
+
+            if (this.reservedCapacity != null && !this.reservedCapacity.ContainsKey(resourceName))
+            {
+                throw new ResourceReservedCapacitySpaceException(
+                    $"No space reserved for {resourceName}"
+                );
+            }
 
             if (this.RemainingWeightCapacity < weightToCreate)
             {
@@ -243,6 +277,46 @@ namespace Assets.Scripts.Components.Core
             if (availableResources == 0)
             {
                 throw new ResourceQuantityException($"Does not have {resourceName} to give");
+            }
+
+            if (
+                target.reservedCapacity != null
+                && !target.reservedCapacity.ContainsKey(resourceName)
+            )
+            {
+                throw new ResourceReservedCapacitySpaceException(
+                    $"No space reserved for {resourceName}"
+                );
+            }
+
+            // Reserved capacity maintains a minimum amount of resources in the component.
+            // If we (this) have less than the reserved capacity,
+            // we (this) can't give resources.
+            if (
+                this.reservedCapacity != null
+                && this.Resources.GetValueOrDefault(resourceName, 0u)
+                    < this.reservedCapacity.GetValueOrDefault(resourceName, 0u)
+                        * ResourcesComponentCore.reservedInputBufferMultiplier
+            )
+            {
+                throw new ResourceReservedCapacitySpaceException(
+                    $"Not enough reserved capacity to recieve {originalAmountToGive} {resourceName}"
+                );
+            }
+
+            // Reserved capacity maintains a maximum amount of resources in the component.
+            // If they (target) have more than the reserved capacity,
+            // they (target) can't recieve resources.
+            if (
+                target.reservedCapacity != null
+                && target.Resources.GetValueOrDefault(resourceName, 0u)
+                    > target.reservedCapacity.GetValueOrDefault(resourceName, 0u)
+                        * ResourcesComponentCore.reservedOuputBufferMultiplier
+            )
+            {
+                throw new ResourceReservedCapacitySpaceException(
+                    $"Too much reserved capacity to recieve {originalAmountToGive} {resourceName}"
+                );
             }
 
             if (availableResources < amountToGive)
@@ -726,6 +800,165 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal("0%", resourcesComponent.UsedWeightString);
             Assert.Equal("25%", targetResourcesComponent.UsedVolumeString);
             Assert.Equal("25%", targetResourcesComponent.UsedWeightString);
+        }
+
+        [Fact]
+        public void TestReservedCapacityCreate()
+        {
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 100,
+                weightCapacity: 100,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 100 } }
+            );
+            Assert.Throws<ResourcesComponentCore.ResourceReservedCapacitySpaceException>(
+                () => resourcesComponent.CreateResources("stone", 100)
+            );
+        }
+
+        [Fact]
+        public void TestReservedCapacityGive()
+        {
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 100,
+                weightCapacity: 100,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 100 } }
+            );
+            resourcesComponent.CreateResources("wood", 100);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 100,
+                weightCapacity: 100,
+                reservedCapacity: new Dictionary<string, uint> { { "iron", 100 } }
+            );
+
+            Assert.Throws<ResourcesComponentCore.ResourceReservedCapacitySpaceException>(
+                () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 100)
+            );
+        }
+
+        [Fact]
+        public void TestReservedCapacityTake()
+        {
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 200,
+                weightCapacity: 200,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 100 } }
+            );
+            resourcesComponent.CreateResources("wood", 100);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 100,
+                weightCapacity: 100
+            );
+            targetResourcesComponent.CreateResources("wood", 100);
+
+            resourcesComponent.TakeResources(targetResourcesComponent, "wood", 100);
+        }
+
+        [Fact]
+        public void TestReservedCapacityQuantityBelowBuffer1()
+        {
+            // Quantity is below buffer, so we can't give resources. (1)
+            // Quantity is below buffer, so we can recieve resources.
+
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 1000 } }
+            );
+            resourcesComponent.CreateResources("wood", 100);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000
+            );
+            targetResourcesComponent.CreateResources("wood", 100);
+
+            // Quantity is below buffer, so we can't give resources. (1)
+            Assert.Throws<ResourcesComponentCore.ResourceReservedCapacitySpaceException>(
+                () => resourcesComponent.GiveResources(targetResourcesComponent, "wood", 100)
+            );
+        }
+
+        [Fact]
+        public void TestReservedCapacityQuantityBelowBuffer2()
+        {
+            // Quantity is below buffer, so we can't give resources.
+            // Quantity is below buffer, so we can recieve resources. (2)
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 1000 } }
+            );
+            resourcesComponent.CreateResources("wood", 50);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000
+            );
+            targetResourcesComponent.CreateResources("wood", 100);
+
+            // Quantity is below buffer, so we can recieve resources. (2)
+            targetResourcesComponent.GiveResources(resourcesComponent, "wood", 100);
+        }
+
+        [Fact]
+        public void TestReservedCapacityQuantityAboveBuffer3()
+        {
+            // Quantity is above buffer, so we can't recieve resources. (3)
+            // Quantity is above buffer, so we can give resources.
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 10 } }
+            );
+            resourcesComponent.CreateResources("wood", 100);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000
+            );
+            targetResourcesComponent.CreateResources("wood", 100);
+
+            // Quantity is above buffer, so we can't recieve resources. (3)
+            Assert.Throws<ResourcesComponentCore.ResourceReservedCapacitySpaceException>(
+                () => targetResourcesComponent.GiveResources(resourcesComponent, "wood", 100)
+            );
+        }
+
+        [Fact]
+        public void TestReservedCapacityQuantityAboveBuffer4()
+        {
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000,
+                reservedCapacity: new Dictionary<string, uint> { { "wood", 10 } }
+            );
+            // Quantity is above buffer, so we can't recieve resources.
+            // Quantity is above buffer, so we can give resources. (4)
+            resourcesComponent.CreateResources("wood", 100);
+
+            ResourcesComponentCore targetResourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1000,
+                weightCapacity: 1000
+            );
+            targetResourcesComponent.CreateResources("wood", 100);
+
+            // Quantity is above buffer, so we can give resources. (4)
+            resourcesComponent.GiveResources(targetResourcesComponent, "wood", 100);
         }
     }
 }

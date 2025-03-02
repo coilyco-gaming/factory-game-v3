@@ -31,12 +31,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
             this.core.Battery = new(capacity: WorldObjectFactory.totalBatteryCapacity);
 
-            this.core.Production = new ProductionComponentCore(
-                new FactoryGameContent(),
-                this.core.Resources,
-                FactoryGameContent.Products.BuildingMaterials.ToString()
-            );
-
             List<string> ingredients = new FactoryGameContent()
                 .Items[this.productType]
                 .Ingredients.Keys.ToList();
@@ -53,6 +47,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     )
                 );
             }
+
+            this.core.Production = new ProductionComponentCore(
+                new FactoryGameContent(),
+                this.core.Resources,
+                this.core.Battery,
+                this.core.Inserters,
+                this.productType
+            );
         }
 
         public override void Tick(GameController gameController)
