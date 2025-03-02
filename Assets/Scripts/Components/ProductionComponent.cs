@@ -170,13 +170,22 @@ namespace Assets.Scripts.Components.Core
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)
             {
-                this.currentCraftProgress += 1;
-                if (this.currentCraftProgress >= this.ProductItem.CraftTime)
+                try
                 {
-                    this.resources.CreateResources(this.ProductItem.Name, 1);
-                    this.currentCraftProgress = 0;
+                    this.currentCraftProgress += 1;
+                    if (this.currentCraftProgress >= this.ProductItem.CraftTime)
+                    {
+                        this.resources.CreateResources(this.ProductItem.Name, 1);
+                        this.currentCraftProgress = 0;
+                    }
+                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
                 }
-                this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                catch (ResourceComponentCore.ResourceCapacityException e)
+                {
+                    // TODO: fire off an alert
+                    // That said, this is safe because it'll just keep trying to craft
+                    // the same thing over and over again without consuming resources.
+                }
                 return;
             }
 
@@ -215,7 +224,24 @@ namespace Assets.Scripts.Components.Core
                 }
                 if (this.ProductItem.CraftTime == 1)
                 {
-                    this.resources.CreateResources(this.ProductItem.Name, 1);
+                    try
+                    {
+                        this.resources.CreateResources(this.ProductItem.Name, 1);
+                    }
+                    catch (ResourceComponentCore.ResourceCapacityException e)
+                    {
+                        // TODO: fire off an alert
+                        // This is a case that should never happen.
+                        // We would get in this situation when we somehow passed
+                        // the weight and volume checks above, but then the
+                        // resource still creation failed somehow.
+                        // No idea when that would happen.
+                        // And if it happens, it would be incredibly annoying
+                        // because the factory would just keep consuming resources
+                        // and never produce anything.
+                        // TODO: write a "force create" method that will
+                        // create the resource no matter what.
+                    }
                 }
                 else
                 {
