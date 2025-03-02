@@ -16,8 +16,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Resources.Instantiate(weightCapacity: this.Amount, volumeCapacity: this.Amount);
-            this.Resources.CreateResources(this.WorldObjectType, this.Amount);
+            this.core.Resources = new(
+                new FactoryGameContent(),
+                weightCapacity: this.Amount,
+                volumeCapacity: this.Amount
+            );
+            this.core.Resources.CreateResources(this.WorldObjectType, this.Amount);
         }
 
         public override void Tick(GameController gameController)
@@ -25,7 +29,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
 
             // If the ore is empty, delete it.
-            if (!this.Resources.HasResources)
+            if (!this.core.Resources.HasResources)
             {
                 gameController.QueueForDeletion(
                     new GameControllerCore.DeletionQueueItem(this.core, this.GridPosition)
@@ -39,7 +43,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new StatusDataComponentCore.StatusData()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.Resources.ResourceInfo,
+                    Info = this.core.Resources.ResourceInfo,
                 };
         }
     }

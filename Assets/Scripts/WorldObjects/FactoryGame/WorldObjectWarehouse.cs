@@ -17,7 +17,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Resources.Instantiate(
+            this.core.Resources = new(
+                new FactoryGameContent(),
                 weightCapacity: WorldObjectWarehouse.totalWeightCapacity,
                 volumeCapacity: WorldObjectWarehouse.totalVolumeCapacity
             );
@@ -30,9 +31,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.Resources.ResourceInfo,
+                    Info = this.core.Resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.Resources.UsedVolumeString;
+                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
                 return statusData;
             };
         }

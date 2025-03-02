@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.Components.Unity;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
-using Unity.VisualScripting;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -17,8 +15,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         private static uint totalWeightCapacity = uint.MaxValue;
         private static uint totalBatteryCapacity = 1000;
         private static uint insertionRate = 5;
-        private List<InserterComponent> inserters;
-        private ProductionComponent production;
 
         public override void Instantiate(
             GameController gameController,
@@ -27,54 +23,49 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
 
-            this.Resources.Instantiate(
+            this.core.Resources = new(
+                new FactoryGameContent(),
                 weightCapacity: WorldObjectFactory.totalWeightCapacity,
                 volumeCapacity: WorldObjectFactory.totalVolumeCapacity
             );
 
-            this.production = this.AddComponent<ProductionComponent>();
-            this.production.Instantiate(this.Resources, this.productType);
+            this.core.Production = new ProductionComponentCore(
+                new FactoryGameContent(),
+                this.core.Resources,
+                FactoryGameContent.Products.BuildingMaterials.ToString()
+            );
 
-            // Iron and Copper inserters, for building robots.
-            this.inserters = new List<InserterComponent>()
-            {
-                this.AddComponent<InserterComponent>(),
-                this.AddComponent<InserterComponent>(),
-                this.AddComponent<InserterComponent>(),
-            };
-            this.inserters[0]
+            this.core.Inserters = new List<InserterComponentCore>() { new(), new(), new(), new() };
+            this.core.Inserters[0]
                 .Instantiate(
-                    this.Resources,
+                    this.core.Resources,
                     FactoryGameContent.Resources.Iron.ToString(),
                     WorldObjectFactory.insertionRate
                 );
-            this.inserters[1]
+            this.core.Inserters[1]
                 .Instantiate(
-                    this.Resources,
+                    this.core.Resources,
                     FactoryGameContent.Resources.Stone.ToString(),
                     WorldObjectFactory.insertionRate
                 );
-            this.inserters[2]
+            this.core.Inserters[2]
                 .Instantiate(
-                    this.Resources,
+                    this.core.Resources,
                     FactoryGameContent.Resources.Copper.ToString(),
                     WorldObjectFactory.insertionRate
                 );
 
-            this.Battery.Instantiate(capacity: WorldObjectFactory.totalBatteryCapacity);
+            // this.core.Battery.Instantiate(capacity: WorldObjectFactory.totalBatteryCapacity);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponent inserter in this.inserters)
+            foreach (InserterComponentCore inserter in this.core.Inserters)
             {
-                if (inserter != null)
-                {
-                    inserter.Insert(this, gameController);
-                }
+                inserter?.Insert(this.core, gameController.core);
             }
-            this.Battery.Balance(this, gameController);
+            // this.core.Battery.Balance(this, gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -84,10 +75,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.Resources.ResourceInfo,
+                    Info = this.core.Resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.Resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.Battery.PercentEnergyStatus;
+                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
+                // statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
                 return statusData;
             };
         }

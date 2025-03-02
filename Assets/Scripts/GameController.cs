@@ -85,12 +85,55 @@ namespace Assets.Scripts.Core
 
         // FUNCTIONS //
 
-        public Dictionary<
-            System.Numerics.Vector2,
-            Dictionary<string, WorldObjectCore>
-        > GetWorldObjects()
+        public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
         {
-            return this.worldObjects;
+            List<System.Numerics.Vector2> adjacentTiles = new()
+            {
+                new System.Numerics.Vector2( // Center
+                    position.X,
+                    position.Y
+                ),
+                new System.Numerics.Vector2( // Above
+                    position.X + 0,
+                    position.Y + 1
+                ),
+                new System.Numerics.Vector2( // Top Right
+                    position.X + 1,
+                    position.Y + 1
+                ),
+                new System.Numerics.Vector2( // Right
+                    position.X + 1,
+                    position.Y + 0
+                ),
+                new System.Numerics.Vector2( // Bottom Right
+                    position.X + 1,
+                    position.Y - 1
+                ),
+                new System.Numerics.Vector2( // Below
+                    position.X + 0,
+                    position.Y - 1
+                ),
+                new System.Numerics.Vector2( // Bottom Left
+                    position.X - 1,
+                    position.Y - 1
+                ),
+                new System.Numerics.Vector2( // Left
+                    position.X + -1,
+                    position.Y + 0
+                ),
+                new System.Numerics.Vector2( // Top Left
+                    position.X + -1,
+                    position.Y + 1
+                ),
+            };
+            List<WorldObjectCore> localWorldObjects = adjacentTiles
+                .SelectMany(adjacentTile =>
+                    this.GetWorldObjectsByPosition(adjacentTile)
+                    ?? Enumerable.Empty<WorldObjectCore>()
+                )
+                .Distinct()
+                .ToList();
+            return localWorldObjects;
         }
 
         public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
@@ -127,31 +170,12 @@ namespace Assets.Scripts.Core
             }
             return matchingWorldObjects;
         }
-
-        public void QueueForMovement(MovementQueueItem movementQueueItem)
-        {
-            this.queuedForMovement ??= new List<MovementQueueItem>();
-            this.queuedForMovement.Add(movementQueueItem);
-        }
-
-        public void QueueForDeletion(DeletionQueueItem deletionQueueItem)
-        {
-            this.queuedForDeletion ??= new List<DeletionQueueItem>();
-            this.queuedForDeletion.Add(deletionQueueItem);
-        }
-
-        public void QueueForSpawn(SpawnQueueItem spawnQueueItem)
-        {
-            this.queuedForSpawn ??= new List<SpawnQueueItem>();
-            this.queuedForSpawn.Add(spawnQueueItem);
-        }
     }
 }
 
 namespace Assets.Scripts.Unity
 {
     using System.Collections.Generic;
-    using System.Linq;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
@@ -176,6 +200,10 @@ namespace Assets.Scripts.Unity
         // PROPERTIES //
 
         public int Tick { get; protected set; } = 0;
+        public Dictionary<
+            System.Numerics.Vector2,
+            Dictionary<string, WorldObjectCore>
+        > WorldObjects => this.core.worldObjects;
 
         // FUNCTIONS //
 
@@ -247,46 +275,16 @@ namespace Assets.Scripts.Unity
             }
         }
 
-        public Dictionary<
-            System.Numerics.Vector2,
-            Dictionary<string, WorldObjectCore>
-        > GetWorldObjects()
-        {
-            return this.core.worldObjects;
-        }
+        public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position) =>
+            this.core.GetAdjacentWorldObjects(position);
 
-        public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
-        {
-            Dictionary<string, WorldObjectCore> worldObjects =
-                this.core.worldObjects.GetValueOrDefault(position, null);
-
-            return worldObjects?.Values.ToList();
-        }
+        public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position) =>
+            this.core.GetWorldObjectsByPosition(position);
 
         public List<WorldObjectCore> GetWorldObjectsByPositionAndType(
             System.Numerics.Vector2 position,
             List<string> types
-        )
-        {
-            List<WorldObjectCore> worldObjects = this.GetWorldObjectsByPosition(position);
-
-            // Nothing is here
-            if (worldObjects == null)
-            {
-                return null;
-            }
-
-            // Find the things that match the type
-            List<WorldObjectCore> matchingWorldObjects = new();
-            foreach (WorldObjectCore worldObject in worldObjects)
-            {
-                if (types.Contains(worldObject.WorldObjectType))
-                {
-                    matchingWorldObjects.Add(worldObject);
-                }
-            }
-            return matchingWorldObjects;
-        }
+        ) => this.core.GetWorldObjectsByPositionAndType(position, types);
 
         public void QueueForMovement(GameControllerCore.MovementQueueItem movementQueueItem)
         {
@@ -337,6 +335,7 @@ namespace Assets.Scripts.Unity
             {
                 return;
             }
+
             // Remove the object from the old position, if it exists there
             if (this.core.worldObjects.GetValueOrDefault(movementQueueItem.oldPosition) != null)
             {
@@ -349,13 +348,21 @@ namespace Assets.Scripts.Unity
                 this.core.worldObjects[movementQueueItem.newPosition] =
                     new Dictionary<string, WorldObjectCore>();
             }
-            // Add the object to the new position
-            this.core.worldObjects[movementQueueItem.newPosition][
-                movementQueueItem.worldObject.Guid
-            ] = movementQueueItem.worldObject;
-            (movementQueueItem.worldObject.backref as WorldObject).GridPosition =
-                movementQueueItem.newPosition;
-            // movementQueueItem.worldObject.SetName();
+
+            // Add the object to the new position ---
+
+            // --- Movement is a special case in that is needs to act on both the
+            // --- WorldObjectCore and the WorldObject. That is, `core` and `backref`.
+            WorldObjectCore worldObjectCore = movementQueueItem.worldObject;
+            WorldObject worldObject = movementQueueItem.worldObject.backref as WorldObject;
+
+            // --- Put the object in the new position, position indexes on `core`.
+            this.core.worldObjects[movementQueueItem.newPosition][worldObject.Guid] =
+                worldObjectCore;
+
+            // --- Tell the object about its new position, this needs to be set on `backref`.
+            worldObject.GridPosition = movementQueueItem.newPosition;
+            worldObject.SetName();
         }
 
         protected void Delete(GameControllerCore.DeletionQueueItem deletionQueueItem)

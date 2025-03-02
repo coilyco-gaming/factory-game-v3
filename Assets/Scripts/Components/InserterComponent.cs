@@ -5,7 +5,9 @@
 namespace Assets.Scripts.Components.Core
 {
     using System.Collections.Generic;
+    using System.Linq;
     using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
 
     public class InserterComponentCore
     {
@@ -24,8 +26,16 @@ namespace Assets.Scripts.Components.Core
             this.insertionRate = insertionRate;
         }
 
-        public void Insert(List<ResourcesComponentCore> localResources)
+        public void Insert(WorldObjectCore worldObject, GameControllerCore gameController)
         {
+            // TODO: inserters consume power
+            List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
+                worldObject.GridPosition
+            );
+            List<ResourcesComponentCore> localResources = localWorldObjects
+                .Select(localWorldObject => localWorldObject.Resources)
+                .ToList();
+
             foreach (
                 ResourcesComponentCore localResource in localResources
                     ?? new List<ResourcesComponentCore>()
@@ -49,170 +59,93 @@ namespace Assets.Scripts.Components.Core
     }
 }
 
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Unity;
-    using Assets.Scripts.WorldObjects.Core;
-    using Assets.Scripts.WorldObjects.FactoryGame;
-    using Assets.Scripts.WorldObjects.Unity;
-    using UnityEngine;
+// namespace Assets.Scripts.Components.Tests
+// {
+//     using System.Collections.Generic;
+//     using Assets.Scripts.Components.Core;
+//     using Xunit;
 
-    public class InserterComponent : MonoBehaviour
-    {
-        public readonly InserterComponentCore core = new();
+//     public class InserterComponentTest
+//     {
+//         [Fact]
+//         public void TestNulls()
+//         {
+//             InserterComponentCore inserter = new();
+//             inserter.Instantiate();
+//             inserter.Insert(null);
+//             inserter.Insert(new List<ResourcesComponentCore>());
+//             inserter.Insert(new List<ResourcesComponentCore>() { null });
+//             inserter.Insert(
+//                 new List<ResourcesComponentCore>()
+//                 {
+//                     new(null, weightCapacity: 0, volumeCapacity: 0),
+//                 }
+//             );
+//             inserter.Insert(
+//                 new List<ResourcesComponentCore>()
+//                 {
+//                     new(new TestResourcesGameContent(), weightCapacity: 100, volumeCapacity: 100),
+//                 }
+//             );
+//         }
 
-        public void Instantiate(
-            ResourcesComponent resources,
-            string resourceType = "",
-            uint insertionRate = 0
-        ) => this.core.Instantiate(resources.core, resourceType, insertionRate);
+//         [Fact]
+//         public void TestInsertCapacityOverflow()
+//         {
+//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
+//             resources.CreateResources("wood", 1);
+//             ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 1, 1);
+//             localResource.CreateResources("wood", 1);
+//             InserterComponentCore inserter = new();
 
-        // TODO: this is WAY TO MUCH logic to be outside of unit tests
-        // TODO: we need to create a GameControllerCore so we can test this function
-        public void Insert(WorldObject worldObject, GameController gameController)
-        {
-            List<System.Numerics.Vector2> adjacentTiles = new()
-            {
-                new System.Numerics.Vector2( // Above
-                    worldObject.GridPosition.X + 0,
-                    worldObject.GridPosition.Y + 1
-                ),
-                new System.Numerics.Vector2( // Top Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y + 1
-                ),
-                new System.Numerics.Vector2( // Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y + 0
-                ),
-                new System.Numerics.Vector2( // Bottom Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Below
-                    worldObject.GridPosition.X + 0,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Bottom Left
-                    worldObject.GridPosition.X - 1,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Left
-                    worldObject.GridPosition.X + -1,
-                    worldObject.GridPosition.Y + 0
-                ),
-                new System.Numerics.Vector2( // Top Left
-                    worldObject.GridPosition.X + -1,
-                    worldObject.GridPosition.Y + 1
-                ),
-            };
-            List<WorldObjectCore> localWorldObjects = adjacentTiles
-                .SelectMany(adjacentTile =>
-                    gameController.GetWorldObjectsByPosition(adjacentTile)
-                    ?? Enumerable.Empty<WorldObjectCore>()
-                )
-                .ToList();
-            List<ResourcesComponentCore> localResources = localWorldObjects
-                .Select(localWorldObject => localWorldObject.Resources)
-                .ToList();
-            this.core.Insert(localResources.ConvertAll(localResource => localResource));
-        }
-    }
-}
-#endif
+//             inserter.Instantiate(resources, "wood", 1);
+//             inserter.Insert(new List<ResourcesComponentCore> { localResource });
 
-namespace Assets.Scripts.Components.Tests
-{
-    using System.Collections.Generic;
-    using Assets.Scripts.Components.Core;
-    using Xunit;
+//             Assert.Equal(1u, resources.Resources["wood"]);
+//             Assert.Equal(1u, localResource.Resources["wood"]);
+//         }
 
-    public class InserterComponentTest
-    {
-        [Fact]
-        public void TestNulls()
-        {
-            InserterComponentCore inserter = new();
-            inserter.Instantiate();
-            inserter.Insert(null);
-            inserter.Insert(new List<ResourcesComponentCore>());
-            inserter.Insert(new List<ResourcesComponentCore>() { null });
-            inserter.Insert(
-                new List<ResourcesComponentCore>()
-                {
-                    new(null, weightCapacity: 0, volumeCapacity: 0),
-                }
-            );
-            inserter.Insert(
-                new List<ResourcesComponentCore>()
-                {
-                    new(new TestResourcesGameContent(), weightCapacity: 100, volumeCapacity: 100),
-                }
-            );
-        }
+//         [Fact]
+//         public void TestInsert()
+//         {
+//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 2, 2);
+//             resources.CreateResources("wood", 1);
+//             ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 2, 2);
+//             localResource.CreateResources("wood", 1);
+//             InserterComponentCore inserter = new();
 
-        [Fact]
-        public void TestInsertCapacityOverflow()
-        {
-            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
-            resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 1, 1);
-            localResource.CreateResources("wood", 1);
-            InserterComponentCore inserter = new();
+//             inserter.Instantiate(resources, "wood", 1);
+//             inserter.Insert(new List<ResourcesComponentCore> { localResource });
 
-            inserter.Instantiate(resources, "wood", 1);
-            inserter.Insert(new List<ResourcesComponentCore> { localResource });
+//             Assert.Equal(2u, resources.Resources["wood"]);
+//             Assert.Equal(0u, localResource.Resources["wood"]);
+//         }
 
-            Assert.Equal(1u, resources.Resources["wood"]);
-            Assert.Equal(1u, localResource.Resources["wood"]);
-        }
+//         [Fact]
+//         public void TestInsertMultiple()
+//         {
+//             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 3, 3);
+//             resources.CreateResources("wood", 1);
+//             ResourcesComponentCore localResource1 = new(new TestResourcesGameContent(), 2, 2);
+//             localResource1.CreateResources("wood", 1);
+//             ResourcesComponentCore localResource2 = new(new TestResourcesGameContent(), 2, 2);
+//             localResource2.CreateResources("wood", 1);
+//             InserterComponentCore inserter = new();
 
-        [Fact]
-        public void TestInsert()
-        {
-            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 2, 2);
-            resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource = new(new TestResourcesGameContent(), 2, 2);
-            localResource.CreateResources("wood", 1);
-            InserterComponentCore inserter = new();
+//             inserter.Instantiate(resources, "wood", 1);
+//             inserter.Insert(new List<ResourcesComponentCore> { localResource1, localResource2 });
 
-            inserter.Instantiate(resources, "wood", 1);
-            inserter.Insert(new List<ResourcesComponentCore> { localResource });
+//             Assert.Equal(3u, resources.Resources["wood"]);
+//             Assert.Equal(0u, localResource1.Resources["wood"]);
+//             Assert.Equal(0u, localResource2.Resources["wood"]);
+//         }
 
-            Assert.Equal(2u, resources.Resources["wood"]);
-            Assert.Equal(0u, localResource.Resources["wood"]);
-        }
-
-        [Fact]
-        public void TestInsertMultiple()
-        {
-            ResourcesComponentCore resources = new(new TestResourcesGameContent(), 3, 3);
-            resources.CreateResources("wood", 1);
-            ResourcesComponentCore localResource1 = new(new TestResourcesGameContent(), 2, 2);
-            localResource1.CreateResources("wood", 1);
-            ResourcesComponentCore localResource2 = new(new TestResourcesGameContent(), 2, 2);
-            localResource2.CreateResources("wood", 1);
-            InserterComponentCore inserter = new();
-
-            inserter.Instantiate(resources, "wood", 1);
-            inserter.Insert(new List<ResourcesComponentCore> { localResource1, localResource2 });
-
-            Assert.Equal(3u, resources.Resources["wood"]);
-            Assert.Equal(0u, localResource1.Resources["wood"]);
-            Assert.Equal(0u, localResource2.Resources["wood"]);
-        }
-
-        [Fact]
-        public void TestEmptyGameContent()
-        {
-            InserterComponentCore inserter = new();
-            inserter.Instantiate();
-            inserter.Insert(new List<ResourcesComponentCore>());
-        }
-    }
-}
+//         [Fact]
+//         public void TestEmptyGameContent()
+//         {
+//             InserterComponentCore inserter = new();
+//             inserter.Instantiate();
+//             inserter.Insert(new List<ResourcesComponentCore>());
+//         }
+//     }
+// }

@@ -17,13 +17,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Battery.Instantiate(capacity: WorldObjectRadar.totalBatteryCapacity);
+            // this.core.Battery.Instantiate(capacity: WorldObjectRadar.totalBatteryCapacity);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.Battery.Balance(this, gameController);
+            // this.core.Battery.Balance(this, gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -36,7 +36,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Info = new System.Collections.Generic.Dictionary<string, string>
                     {
                         { "Target", this.Target },
-                        { "Energy", this.Battery.PercentEnergyStatus.ToString() },
+                        // { "Energy", this.core.Battery.PercentEnergyStatus.ToString() },
                     },
                 };
                 return statusData;

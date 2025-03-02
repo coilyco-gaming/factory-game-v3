@@ -241,7 +241,7 @@ namespace Assets.Scripts.Unity
             {
                 WorldObjectWarehouse worldObjectWarehouse =
                     worldObject.backref as WorldObjectWarehouse;
-                worldObjectWarehouse.Resources.CreateResources(
+                worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
                     1000
                 );
@@ -254,15 +254,15 @@ namespace Assets.Scripts.Unity
             {
                 WorldObjectWarehouse worldObjectWarehouse =
                     worldObject.backref as WorldObjectWarehouse;
-                worldObjectWarehouse.Resources.CreateResources(
+                worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Iron.ToString(),
                     750
                 );
-                worldObjectWarehouse.Resources.CreateResources(
+                worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Stone.ToString(),
                     500
                 );
-                worldObjectWarehouse.Resources.CreateResources(
+                worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Copper.ToString(),
                     250
                 );

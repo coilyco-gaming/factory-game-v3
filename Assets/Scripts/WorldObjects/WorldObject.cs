@@ -1,6 +1,7 @@
 namespace Assets.Scripts.WorldObjects.Core
 {
     using System;
+    using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
 
@@ -15,6 +16,9 @@ namespace Assets.Scripts.WorldObjects.Core
 
         public ResourcesComponentCore Resources { get; set; }
         public BatteryComponentCore Battery { get; set; }
+        public List<InserterComponentCore> Inserters { get; set; }
+        public ProductionComponentCore Production { get; set; }
+        public PowerComponentCore Power { get; set; }
         public StatusDataComponentCore Status { get; set; }
 
         public string Guid { get; set; }
@@ -84,9 +88,6 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         public virtual float ZIndex => 1;
 
-        public ResourcesComponent Resources { get; set; }
-        public BatteryComponent Battery { get; set; }
-
         public string Guid
         {
             get => this.core.Guid;
@@ -121,8 +122,6 @@ namespace Assets.Scripts.WorldObjects.Unity
             this.core = new WorldObjectCore(this);
             this.core.Instantiate(gameController.core, spawnQueueItem);
             this.GridPosition = spawnQueueItem.gridPosition; // This is a special case because it sets the transform position
-            this.Resources = this.AddComponent<ResourcesComponent>();
-            this.Battery = this.AddComponent<BatteryComponent>();
             this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.SetName();
         }

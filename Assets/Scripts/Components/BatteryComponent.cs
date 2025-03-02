@@ -129,51 +129,13 @@ namespace Assets.Scripts.Components.Unity
         // TODO: DRY this pattern, we do it twice
         public void Balance(WorldObject worldObject, GameController gameController)
         {
-            List<System.Numerics.Vector2> adjacentTiles = new()
-            {
-                new System.Numerics.Vector2( // Above
-                    worldObject.GridPosition.X + 0,
-                    worldObject.GridPosition.Y + 1
-                ),
-                new System.Numerics.Vector2( // Top Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y + 1
-                ),
-                new System.Numerics.Vector2( // Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y + 0
-                ),
-                new System.Numerics.Vector2( // Bottom Right
-                    worldObject.GridPosition.X + 1,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Below
-                    worldObject.GridPosition.X + 0,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Bottom Left
-                    worldObject.GridPosition.X - 1,
-                    worldObject.GridPosition.Y - 1
-                ),
-                new System.Numerics.Vector2( // Left
-                    worldObject.GridPosition.X + -1,
-                    worldObject.GridPosition.Y + 0
-                ),
-                new System.Numerics.Vector2( // Top Left
-                    worldObject.GridPosition.X + -1,
-                    worldObject.GridPosition.Y + 1
-                ),
-            };
-            List<WorldObjectCore> localWorldObjects = adjacentTiles
-                .SelectMany(adjacentTile =>
-                    gameController.GetWorldObjectsByPosition(adjacentTile)
-                    ?? Enumerable.Empty<WorldObjectCore>()
-                )
-                .ToList();
+            List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
+                worldObject.core.GridPosition
+            );
             List<BatteryComponentCore> batteries = localWorldObjects
                 .Select(localWorldObject => localWorldObject.Battery)
                 .ToList();
-            this.core.Balance(batteries.Select(battery => battery).ToList());
+            this.core.Balance(batteries);
         }
     }
 }

@@ -15,10 +15,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         private static uint totalWeightCapacity = uint.MaxValue;
         private static uint totalBatteryCapacity = 5000;
         private static uint insertionRate = 5;
-        private List<InserterComponent> inserters;
         private static uint powerBurnRate = 5;
         private static uint powerGainRate = 100;
-        private PowerComponent power;
 
         public override void Instantiate(
             GameController gameController,
@@ -26,44 +24,47 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.Resources.Instantiate(
+            this.core.Resources = new(
+                new FactoryGameContent(),
                 weightCapacity: WorldObjectCoalPlant.totalWeightCapacity,
                 volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
             );
 
-            this.inserters = new List<InserterComponent>()
-            {
-                this.AddComponent<InserterComponent>(),
-                this.AddComponent<InserterComponent>(),
-            };
-            this.inserters[0]
+            this.core.Inserters = new List<InserterComponentCore>() { new(), new(), new(), new() };
+            this.core.Inserters[0]
                 .Instantiate(
-                    this.Resources,
+                    this.core.Resources,
+                    FactoryGameContent.Resources.Coal.ToString(),
+                    WorldObjectCoalPlant.insertionRate
+                );
+            this.core.Inserters[1]
+                .Instantiate(
+                    this.core.Resources,
                     FactoryGameContent.Resources.Coal.ToString(),
                     WorldObjectCoalPlant.insertionRate
                 );
 
-            this.Battery.Instantiate(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
+            // this.core.Battery.Instantiate(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
 
-            this.power = this.AddComponent<PowerComponent>();
-            this.power.Instantiate(
-                this.Battery,
-                this.Resources,
-                FactoryGameContent.Resources.Coal.ToString(),
-                burnRate: WorldObjectCoalPlant.powerBurnRate,
-                gainRate: WorldObjectCoalPlant.powerGainRate
-            );
+            // this.core.Power = new PowerComponentCore();
+            // this.core.Power.Instantiate(
+            //     this.core.Battery,
+            //     this.core.Resources,
+            //     FactoryGameContent.Resources.Coal.ToString(),
+            //     burnRate: WorldObjectCoalPlant.powerBurnRate,
+            //     gainRate: WorldObjectCoalPlant.powerGainRate
+            // );
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponent inserter in this.inserters)
+            foreach (InserterComponentCore inserter in this.core.Inserters)
             {
-                inserter.Insert(this, gameController);
+                inserter?.Insert(this.core, gameController.core);
             }
-            this.power.GeneratePower();
-            this.Battery.Balance(this, gameController);
+            // this.core.Power.GeneratePower();
+            // this.core.Battery.Balance(this, gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -73,10 +74,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.Resources.ResourceInfo,
+                    Info = this.core.Resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.Resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.Battery.PercentEnergyStatus;
+                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
+                // statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
                 return statusData;
             };
         }

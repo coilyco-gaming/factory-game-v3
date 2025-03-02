@@ -2,10 +2,8 @@
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
-    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Core;
-    using Assets.Scripts.WorldObjects.Unity;
     using Roy_T.AStar.Graphs;
     using Roy_T.AStar.Paths;
     using Roy_T.AStar.Primitives;
@@ -168,7 +166,7 @@ namespace Assets.Scripts.Components.Unity
                 KeyValuePair<
                     System.Numerics.Vector2,
                     Dictionary<string, WorldObjectCore>
-                > worldObjects in gameComponent.GetWorldObjects()
+                > worldObjects in gameComponent.WorldObjects
             )
             {
                 System.Numerics.Vector2 position = worldObjects.Key;
