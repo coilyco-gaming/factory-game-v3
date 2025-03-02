@@ -96,7 +96,7 @@ namespace Assets.Scripts.Unity
                     FactoryGameContent.Spawnables.Radar.ToString(),
                     new System.Numerics.Vector2(HQPosition.X, HQPosition.Y), // for visual consistency
                     postInstantiateCallback: this.SpawnRadarCallback(
-                        FactoryGameContent.Resources.Copper.ToString()
+                        FactoryGameContent.Resources.Coal.ToString()
                     )
                 )
             );

@@ -29,7 +29,15 @@ namespace Assets.Scripts.Components.Core
 
         public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
 
-        public bool outputBufferFull = false;
+        // TODO: Make the "4" here a "stack size" variable that varies by item
+        public bool OutputStacksFullfilled =>
+            this.resources.Resources.GetValueOrDefault(this.Product, 0u) >= 4;
+        public bool OutputWeightFull =>
+            this.ProductItem.Weight > this.resources.RemainingWeightCapacity;
+        public bool OutputVolumeFull =>
+            this.ProductItem.Volume > this.resources.RemainingVolumeCapacity;
+
+        public bool outputBufferOccupied = false;
         private GameContent gameContent;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
@@ -159,18 +167,6 @@ namespace Assets.Scripts.Components.Core
 
         public void Produce()
         {
-            if (this.outputBufferFull)
-            {
-                try
-                {
-                    this.resources.CreateResources(this.ProductItem.Name, 1);
-                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
-                    this.outputBufferFull = false;
-                }
-                catch (ResourcesComponentCore.ResourceException) { }
-                return; // TODO: output buffer is full and won't clear without intervention
-            }
-
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)
             {
@@ -181,6 +177,18 @@ namespace Assets.Scripts.Components.Core
                     this.currentCraftProgress = 0;
                 }
                 this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                return;
+            }
+
+            // If we have already produced the desired quantity, return.
+            if (this.OutputStacksFullfilled)
+            {
+                return;
+            }
+
+            // If we would not have enough space to store the output, return.
+            if (this.OutputWeightFull || this.OutputVolumeFull)
+            {
                 return;
             }
 
@@ -205,20 +213,13 @@ namespace Assets.Scripts.Components.Core
                 {
                     this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
                 }
-                try
+                if (this.ProductItem.CraftTime == 1)
                 {
-                    if (this.ProductItem.CraftTime == 1)
-                    {
-                        this.resources.CreateResources(this.ProductItem.Name, 1);
-                    }
-                    else
-                    {
-                        this.currentCraftProgress += 1;
-                    }
+                    this.resources.CreateResources(this.ProductItem.Name, 1);
                 }
-                catch (ResourcesComponentCore.ResourceException)
+                else
                 {
-                    this.outputBufferFull = true;
+                    this.currentCraftProgress += 1;
                 }
                 this.battery.Energy -= ProductionComponentCore.PowerUsage;
             }
@@ -641,7 +642,7 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestOutputBuffer()
+        public void TestOutputFilled()
         {
             ResourcesComponentCore resources = new(
                 new TestProductionGameContent(),
@@ -664,42 +665,8 @@ namespace Assets.Scripts.Components.Tests
                 "house"
             );
             production.Produce();
-            Assert.True(production.outputBufferFull);
-            Assert.Equal(0u, resources.Resources["house"]);
-            Assert.Equal(0u, resources.Resources["wall"]);
-        }
-
-        [Fact]
-        public void TestOutputBufferCanEmpty()
-        {
-            ResourcesComponentCore resources = new(
-                new TestProductionGameContent(),
-                weightCapacity: 1000,
-                volumeCapacity: 1000
-            );
-            resources.CreateResources("wall", 8);
-
-            BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new() { new(battery, resources, "wall", 1) };
-
-            ProductionComponentCore production = new(
-                new TestProductionGameContent(),
-                resources,
-                battery,
-                inserters,
-                "house"
-            );
-            production.Produce();
-            Assert.True(production.outputBufferFull);
-            Assert.Equal(0u, resources.Resources["house"]);
+            Assert.Equal(0u, resources.Resources.GetValueOrDefault("house", 0u));
             Assert.Equal(4u, resources.Resources["wall"]);
-
-            // Toss the walls out so we can output a completed house
-            resources.ConsumeResources("wall", 4);
-            production.Produce();
-            Assert.False(production.outputBufferFull);
-            Assert.Equal(0u, resources.Resources["wall"]);
-            Assert.Equal(1u, resources.Resources["house"]);
         }
 
         [Fact]
