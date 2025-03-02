@@ -64,7 +64,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter?.Insert(this.core, gameController.core);
             }
-            this.core.Battery.Balance(this, gameController);
+            this.core.Battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -77,7 +77,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Info = this.core.Resources.ResourceInfo,
                 };
                 statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
-                // statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
+                statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
                 return statusData;
             };
         }

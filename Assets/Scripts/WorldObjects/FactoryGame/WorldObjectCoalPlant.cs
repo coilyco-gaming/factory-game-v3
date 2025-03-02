@@ -44,14 +44,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
             this.core.Battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
 
-            // this.core.Power = new PowerComponentCore();
-            // this.core.Power.Instantiate(
-            //     this.core.Battery,
-            //     this.core.Resources,
-            //     FactoryGameContent.Resources.Coal.ToString(),
-            //     burnRate: WorldObjectCoalPlant.powerBurnRate,
-            //     gainRate: WorldObjectCoalPlant.powerGainRate
-            // );
+            this.core.Power = new PowerComponentCore(
+                this.core.Battery,
+                this.core.Resources,
+                FactoryGameContent.Resources.Coal.ToString(),
+                WorldObjectCoalPlant.powerBurnRate,
+                WorldObjectCoalPlant.powerGainRate
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -61,8 +60,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter?.Insert(this.core, gameController.core);
             }
-            // this.core.Power.GeneratePower();
-            this.core.Battery.Balance(this, gameController);
+            this.core.Power.GeneratePower();
+            this.core.Battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -75,7 +74,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Info = this.core.Resources.ResourceInfo,
                 };
                 statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
-                // statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
+                statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
                 return statusData;
             };
         }

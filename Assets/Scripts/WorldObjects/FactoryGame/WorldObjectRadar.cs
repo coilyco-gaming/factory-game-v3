@@ -23,7 +23,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Battery.Balance(gameController);
+            this.core.Battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -36,7 +36,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Info = new System.Collections.Generic.Dictionary<string, string>
                     {
                         { "Target", this.Target },
-                        // { "Energy", this.core.Battery.PercentEnergyStatus.ToString() },
+                        { "Energy", this.core.Battery.PercentEnergyStatus.ToString() },
                     },
                 };
                 return statusData;
