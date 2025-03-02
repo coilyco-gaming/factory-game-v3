@@ -26,12 +26,12 @@ namespace Assets.Scripts.Components.Core
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
-                    "InserterComponentCore requires a BatteryComponentCore"
+                    "Inserter component requires a battery component"
                 );
             this.resources =
                 resources
                 ?? throw new GameControllerCore.MisconfigurationException(
-                    "InserterComponentCore requires a ResourcesComponentCore"
+                    "Inserter component requires a resources component"
                 );
             this.resourceType = resourceType;
             this.insertionRate = insertionRate;

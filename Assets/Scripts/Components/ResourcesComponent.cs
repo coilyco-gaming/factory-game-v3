@@ -16,6 +16,10 @@ namespace Assets.Scripts.Components.Core
         // TODO: reserve storage for certain kinds of resources
         // TODO: specifically: make factories reserve space for their I/O
 
+        // TODO: resource container "guards" its resources,
+        // TODO: only allowing them to be accessed by the factory
+        // TODO: and disallowing them from being removed by inserters
+
         public Dictionary<string, uint> Resources { get; private set; } = new();
 
         public virtual Dictionary<string, string> ResourceInfo

@@ -23,12 +23,12 @@ namespace Assets.Scripts.Components.Core
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
-                    "PowerComponentCore requires a BatteryComponentCore"
+                    "Power component requires a battery component"
                 );
             this.resources =
                 resources
                 ?? throw new GameControllerCore.MisconfigurationException(
-                    "PowerComponentCore requires a ResourcesComponentCore"
+                    "Power component requires a resources component"
                 );
             this.burnResource = burnResource;
             this.burnRate = burnRate;

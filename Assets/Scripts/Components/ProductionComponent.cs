@@ -6,7 +6,11 @@ namespace Assets.Scripts.Components.Core
 
     public class ProductionComponentCore
     {
+        // TODO: Make this a "stack size" variable that varies by item
         public static uint InputBufferMultiplier = 2; // hold enough input buffer for 2 crafts
+
+        // TODO: production uses power on every step + every create
+        public static uint PowerUsage = 10;
         public string Product;
         public GameContent.Item ProductItem => this.gameContent.Items[this.Product];
         public uint Quantity;
@@ -27,6 +31,8 @@ namespace Assets.Scripts.Components.Core
         public bool outputBufferFull = false;
         private GameContent gameContent;
         private ResourcesComponentCore resources;
+        private BatteryComponentCore battery;
+        private List<InserterComponentCore> inserters;
 
         public class ProductionQueueRequests
         {
@@ -38,19 +44,35 @@ namespace Assets.Scripts.Components.Core
         public ProductionComponentCore(
             GameContent gameContent,
             ResourcesComponentCore resources,
+            BatteryComponentCore battery,
+            List<InserterComponentCore> inserters,
             string product
         )
         {
+            this.gameContent = gameContent;
+            this.Product = product;
             this.resources =
                 resources
                 ?? throw new GameControllerCore.MisconfigurationException(
-                    "ProductionComponentCore requires a ResourcesComponentCore"
+                    "Production component requires a resource component"
                 );
-            this.gameContent = gameContent;
-            this.Product = product;
+            this.battery =
+                battery
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "Production component requires a battery component"
+                );
+            if (inserters == null || inserters.Count != this.ProductItem.Ingredients.Count)
+            {
+                throw new GameControllerCore.MisconfigurationException(
+                    @$"Production component requires a list of inserters.
+                       The number of inserters ({inserters.Count}) must match
+                    the number of ingredients ({this.ProductItem.Ingredients.Count})."
+                );
+            }
+            this.inserters = inserters;
         }
 
-        public void GetDesiredResouces(ProductionQueueRequests resource = null)
+        public void GetDesiredResources(ProductionQueueRequests resource = null)
         {
             // This is a recursive function that will build a list of all the resources
             // needed to craft the desired product. On the first call, the resource
@@ -82,7 +104,7 @@ namespace Assets.Scripts.Components.Core
                         Item = this.gameContent.Items[ingredient.Key],
                         Quantity = ingredient.Value * resource.Quantity,
                     };
-                    this.GetDesiredResouces(toAdd);
+                    this.GetDesiredResources(toAdd);
                 }
             }
 
@@ -121,8 +143,6 @@ namespace Assets.Scripts.Components.Core
 
         public void Produce()
         {
-            // TODO: craft ingredients instead of just the end product
-
             if (this.outputBufferFull)
             {
                 try
@@ -292,28 +312,48 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestGetBaseDesiredResouces()
+        public void TestGetBaseDesiredResources()
         {
+            ResourcesComponentCore resources = new(new TestProductionGameContent(), 100, 100);
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+            };
+
             ProductionComponentCore production = new(
-                new TestProductionGameContent(), //
-                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
+                new TestProductionGameContent(),
+                resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(50u, production.Requests["wood"]);
             Assert.Equal(10u, production.Requests["nails"]);
         }
 
         [Fact]
-        public void TestGetDesiredResouces()
+        public void TestGetDesiredResources()
         {
+            ResourcesComponentCore resources = new(new TestProductionGameContent(), 100, 100);
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContent(), //
-                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
+                resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(50u, production.Requests["wood"]);
             Assert.Equal(10u, production.Requests["nails"]);
@@ -321,14 +361,29 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestGetDesiredResoucesWithIron()
+        public void TestGetDesiredResourcesWithIron()
         {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContentWithIron(),
+                100,
+                100
+            );
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+                new(battery, resources, "frame", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContentWithIron(),
-                new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
+                resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(40u, production.Requests["wood"]);
             Assert.Equal(8u, production.Requests["planks"]);
@@ -338,7 +393,7 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestGetDesiredResoucesWithIronOversupply()
+        public void TestGetDesiredResourcesWithIronOversupply()
         {
             ResourcesComponentCore resources = new(
                 new TestProductionGameContentWithIron(),
@@ -347,12 +402,22 @@ namespace Assets.Scripts.Components.Tests
             );
             resources.CreateResources("iron", 200);
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+                new(battery, resources, "frame", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContentWithIron(),
                 resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(40u, production.Requests["wood"]);
             Assert.Equal(8u, production.Requests["planks"]);
@@ -371,12 +436,22 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("iron", 200);
             resources.CreateResources("planks", 8);
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+                new(battery, resources, "frame", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContentWithIron(),
                 resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(0u, production.Requests.GetValueOrDefault("planks", 0u));
         }
@@ -390,12 +465,22 @@ namespace Assets.Scripts.Components.Tests
                 volumeCapacity: 400
             );
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+                new(battery, resources, "frame", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContentWithIron(),
                 resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(6, production.Requests.Count);
             Assert.Equal(3, production.Intermediates.Count);
@@ -414,21 +499,30 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestGetDesiredResoucesWithOffsets()
+        public void TestGetDesiredResourcesWithOffsets()
         {
-            ResourcesComponentCore resouces = new(
+            ResourcesComponentCore resources = new(
                 new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
-            resouces.CreateResources("wood", 25);
+            resources.CreateResources("wood", 25);
+
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+            };
 
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
-                resouces,
+                resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(25u, production.Requests["wood"]);
             Assert.Equal(10u, production.Requests["nails"]);
@@ -436,21 +530,30 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestGetDesiredResoucesWithOffsetsOversupply()
+        public void TestGetDesiredResourcesWithOffsetsOversupply()
         {
-            ResourcesComponentCore resouces = new(
-                new TestResourcesGameContent(),
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
                 weightCapacity: 200,
                 volumeCapacity: 200
             );
-            resouces.CreateResources("wood", 200);
+            resources.CreateResources("wood", 200);
+
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            {
+                new(battery, resources, "plants", 1),
+                new(battery, resources, "nails", 1),
+            };
 
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
-                resouces,
+                resources,
+                battery,
+                inserters,
                 "wall"
             );
-            production.GetDesiredResouces();
+            production.GetDesiredResources();
 
             Assert.Equal(0u, production.Requests.GetValueOrDefault("wood", 0u));
             Assert.Equal(10u, production.Requests["nails"]);
@@ -461,11 +564,17 @@ namespace Assets.Scripts.Components.Tests
         public void TestSimpleProduction()
         {
             ResourcesComponentCore resources = new(
-                new TestResourcesGameContent(),
+                new TestProductionGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wood", 5);
+
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            { //
+                new(battery, resources, "wood", 1),
+            };
 
             Assert.Equal(5u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
@@ -473,6 +582,8 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
+                battery,
+                inserters,
                 "planks"
             );
             production.Produce();
@@ -482,14 +593,17 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestCraftsNailsWhenWoodAlreadyPresent()
+        public void TestCraftsNailsWhenWoodAlreadyPresentAndNoIngredients()
         {
             ResourcesComponentCore resources = new(
-                new TestResourcesGameContent(),
+                new TestProductionGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wood", 5);
+
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new() { };
 
             Assert.Equal(5u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("nails", 0u));
@@ -497,6 +611,8 @@ namespace Assets.Scripts.Components.Tests
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
+                battery,
+                inserters,
                 "nails"
             );
             production.Produce();
@@ -514,11 +630,18 @@ namespace Assets.Scripts.Components.Tests
                 volumeCapacity: 500
             );
             resources.CreateResources("wall", 4);
-            Assert.Equal(4u, resources.Resources["wall"]);
+
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            { //
+                new(battery, resources, "wall", 1),
+            };
 
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
+                battery,
+                inserters,
                 "house"
             );
             production.Produce();
@@ -537,9 +660,14 @@ namespace Assets.Scripts.Components.Tests
             );
             resources.CreateResources("wall", 8);
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new() { new(battery, resources, "wall", 1) };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
+                battery,
+                inserters,
                 "house"
             );
             production.Produce();
@@ -565,9 +693,17 @@ namespace Assets.Scripts.Components.Tests
             );
             resources.CreateResources("wood", 20);
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            { //
+                new(battery, resources, "wood", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
                 resources,
+                battery,
+                inserters,
                 "planks"
             );
             production.Produce();
@@ -588,9 +724,17 @@ namespace Assets.Scripts.Components.Tests
             );
             resources.CreateResources("wood", 5);
 
+            BatteryComponentCore battery = new(100, 100);
+            List<InserterComponentCore> inserters = new()
+            { //
+                new(battery, resources, "wood", 1),
+            };
+
             ProductionComponentCore production = new(
                 new TestProductionCraftTime(),
                 resources,
+                battery,
+                inserters,
                 "planks"
             );
 
