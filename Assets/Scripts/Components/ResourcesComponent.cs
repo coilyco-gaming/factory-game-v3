@@ -156,7 +156,7 @@ namespace Assets.Scripts.Components.Core
         {
             // So many null checks... @_@
             GameContent.Item item =
-                this.GameContent?.Items?.GetValueOrDefault(
+                this.GameContent.Items.GetValueOrDefault(
                     resourceName ?? "",
                     new GameContent.Item("")
                 ) ?? new GameContent.Item("");
@@ -216,11 +216,16 @@ namespace Assets.Scripts.Components.Core
                 throw new ResourceContainerException("Nowhere to give resources");
             }
 
+            if (this == target)
+            {
+                // Don't give resources to yourself, doing so result in resouces being magically created from nothing.
+                return;
+            }
+
             uint availableResources = this.Resources.GetValueOrDefault(resourceName ?? "", (uint)0);
 
-            // So many null checks... @_@
             GameContent.Item item =
-                this.GameContent?.Items?.GetValueOrDefault(
+                this.GameContent.Items.GetValueOrDefault(
                     resourceName ?? "",
                     new GameContent.Item("")
                 ) ?? new GameContent.Item("");
@@ -267,7 +272,7 @@ namespace Assets.Scripts.Components.Core
             target.Resources[resourceName] = currentResources + amountToGive;
         }
 
-        public void TakeResouces(
+        public void TakeResources(
             ResourcesComponentCore target,
             string resourceName,
             uint amountToTake
@@ -331,11 +336,11 @@ namespace Assets.Scripts.Components.Unity
             uint amountToGive
         ) => this.core.GiveResources(target.core, resourceName, amountToGive);
 
-        public void TakeResouces(
+        public void TakeResources(
             ResourcesComponent target,
             string resourceName,
             uint amountToTake
-        ) => this.core.TakeResouces(target.core, resourceName, amountToTake);
+        ) => this.core.TakeResources(target.core, resourceName, amountToTake);
     }
 }
 #endif
@@ -438,7 +443,7 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal((uint)35, targetResourcesComponent.TotalResources);
             Assert.Equal((uint)10, targetResourcesComponent.Resources["wood"]);
 
-            resourcesComponent.TakeResouces(targetResourcesComponent, "wood", 5);
+            resourcesComponent.TakeResources(targetResourcesComponent, "wood", 5);
             Assert.Equal((uint)60, resourcesComponent.TotalResources);
             Assert.Equal((uint)10, resourcesComponent.Resources["wood"]);
             Assert.Equal((uint)30, targetResourcesComponent.TotalResources);
@@ -458,7 +463,7 @@ namespace Assets.Scripts.Components.Tests
             resourcesComponent.CreateResources("iron", 30);
 
             Assert.Throws<ResourcesComponentCore.ResourceContainerException>(
-                () => resourcesComponent.TakeResouces(null, "wood", 5)
+                () => resourcesComponent.TakeResources(null, "wood", 5)
             );
         }
 
