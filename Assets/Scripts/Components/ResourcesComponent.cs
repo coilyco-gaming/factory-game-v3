@@ -184,7 +184,21 @@ namespace Assets.Scripts.Components.Core
 
         // FUNCTIONS //
 
-        public bool CreateResources(string resourceName, uint amountToCreate)
+        public void ForceCreateResources(string resourceName, uint amountToCreate)
+        {
+            // ForceCreateResources is used in situations where you want
+            // to create a resource while also safely ensuring that it
+            // won't accidentally get lost due to capacity constraints.
+            // This is useful for factories, which can get into a state
+            // where a resource is created, but can't be given to the
+            // resource container because the container is full.
+            // Letting the container "overfill" prevents the resouce
+            // from being lost.
+            uint currentResources = this.Resources.GetValueOrDefault(resourceName, 0u);
+            this.Resources[resourceName] = currentResources + amountToCreate;
+        }
+
+        public void CreateResources(string resourceName, uint amountToCreate)
         {
             // So many null checks... @_@
             GameContent.Item item =
@@ -224,10 +238,9 @@ namespace Assets.Scripts.Components.Core
             }
 
             this.Resources[resourceName] = currentResources + amountToCreate;
-            return true;
         }
 
-        public bool ConsumeResources(string resourceName, uint amountToConsume)
+        public void ConsumeResources(string resourceName, uint amountToConsume)
         {
             uint availableResources = this.Resources.GetValueOrDefault(resourceName, 0u);
             if (availableResources < amountToConsume)
@@ -241,7 +254,6 @@ namespace Assets.Scripts.Components.Core
             {
                 this.Resources[resourceName] -= amountToConsume;
             }
-            return true;
         }
 
         public void GiveResources(
@@ -366,63 +378,6 @@ namespace Assets.Scripts.Components.Core
         }
     }
 }
-
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using System.Collections.Generic;
-    using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Unity;
-    using UnityEngine;
-
-    public class ResourcesComponent : MonoBehaviour
-    {
-        // FIELDS //
-
-        public ResourcesComponentCore core;
-
-        // PROPERTIES //
-
-        // TODO: allow viewing these values in the unity inspector somehow
-        public Dictionary<string, uint> Resources => this.core.Resources;
-        public string UsedVolumeString => this.core.UsedVolumeString;
-        public string UsedWeightString => this.core.UsedWeightString;
-
-        public virtual Dictionary<string, string> ResourceInfo => this.core.ResourceInfo;
-
-        public uint TotalResources => this.core.TotalResources;
-
-        public bool HasResources => this.core.HasResources;
-
-        // FUNCTIONS //
-
-        public void Instantiate(uint weightCapacity = 100, uint volumeCapacity = 100) =>
-            this.core = new(
-                gameContent: new FactoryGameContent(),
-                weightCapacity: weightCapacity,
-                volumeCapacity: volumeCapacity
-            );
-
-        public bool CreateResources(string resourceName, uint amountToCreate) =>
-            this.core.CreateResources(resourceName, amountToCreate);
-
-        public bool ConsumeResources(string resourceName, uint amountToConsume) =>
-            this.core.ConsumeResources(resourceName, amountToConsume);
-
-        public void GiveResources(
-            ResourcesComponent target,
-            string resourceName,
-            uint amountToGive
-        ) => this.core.GiveResources(target.core, resourceName, amountToGive);
-
-        public void TakeResources(
-            ResourcesComponent target,
-            string resourceName,
-            uint amountToTake
-        ) => this.core.TakeResources(target.core, resourceName, amountToTake);
-    }
-}
-#endif
 
 namespace Assets.Scripts.Components.Tests
 {
@@ -959,6 +914,18 @@ namespace Assets.Scripts.Components.Tests
 
             // Quantity is above buffer, so we can give resources. (4)
             resourcesComponent.GiveResources(targetResourcesComponent, "wood", 100);
+        }
+
+        [Fact]
+        public void TestForceCreate()
+        {
+            ResourcesComponentCore resourcesComponent = new(
+                new TestResourcesGameContent(),
+                volumeCapacity: 1,
+                weightCapacity: 1
+            );
+            resourcesComponent.ForceCreateResources("wood", 100);
+            Assert.Equal(100u, resourcesComponent.Resources["wood"]);
         }
     }
 }

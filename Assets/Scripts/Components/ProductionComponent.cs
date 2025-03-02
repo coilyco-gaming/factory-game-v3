@@ -10,8 +10,7 @@ namespace Assets.Scripts.Components.Core
         // TODO: Make this a "stack size" variable that varies by item
         public static uint InputBufferMultiplier = 2; // hold enough input buffer for 2 crafts
 
-        // TODO: production uses power on every step + every create
-        public static uint PowerUsage = 10;
+        private static uint PowerUsage = 10;
         public string Product;
         public GameContent.Item ProductItem => this.gameContent.Items[this.Product];
         public uint Quantity;
@@ -29,9 +28,9 @@ namespace Assets.Scripts.Components.Core
 
         public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
 
-        // TODO: Make the "4" here a "stack size" variable that varies by item
         public bool OutputStacksFullfilled =>
-            this.resources.Resources.GetValueOrDefault(this.Product, 0u) >= 4;
+            this.resources.Resources.GetValueOrDefault(this.Product, 0u)
+            >= this.ProductItem.StackSize;
         public bool OutputWeightFull =>
             this.ProductItem.Weight > this.resources.RemainingWeightCapacity;
         public bool OutputVolumeFull =>
@@ -74,7 +73,7 @@ namespace Assets.Scripts.Components.Core
                 );
             this.resources.reservedCapacity = this.ProductItem.Ingredients.ToDictionary(
                 pair => pair.Key,
-                pair => pair.Value * ProductionComponentCore.InputBufferMultiplier
+                pair => pair.Value * this.ProductItem.StackSize
             );
             this.resources.reservedCapacity[this.Product] = 1;
 
@@ -88,7 +87,6 @@ namespace Assets.Scripts.Components.Core
                     "
                 );
             }
-            // TODO: production manages the "enabled state" (new concept) of inserters
             for (int i = 0; i < inserters.Count; i++)
             {
                 inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
@@ -170,23 +168,13 @@ namespace Assets.Scripts.Components.Core
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)
             {
-                try
+                this.currentCraftProgress += 1;
+                if (this.currentCraftProgress >= this.ProductItem.CraftTime)
                 {
-                    this.currentCraftProgress += 1;
-                    if (this.currentCraftProgress >= this.ProductItem.CraftTime)
-                    {
-                        this.resources.CreateResources(this.ProductItem.Name, 1);
-                        this.currentCraftProgress = 0;
-                    }
-                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                    this.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                    this.currentCraftProgress = 0;
                 }
-                catch (ResourceComponentCore.ResourceCapacityException e)
-                {
-                    // TODO: fire off an alert
-                    // That said, this is safe because it'll just keep trying to craft
-                    // the same thing over and over again without consuming resources.
-                }
-                return;
+                this.battery.Energy -= ProductionComponentCore.PowerUsage;
             }
 
             // If we have already produced the desired quantity, return.
@@ -201,7 +189,7 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
-            // Try to craft the desired product.
+            // Check if we can craft the desired product.
             bool canCraft = true;
             foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
             {
@@ -224,24 +212,7 @@ namespace Assets.Scripts.Components.Core
                 }
                 if (this.ProductItem.CraftTime == 1)
                 {
-                    try
-                    {
-                        this.resources.CreateResources(this.ProductItem.Name, 1);
-                    }
-                    catch (ResourceComponentCore.ResourceCapacityException e)
-                    {
-                        // TODO: fire off an alert
-                        // This is a case that should never happen.
-                        // We would get in this situation when we somehow passed
-                        // the weight and volume checks above, but then the
-                        // resource still creation failed somehow.
-                        // No idea when that would happen.
-                        // And if it happens, it would be incredibly annoying
-                        // because the factory would just keep consuming resources
-                        // and never produce anything.
-                        // TODO: write a "force create" method that will
-                        // create the resource no matter what.
-                    }
+                    this.resources.ForceCreateResources(this.ProductItem.Name, 1);
                 }
                 else
                 {
@@ -266,16 +237,21 @@ namespace Assets.Scripts.Components.Tests
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
-                { "wood", new Item("wood") },
-                { "nails", new Item("nails") },
+                { "wood", new Item("wood", stackSize: 100) },
+                { "nails", new Item("nails", stackSize: 100) },
                 {
                     "planks",
-                    new Item("planks", ingredients: new Dictionary<string, uint> { { "wood", 5 } })
+                    new Item(
+                        "planks",
+                        stackSize: 10,
+                        ingredients: new Dictionary<string, uint> { { "wood", 5 } }
+                    )
                 },
                 {
                     "wall",
                     new Item(
                         "wall",
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { "planks", 5 },
@@ -299,20 +275,29 @@ namespace Assets.Scripts.Components.Tests
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
-                { "wood", new Item("wood") },
-                { "iron", new Item("iron") },
+                { "wood", new Item("wood", stackSize: 100) },
+                { "iron", new Item("iron", stackSize: 100) },
                 {
                     "nails",
-                    new Item("nails", ingredients: new Dictionary<string, uint> { { "iron", 1 } })
+                    new Item(
+                        "nails",
+                        stackSize: 100,
+                        ingredients: new Dictionary<string, uint> { { "iron", 1 } }
+                    )
                 },
                 {
                     "frame",
-                    new Item("frame", ingredients: new Dictionary<string, uint> { { "iron", 16 } })
+                    new Item(
+                        "frame",
+                        stackSize: 10,
+                        ingredients: new Dictionary<string, uint> { { "iron", 16 } }
+                    )
                 },
                 {
                     "planks",
                     new Item(
                         "planks",
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint> { { "wood", 5 }, { "nails", 5 } }
                     )
                 },
@@ -320,6 +305,7 @@ namespace Assets.Scripts.Components.Tests
                     "wall",
                     new Item(
                         "wall",
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { "planks", 4 },
@@ -336,11 +322,12 @@ namespace Assets.Scripts.Components.Tests
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
-                { "wood", new Item("wood") },
+                { "wood", new Item("wood", stackSize: 100) },
                 {
                     "planks",
                     new Item(
                         "planks",
+                        stackSize: 10,
                         craftTime: 3,
                         ingredients: new Dictionary<string, uint> { { "wood", 5 } }
                     )

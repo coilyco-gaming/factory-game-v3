@@ -8,10 +8,22 @@ namespace Assets.Scripts.Unity
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
-                { Resources.Iron.ToString(), new Item(Resources.Iron.ToString()) },
-                { Resources.Coal.ToString(), new Item(Resources.Coal.ToString()) },
-                { Resources.Copper.ToString(), new Item(Resources.Copper.ToString()) },
-                { Resources.Stone.ToString(), new Item(Resources.Stone.ToString()) },
+                {
+                    Resources.Iron.ToString(), //
+                    new Item(Resources.Iron.ToString(), stackSize: 100)
+                },
+                {
+                    Resources.Coal.ToString(), //
+                    new Item(Resources.Coal.ToString(), stackSize: 100)
+                },
+                {
+                    Resources.Copper.ToString(),
+                    new Item(Resources.Copper.ToString(), stackSize: 100)
+                },
+                {
+                    Resources.Stone.ToString(),
+                    new Item(Resources.Stone.ToString(), stackSize: 100)
+                },
                 {
                     Products.BuildingMaterials.ToString(),
                     new Item(
@@ -19,6 +31,7 @@ namespace Assets.Scripts.Unity
                         weight: 20,
                         volume: 5,
                         craftTime: 5,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 10 },
@@ -31,6 +44,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Motors.ToString(),
                         craftTime: 5,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 5 },
@@ -43,6 +57,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Circuits.ToString(),
                         craftTime: 5,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Copper.ToString(), 5 },
@@ -56,6 +71,7 @@ namespace Assets.Scripts.Unity
                         weight: 10,
                         volume: 10,
                         craftTime: 5,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Iron.ToString(), 10 },
