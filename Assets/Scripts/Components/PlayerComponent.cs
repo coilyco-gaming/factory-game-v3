@@ -28,21 +28,41 @@ namespace Assets.Scripts.Components.Unity
 
         public void Update()
         {
-            if (this.GetKey(KeyCode.W))
+            if (this.GetKey(KeyCode.W) || this.GetKey(KeyCode.UpArrow))
             {
-                Camera.main.transform.position += Vector3.up;
+                Camera.main.transform.position =
+                    new Vector3(
+                        (int)Camera.main.transform.position.x,
+                        (int)Camera.main.transform.position.y,
+                        (int)Camera.main.transform.position.z
+                    ) + Vector3.up;
             }
-            if (this.GetKey(KeyCode.A))
+            if (this.GetKey(KeyCode.A) || this.GetKey(KeyCode.LeftArrow))
             {
-                Camera.main.transform.position += Vector3.left;
+                Camera.main.transform.position =
+                    new Vector3(
+                        (int)Camera.main.transform.position.x,
+                        (int)Camera.main.transform.position.y,
+                        (int)Camera.main.transform.position.z
+                    ) + Vector3.left;
             }
-            if (this.GetKey(KeyCode.S))
+            if (this.GetKey(KeyCode.S) || this.GetKey(KeyCode.DownArrow))
             {
-                Camera.main.transform.position += Vector3.down;
+                Camera.main.transform.position =
+                    new Vector3(
+                        (int)Camera.main.transform.position.x,
+                        (int)Camera.main.transform.position.y,
+                        (int)Camera.main.transform.position.z
+                    ) + Vector3.down;
             }
-            if (this.GetKey(KeyCode.D))
+            if (this.GetKey(KeyCode.D) || this.GetKey(KeyCode.RightArrow))
             {
-                Camera.main.transform.position += Vector3.right;
+                Camera.main.transform.position =
+                    new Vector3(
+                        (int)Camera.main.transform.position.x,
+                        (int)Camera.main.transform.position.y,
+                        (int)Camera.main.transform.position.z
+                    ) + Vector3.right;
             }
             if (Input.mouseScrollDelta.y > 0 && Camera.main.orthographicSize > 1)
             {

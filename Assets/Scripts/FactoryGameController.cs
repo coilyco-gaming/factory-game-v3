@@ -302,7 +302,9 @@ namespace Assets.Scripts.Unity
                     int y = this.random.Next(0, this.Map.mapSize.y);
 
                     // Draw a triangle to ensure that our ore is at least 2 blocks away
-                    double distance = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+                    uint xOffset = (uint)Math.Abs(x - (this.Map.mapSize.x / (float)2));
+                    uint yOffset = (uint)Math.Abs(y - (this.Map.mapSize.y / (float)2));
+                    double distance = Math.Sqrt(Math.Pow(xOffset, 2) + Math.Pow(yOffset, 2));
                     if (distance <= this.HQOreBuffer)
                     {
                         continue;

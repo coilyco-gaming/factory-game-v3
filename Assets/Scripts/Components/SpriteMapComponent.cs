@@ -18,10 +18,20 @@ namespace Assets.Scripts.Components.Unity
         public void Instantiate(Canvas parentCanvas)
         {
             this.parentCanvas = parentCanvas;
-            this.MapGameObject = new("Map");
+            this.MapGameObject = new("Map"); // I really should have drawn this in the editor
             this.MapGameObject.transform.SetParent(this.transform);
+            RectTransform rectTransform = this.MapGameObject.AddComponent<RectTransform>();
+            rectTransform.position = new Vector3(0, 0, 100);
+            rectTransform.sizeDelta = new Vector2(0, 0);
+            rectTransform.localScale = new Vector3(1, 1, 1);
+            rectTransform.localPosition = new Vector3(0, 0, 0);
+            rectTransform.anchorMax = new Vector2(0, 0);
+            rectTransform.anchorMin = new Vector2(0, 0);
+            rectTransform.pivot = new Vector2(0, 0);
+
             this.TilesGameObject = new("Tiles");
             this.TilesGameObject.transform.SetParent(this.MapGameObject.transform);
+
             this.WorldGameObject = new("World");
             this.WorldGameObject.transform.SetParent(this.MapGameObject.transform);
 

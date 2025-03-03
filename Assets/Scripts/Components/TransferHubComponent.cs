@@ -67,14 +67,11 @@ namespace Assets.Scripts.Components.Core
             // For each resource, distribute it evenly.
             foreach (KeyValuePair<string, uint> resource in localIngredientsCounts)
             {
-                this.BalanceResource(resource, worldObjects);
+                this.BalanceResource(resource);
             }
         }
 
-        private void BalanceResource(
-            KeyValuePair<string, uint> resource,
-            List<WorldObjectCore> _worldObjects
-        )
+        private void BalanceResource(KeyValuePair<string, uint> resource)
         {
             // Local world objects whose factories produce this resource.
             List<WorldObjectCore> producers = this
