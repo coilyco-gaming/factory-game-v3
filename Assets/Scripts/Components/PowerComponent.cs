@@ -64,7 +64,7 @@ namespace Assets.Scripts.Components.Tests
 
     public class PowerComponentTest
     {
-        private WorldObjectCore Core(
+        private WorldObjectCore WorldObject(
             GameControllerCore gameController,
             uint startingEnergy,
             uint capacity,
@@ -83,7 +83,12 @@ namespace Assets.Scripts.Components.Tests
                 core.Power = new PowerComponentCore(battery, resources, gainRate: gainRate);
             }
             core.Guid = core.CreateGuid();
-            gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
+            gameController.worldObjects ??= new();
+            if (!gameController.worldObjects.ContainsKey(core.GridPosition))
+            {
+                gameController.worldObjects[core.GridPosition] = new();
+            }
+            gameController.worldObjects[core.GridPosition][core.Guid] = core;
             return core;
         }
 
@@ -227,12 +232,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTwoGeneratorsFourConsumers()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new();
 
-            WorldObjectCore core1 = this.Core(gameController, 0, 100, gainRate: 10);
-            WorldObjectCore core2 = this.Core(gameController, 0, 100, gainRate: 10);
-            WorldObjectCore core3 = this.Core(gameController, 0, 100);
-            WorldObjectCore core4 = this.Core(gameController, 0, 100);
+            WorldObjectCore core1 = this.WorldObject(gameController, 0, 100, gainRate: 10);
+            WorldObjectCore core2 = this.WorldObject(gameController, 0, 100, gainRate: 10);
+            WorldObjectCore core3 = this.WorldObject(gameController, 0, 100);
+            WorldObjectCore core4 = this.WorldObject(gameController, 0, 100);
 
             core1.Power.GeneratePower();
             core2.Power.GeneratePower();
@@ -255,11 +260,11 @@ namespace Assets.Scripts.Components.Tests
                 + core3.Battery.Energy
                 + core4.Battery.Energy;
 
-            Assert.Equal(16, Math.Round(totalEnergy));
-            Assert.Equal(4, Math.Round(core1.Battery.Energy));
-            Assert.Equal(5, Math.Round(core2.Battery.Energy));
-            Assert.Equal(4, Math.Round(core3.Battery.Energy));
-            Assert.Equal(3, Math.Round(core4.Battery.Energy));
+            Assert.Equal(20u, Math.Round(totalEnergy));
+            Assert.Equal(5u, Math.Round(core1.Battery.Energy));
+            Assert.Equal(5u, Math.Round(core2.Battery.Energy));
+            Assert.Equal(5u, Math.Round(core3.Battery.Energy));
+            Assert.Equal(5u, Math.Round(core4.Battery.Energy));
         }
     }
 }

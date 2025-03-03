@@ -14,6 +14,7 @@ namespace Assets.Scripts.WorldObjects.Core
 
         public float ZIndex => 1;
 
+        public TransferHubComponent TransferHub { get; set; }
         public ResourcesComponentCore Resources { get; set; }
         public BatteryComponentCore Battery { get; set; }
         public List<InserterComponentCore> Inserters { get; set; }

@@ -65,12 +65,13 @@ namespace Assets.Scripts.Unity
             //
             // C = Coal Plant
             // F = Factory
-            // W = Warehouse
+            // W = Storage Warehouse  <== simply stores things
+            // X = Transfer Warehouse <== acts as a buffer between buildings
             // S = Radar
             //
-            //   W
-            // R C R
-            // R C F F F F
+            //   W F F F
+            // R C R X X
+            // R C F F F F <== the radar on the far left is our 0x 0y
             //   W W W W W
             //
             // Both coal plants have a warehouse beside them with a stockpile of coal.
@@ -84,6 +85,12 @@ namespace Assets.Scripts.Unity
             //      | | Motors
             //      | Circuits
             //      Frames
+            //
+            // The factories adjacent to the transfer array are in this order:
+            //  - Factory
+            //  - Warehouse
+            //  - Coal Plant
+            //
             // TODO: a proper HQ building that has enhanced capabilities
 
             System.Numerics.Vector2 HQPosition = new(
@@ -94,7 +101,7 @@ namespace Assets.Scripts.Unity
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.Radar.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y), // for visual consistency
+                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y),
                     postInstantiateCallback: this.SpawnRadarCallback(
                         FactoryGameContent.Resources.Coal.ToString()
                     )
@@ -178,7 +185,7 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
                 )
@@ -186,7 +193,7 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 2),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
                 )
@@ -194,7 +201,7 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
                 )
@@ -202,7 +209,7 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
                 )
@@ -210,7 +217,7 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
                 )
@@ -218,9 +225,23 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Warehouse.ToString(),
+                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 5, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y + 1)
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y + 1)
                 )
             );
 
@@ -325,8 +346,8 @@ namespace Assets.Scripts.Unity
         {
             return (gameController, worldObject) =>
             {
-                WorldObjectWarehouse worldObjectWarehouse =
-                    worldObject.backref as WorldObjectWarehouse;
+                WorldObjectStorageWarehouse worldObjectWarehouse =
+                    worldObject.backref as WorldObjectStorageWarehouse;
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
                     5000
@@ -338,8 +359,8 @@ namespace Assets.Scripts.Unity
         {
             return (gameController, worldObject) =>
             {
-                WorldObjectWarehouse worldObjectWarehouse =
-                    worldObject.backref as WorldObjectWarehouse;
+                WorldObjectStorageWarehouse worldObjectWarehouse =
+                    worldObject.backref as WorldObjectStorageWarehouse;
                 worldObjectWarehouse.core.Resources.CreateResources(
                     FactoryGameContent.Resources.Iron.ToString(),
                     2000

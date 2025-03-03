@@ -103,6 +103,7 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using System;
+    using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
@@ -122,7 +123,12 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
             core.Guid = core.CreateGuid();
-            gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
+            gameController.worldObjects ??= new();
+            if (!gameController.worldObjects.ContainsKey(core.GridPosition))
+            {
+                gameController.worldObjects[core.GridPosition] = new();
+            }
+            gameController.worldObjects[core.GridPosition][core.Guid] = core;
             return core.Battery;
         }
 
@@ -189,9 +195,9 @@ namespace Assets.Scripts.Components.Tests
             battery2.Balance(new WorldObjectCore(null), gameController);
             battery3.Balance(new WorldObjectCore(null), gameController);
 
-            Assert.Equal(38u, Math.Round(battery1.Energy));
-            Assert.Equal(56u, Math.Round(battery2.Energy));
-            Assert.Equal(55u, Math.Round(battery3.Energy));
+            Assert.Equal(50u, Math.Round(battery1.Energy));
+            Assert.Equal(50u, Math.Round(battery2.Energy));
+            Assert.Equal(50u, Math.Round(battery3.Energy));
         }
 
         [Fact]

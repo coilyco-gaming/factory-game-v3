@@ -12,7 +12,6 @@ namespace Assets.Scripts.Components.Core
     public class InserterComponentCore
     {
         public string resourceType = "";
-        public bool enabled = true;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
         private uint insertionRate = 0;
@@ -40,11 +39,6 @@ namespace Assets.Scripts.Components.Core
 
         public void Insert(WorldObjectCore worldObject, GameControllerCore gameController)
         {
-            if (!this.enabled)
-            {
-                return;
-            }
-
             List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
                 worldObject.GridPosition
             );
@@ -110,14 +104,19 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = gridPosition, // TODO: why can't these all be at the same grid position?
             };
             core.Guid = core.CreateGuid();
-            gameController.worldObjects[core.GridPosition] = new() { [core.Guid] = core };
+            gameController.worldObjects ??= new();
+            if (!gameController.worldObjects.ContainsKey(core.GridPosition))
+            {
+                gameController.worldObjects[core.GridPosition] = new();
+            }
+            gameController.worldObjects[core.GridPosition][core.Guid] = core;
             return core;
         }
 
         [Fact]
         public void TestInsertCapacityOverflow()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new();
             BatteryComponentCore battery = new(100, 100);
 
             // object 0
@@ -159,7 +158,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsert()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new();
+
             BatteryComponentCore battery = new(100, 100);
 
             // object 0
@@ -201,7 +201,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestEmptyBatteryPreventsInsert()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new();
+
             BatteryComponentCore battery = new(0, 100);
 
             // object 0
@@ -243,7 +244,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertMultiple()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new();
+
             BatteryComponentCore battery = new(100, 100);
 
             // object 0

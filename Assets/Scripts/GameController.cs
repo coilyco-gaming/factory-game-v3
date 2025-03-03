@@ -93,53 +93,51 @@ namespace Assets.Scripts.Core
 
         public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
         {
-            List<System.Numerics.Vector2> adjacentTiles = new()
-            {
-                new System.Numerics.Vector2( // Center
-                    position.X,
-                    position.Y
-                ),
-                new System.Numerics.Vector2( // Above
-                    position.X + 0,
-                    position.Y + 1
-                ),
-                new System.Numerics.Vector2( // Top Right
-                    position.X + 1,
-                    position.Y + 1
-                ),
-                new System.Numerics.Vector2( // Right
-                    position.X + 1,
-                    position.Y + 0
-                ),
-                new System.Numerics.Vector2( // Bottom Right
-                    position.X + 1,
-                    position.Y - 1
-                ),
-                new System.Numerics.Vector2( // Below
-                    position.X + 0,
-                    position.Y - 1
-                ),
-                new System.Numerics.Vector2( // Bottom Left
-                    position.X - 1,
-                    position.Y - 1
-                ),
-                new System.Numerics.Vector2( // Left
-                    position.X + -1,
-                    position.Y + 0
-                ),
-                new System.Numerics.Vector2( // Top Left
-                    position.X + -1,
-                    position.Y + 1
-                ),
-            };
-            List<WorldObjectCore> localWorldObjects = adjacentTiles
-                .SelectMany(adjacentTile =>
-                    this.GetWorldObjectsByPosition(adjacentTile)
-                    ?? Enumerable.Empty<WorldObjectCore>()
-                )
-                .Distinct()
-                .ToList();
-            return localWorldObjects;
+            return new List<System.Numerics.Vector2>
+                {
+                    new( // Center
+                        position.X,
+                        position.Y
+                    ),
+                    new( // Above
+                        position.X + 0,
+                        position.Y + 1
+                    ),
+                    new( // Top Right
+                        position.X + 1,
+                        position.Y + 1
+                    ),
+                    new( // Right
+                        position.X + 1,
+                        position.Y + 0
+                    ),
+                    new( // Bottom Right
+                        position.X + 1,
+                        position.Y - 1
+                    ),
+                    new( // Below
+                        position.X + 0,
+                        position.Y - 1
+                    ),
+                    new( // Bottom Left
+                        position.X - 1,
+                        position.Y - 1
+                    ),
+                    new( // Left
+                        position.X + -1,
+                        position.Y + 0
+                    ),
+                    new( // Top Left
+                        position.X + -1,
+                        position.Y + 1
+                    ),
+                }
+                    .Select(adjacentTile => this.GetWorldObjectsByPosition(adjacentTile))
+                    .Where(worldObjects => worldObjects != null)
+                    .SelectMany(worldObjects => worldObjects)
+                    .Where(worldObject => worldObject != null)
+                    .Distinct()
+                    .ToList() ?? new List<WorldObjectCore>();
         }
 
         public List<WorldObjectCore> GetWorldObjectsByPosition(System.Numerics.Vector2 position)
@@ -408,6 +406,8 @@ namespace Assets.Scripts.Unity
             GameObject thisGameObject = null;
             try
             {
+                // TODO: don't allow spawning 2 buildings on the same tile
+
                 // If spawn conditions are set and aren't met, don't spawn
                 if (spawnQueueItem.conditions != null)
                 {

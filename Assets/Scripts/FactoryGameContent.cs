@@ -79,9 +79,23 @@ namespace Assets.Scripts.Unity
                     )
                 },
                 {
-                    Spawnables.Warehouse.ToString(),
+                    Spawnables.StorageWarehouse.ToString(),
                     new Item(
-                        Spawnables.Warehouse.ToString(),
+                        Spawnables.StorageWarehouse.ToString(),
+                        weight: 300,
+                        volume: 150,
+                        craftTime: 50,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Products.Frames.ToString(), 10 },
+                            { Products.BuildingMaterials.ToString(), 10 },
+                        }
+                    )
+                },
+                {
+                    Spawnables.TransferWarehouse.ToString(),
+                    new Item(
+                        Spawnables.TransferWarehouse.ToString(),
                         weight: 300,
                         volume: 150,
                         craftTime: 50,
@@ -176,7 +190,8 @@ namespace Assets.Scripts.Unity
             CoalPlant,
             Mine,
             Factory,
-            Warehouse,
+            StorageWarehouse,
+            TransferWarehouse,
         }
     }
 }
