@@ -269,6 +269,20 @@ namespace Assets.Scripts.Unity
                 )
             );
 
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y + 1)
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y + 1)
+                )
+            );
+
             this.readyForTicks = false;
         }
 
