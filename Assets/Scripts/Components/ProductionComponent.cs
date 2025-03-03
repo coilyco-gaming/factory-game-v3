@@ -14,7 +14,7 @@ namespace Assets.Scripts.Components.Core
         private static uint PowerUsage = 10;
         public string Product;
         public GameContent.Item ProductItem =>
-            this.gameContent.Items.GetValueOrDefault(this.Product);
+            this?.gameContent?.Items?.GetValueOrDefault(this.Product);
         public uint Quantity;
         public Dictionary<string, uint> Requests = new();
         public Dictionary<string, uint> Intermediates = new();

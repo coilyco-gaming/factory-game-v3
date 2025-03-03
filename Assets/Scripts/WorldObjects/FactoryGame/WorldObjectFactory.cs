@@ -73,6 +73,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Name = this.WorldObjectType,
                     Info = this.core.resources.ResourceInfo,
                 };
+                if (this.core.production.PercentCraftProgress != 0)
+                {
+                    statusData.Info["Progress"] = this.core.production.PrecentProgressStatus;
+                }
                 statusData.Info["Product"] = this.productType;
                 statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
                 statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;

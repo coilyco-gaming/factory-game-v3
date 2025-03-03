@@ -10,19 +10,19 @@ namespace Assets.Scripts.Unity
             {
                 {
                     Resources.Iron.ToString(), //
-                    new Item(Resources.Iron.ToString(), stackSize: 100)
+                    new Item(Resources.Iron.ToString(), stackSize: 200)
                 },
                 {
                     Resources.Coal.ToString(), //
-                    new Item(Resources.Coal.ToString(), stackSize: 100)
+                    new Item(Resources.Coal.ToString(), stackSize: 200)
                 },
                 {
                     Resources.Copper.ToString(),
-                    new Item(Resources.Copper.ToString(), stackSize: 100)
+                    new Item(Resources.Copper.ToString(), stackSize: 200)
                 },
                 {
                     Resources.Stone.ToString(),
-                    new Item(Resources.Stone.ToString(), stackSize: 100)
+                    new Item(Resources.Stone.ToString(), stackSize: 200)
                 },
                 {
                     Products.BuildingMaterials.ToString(),
@@ -31,7 +31,7 @@ namespace Assets.Scripts.Unity
                         weight: 20,
                         volume: 5,
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 10 },
@@ -44,7 +44,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Motors.ToString(),
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.Iron.ToString(), 5 },
@@ -57,7 +57,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Circuits.ToString(),
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Copper.ToString(), 5 },
@@ -71,7 +71,7 @@ namespace Assets.Scripts.Unity
                         weight: 10,
                         volume: 10,
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Resources.Iron.ToString(), 10 },

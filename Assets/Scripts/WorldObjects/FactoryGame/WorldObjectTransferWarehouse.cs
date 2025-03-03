@@ -10,7 +10,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     public class WorldObjectTransferWarehouse : WorldObject
     {
         public uint totalBatteryCapacity = 10000;
-        public uint totalVolumeCapacity = 10000;
+        public uint totalVolumeCapacity = 1000;
         public uint totalWeightCapacity = uint.MaxValue;
 
         public override void Instantiate(
@@ -19,13 +19,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.resources = new(
-                new FactoryGameContent(),
-                weightCapacity: this.totalWeightCapacity,
-                volumeCapacity: this.totalVolumeCapacity
-            );
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.transferHub = new(gameController.core, this.core, this.core.battery);
+            this.core.transferHub = new(
+                new FactoryGameContent(),
+                gameController.core,
+                this.core,
+                this.core.battery
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -41,10 +41,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Info = new() { ["Energy"] = this.core.battery.PercentEnergyStatus },
                 };
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;
             };
         }

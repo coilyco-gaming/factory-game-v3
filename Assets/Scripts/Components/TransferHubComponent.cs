@@ -15,13 +15,16 @@ namespace Assets.Scripts.Components.Core
         private GameControllerCore gameController;
         private WorldObjectCore core;
         private BatteryComponentCore battery;
+        private GameContent gameContent;
 
         public TransferHubComponent(
+            GameContent gameContent,
             GameControllerCore gameController,
             WorldObjectCore core,
             BatteryComponentCore battery
         )
         {
+            this.gameContent = gameContent;
             this.core = core;
             this.gameController = gameController;
             this.battery =
@@ -37,29 +40,31 @@ namespace Assets.Scripts.Components.Core
             List<WorldObjectCore> worldObjects = this
                 .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject => worldObject.resources != null)
+                .Distinct()
                 .ToList();
 
             List<ProductionComponentCore> localProductionComponents = worldObjects
                 .Select(worldObject => worldObject.production)
                 .Where(production => production != null)
-                .ToList();
-
-            List<string> localIngredients = localProductionComponents
-                .SelectMany(production => production.ProductItem.Ingredients.Keys)
                 .Distinct()
                 .ToList();
 
-            Dictionary<string, uint> localIngredientsCounts = localIngredients
-                .ToDictionary(
-                    ingredient => ingredient,
-                    ingredient =>
-                        (uint)
-                            localProductionComponents
-                                .SelectMany(production => production.ProductItem.Ingredients)
-                                .Sum(ingredient => ingredient.Value)
-                )
-                .Where(ingredient => ingredient.Value > 0)
-                .ToDictionary(ingredient => ingredient.Key, ingredient => ingredient.Value);
+            List<string> localIngredients = localProductionComponents
+                .Where(production => production?.ProductItem?.Ingredients != null)
+                .SelectMany(production => production.ProductItem.Ingredients.Keys)
+                .Where(ingredient => ingredient != null)
+                .Distinct()
+                .ToList();
+
+            Dictionary<string, uint> localIngredientsCounts = localIngredients.ToDictionary(
+                ingredient => ingredient,
+                ingredient =>
+                    (uint)
+                        localProductionComponents
+                            .Where(production => production?.ProductItem?.Ingredients != null)
+                            .SelectMany(production => production?.ProductItem?.Ingredients)
+                            .Sum(ingredient => ingredient.Value)
+            );
 
             // For each resource, distribute it evenly.
             foreach (KeyValuePair<string, uint> resource in localIngredientsCounts)
@@ -94,9 +99,9 @@ namespace Assets.Scripts.Components.Core
                 )
                 .ToList();
 
-            // Also include yourself, but only if that doesn't duplicate.
-            worldObjects.Add(this.core);
-            worldObjects = worldObjects.Distinct().ToList();
+            // // Also include yourself, but only if that doesn't duplicate.
+            // worldObjects.Add(this.core);d
+            // worldObjects = worldObjects.Distinct().ToList();
 
             // Cache a map of containers to their resource count, in addition to the total count.
             // This is used to determine the size of the potential resource distribution.
@@ -129,6 +134,20 @@ namespace Assets.Scripts.Components.Core
             // If the average deviation is less than 1, then we are balanced enough.
             // This acts as a threshold to prevent infinite back and forth transfers.
             if (averageDeviation < 1)
+            {
+                return;
+            }
+
+            // If we are transferring less than 1/10th of a stack of the resource,
+            // then we are not transferring enough to make a difference.
+            if (amountPerContainer < this.gameContent.Items[resource.Key].StackSize / 10f)
+            {
+                return;
+            }
+
+            // If the deviation is less than 1/10th of a stack of the resource,
+            // then we are balanced enough.
+            if (averageDeviation < this.gameContent.Items[resource.Key].StackSize / 10f)
             {
                 return;
             }
@@ -250,7 +269,12 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = gridPosition,
                 production = production,
             };
-            TransferHubComponent transfer = new(gameController, core, battery);
+            TransferHubComponent transfer = new(
+                new TestGameContent(),
+                gameController,
+                core,
+                battery
+            );
             core.transferHub = transfer;
             core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
@@ -268,14 +292,17 @@ namespace Assets.Scripts.Components.Tests
             GameControllerCore gameController = new() { worldObjects = new() };
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
+            WorldObjectCore core3 = this.WorldObject(gameController);
 
             core1.resources.CreateResources("wood", 100);
             core2.resources.CreateResources("wood", 100);
+            core3.resources.CreateResources("wood", 100);
 
             core1.transferHub.Balance();
 
             Assert.Equal(100u, core1.resources.resources["wood"]);
             Assert.Equal(100u, core2.resources.resources["wood"]);
+            Assert.Equal(100u, core3.resources.resources["wood"]);
         }
 
         [Fact]
@@ -284,14 +311,17 @@ namespace Assets.Scripts.Components.Tests
             GameControllerCore gameController = new() { worldObjects = new() };
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
+            WorldObjectCore core3 = this.WorldObject(gameController);
 
             core1.resources.CreateResources("wood", 100);
             core2.resources.CreateResources("wood", 0);
+            core3.resources.CreateResources("wood", 0);
 
             core1.transferHub.Balance();
 
-            Assert.Equal(50u, core1.resources.resources["wood"]);
-            Assert.Equal(50u, core2.resources.resources["wood"]);
+            Assert.Equal(34u, core1.resources.resources["wood"]);
+            Assert.Equal(33u, core2.resources.resources["wood"]);
+            Assert.Equal(33u, core3.resources.resources["wood"]);
         }
 
         [Fact]
@@ -300,6 +330,7 @@ namespace Assets.Scripts.Components.Tests
             GameControllerCore gameController = new() { worldObjects = new() };
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
+            WorldObjectCore core3 = this.WorldObject(gameController);
 
             core1.resources.CreateResources("wood", 100);
             core1.resources.CreateResources("nails", 0);
@@ -308,10 +339,10 @@ namespace Assets.Scripts.Components.Tests
 
             core1.transferHub.Balance();
 
-            Assert.Equal(50u, core1.resources.resources["wood"]);
-            Assert.Equal(50u, core1.resources.resources["nails"]);
-            Assert.Equal(50u, core2.resources.resources["wood"]);
-            Assert.Equal(50u, core2.resources.resources["nails"]);
+            Assert.Equal(34u, core1.resources.resources["wood"]);
+            Assert.Equal(34u, core1.resources.resources["nails"]);
+            Assert.Equal(33u, core2.resources.resources["wood"]);
+            Assert.Equal(33u, core2.resources.resources["nails"]);
         }
 
         [Fact]
