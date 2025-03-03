@@ -143,6 +143,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.Rendering.LightTransp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.InputSystem.DocCodeSamples", "Unity.InputSystem.DocCodeSamples.csproj", "{442B66B7-0512-C75C-0411-0F96A107F787}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sirenix.OdinInspector.Modules.UnityMathematics", "Sirenix.OdinInspector.Modules.UnityMathematics.csproj", "{596BAE2F-FEEB-F0A0-B4F1-211ACA2D3411}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.RenderPipelines.Universal.Shaders", "Unity.RenderPipelines.Universal.Shaders.csproj", "{6184AF82-34E1-6417-E8A5-F0CF3526F156}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity.RenderPipelines.Core.Runtime.Shared", "Unity.RenderPipelines.Core.Runtime.Shared.csproj", "{DCA4C988-4AC9-8443-5B76-7DA7D08AB69D}"
@@ -449,6 +451,10 @@ Global
 		{442B66B7-0512-C75C-0411-0F96A107F787}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{442B66B7-0512-C75C-0411-0F96A107F787}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{442B66B7-0512-C75C-0411-0F96A107F787}.Release|Any CPU.Build.0 = Release|Any CPU
+		{596BAE2F-FEEB-F0A0-B4F1-211ACA2D3411}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{596BAE2F-FEEB-F0A0-B4F1-211ACA2D3411}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{596BAE2F-FEEB-F0A0-B4F1-211ACA2D3411}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{596BAE2F-FEEB-F0A0-B4F1-211ACA2D3411}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6184AF82-34E1-6417-E8A5-F0CF3526F156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6184AF82-34E1-6417-E8A5-F0CF3526F156}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6184AF82-34E1-6417-E8A5-F0CF3526F156}.Release|Any CPU.ActiveCfg = Release|Any CPU

@@ -177,8 +177,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: CoalPlant\r\n  Info:\r\n    Coal: 1000\r\n    Storage Volume:
-    100%\r\n    Energy: 99%\r\n"
+  m_text: "- Name: Radar\r\n  Info:\r\n    Target: Coal\r\n    Energy: 0%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -877,11 +876,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -1190,11 +1185,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -1606,11 +1597,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -1723,11 +1710,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -1845,11 +1828,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -2295,11 +2274,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -2594,11 +2569,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -2885,11 +2856,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -3343,11 +3310,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -4019,11 +3982,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -4142,11 +4101,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
@@ -4349,11 +4304,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
+    resources: {fileID: 0}
     battery:
       minimumStartingCapacity: 0
       minimumHealth: 0
