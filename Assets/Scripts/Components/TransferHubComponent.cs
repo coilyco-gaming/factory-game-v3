@@ -62,10 +62,27 @@ namespace Assets.Scripts.Components.Core
                 // has this resource as an product or ingredient.
                 List<WorldObjectCore> resourceScopedWorldObjects = localWorldObjects
                     .Where(worldObject =>
-                        worldObject.Production.ProductItem.Ingredients.ContainsKey(resource.Key)
-                        || worldObject.Production.ProductItem.Name == resource.Key
+                        (
+                            worldObject != null
+                            && worldObject.Production != null
+                            && worldObject.Production.ProductItem != null
+                            && worldObject.Production.ProductItem.Ingredients != null
+                            && worldObject.Production.ProductItem.Ingredients.Count != 0
+                            && worldObject.Production.ProductItem.Ingredients.ContainsKey(
+                                resource.Key
+                            )
+                        )
+                        || (
+                            worldObject != null
+                            && worldObject.Production != null
+                            && worldObject.Production.ProductItem != null
+                            && worldObject.Production.ProductItem.Name == resource.Key
+                        )
                     )
                     .ToList();
+
+                // Also include yourself.
+                resourceScopedWorldObjects.Add(this.core);
 
                 // First consume all the resources in every surrounding container.
                 // Aggregating the total amount of resources consumed.

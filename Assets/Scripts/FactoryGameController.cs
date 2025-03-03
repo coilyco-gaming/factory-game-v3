@@ -185,6 +185,36 @@ namespace Assets.Scripts.Unity
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 2),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Spawnables.Factory.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y + 2),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Spawnables.StorageWarehouse.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
+                    FactoryGameContent.Spawnables.Factory.ToString(),
+                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y + 2),
+                    instantiateCallback: this.SpawnFactoryCallback(
+                        FactoryGameContent.Spawnables.CoalPlant.ToString()
+                    )
+                )
+            );
+
+            this.Spawn(
+                new GameControllerCore.SpawnQueueItem(
                     FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
                     new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
                     postInstantiateCallback: this.SpawnCoalWarehouseCallback()
