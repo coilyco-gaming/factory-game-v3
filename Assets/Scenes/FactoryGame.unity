@@ -177,9 +177,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: TransferWarehouse\r\n  Info:\r\n    Frames: 9\r\n    BuildingMaterials:
-    6\r\n    Motors: 12\r\n    Iron: 397\r\n    Copper: 131\r\n    Circuits: 9\r\n   
-    Storage Volume: 7%\r\n    Energy: 99%\r\n"
+  m_text: "- Name: CoalPlant\r\n  Info:\r\n    Coal: 1000\r\n    Storage Volume:
+    100%\r\n    Energy: 99%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -877,6 +876,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dc3d2be8bd48b84f9fe9c8dcaf65c98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  amount: 0
 --- !u!1 &412395827
 GameObject:
   m_ObjectHideFlags: 0
@@ -1172,6 +1189,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dc3d2be8bd48b84f9fe9c8dcaf65c98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  amount: 0
 --- !u!1 &545687439
 GameObject:
   m_ObjectHideFlags: 0
@@ -1570,6 +1605,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f9e2ad5da6e3a346af4b8fd7ab75bfb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
 --- !u!1 &678344652
 GameObject:
   m_ObjectHideFlags: 0
@@ -1670,7 +1722,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3773fc292827724cbe85681b4c9743f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
   productType: 
+  totalVolumeCapacity: 1000
+  totalWeightCapacity: 4294967295
+  totalBatteryCapacity: 1000
+  insertionRate: 5
 --- !u!1 &875974723
 GameObject:
   m_ObjectHideFlags: 0
@@ -1771,6 +1844,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e0d6624064cbd04181cdd6d9c532d02, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0
@@ -2204,6 +2294,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0a3044733f3d9a449ff870238f64d32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
 --- !u!1 &1141577915
 GameObject:
   m_ObjectHideFlags: 11
@@ -2486,6 +2593,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 359a21388782012428a2ca8eedeac7d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
 --- !u!1 &1210551303
 GameObject:
   m_ObjectHideFlags: 0
@@ -2760,6 +2884,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6416f727608af543829ff47f492c41e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  totalBatteryCapacity: 1000
+  target: 
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -3199,6 +3342,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 050721dc50e5a4a9194c75a6d579961f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  totalVolumeCapacity: 10000
+  totalWeightCapacity: 4294967295
 --- !u!212 &1611820092
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -3856,6 +4018,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 299d8a790b57d634e988d1744f9ecabf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  totalVolumeCapacity: 1000
+  totalWeightCapacity: 4294967295
+  totalBatteryCapacity: 5000
+  insertionRate: 5
+  powerBurnRate: 5
+  powerGainRate: 100
 --- !u!1 &2041591263
 GameObject:
   m_ObjectHideFlags: 0
@@ -3956,6 +4141,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46bb0e0ac10758242baf009064114f0d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  totalBatteryCapacity: 10000
+  totalVolumeCapacity: 10000
+  totalWeightCapacity: 4294967295
 --- !u!1 &2093853404
 GameObject:
   m_ObjectHideFlags: 0
@@ -4143,6 +4348,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5dc3d2be8bd48b84f9fe9c8dcaf65c98, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+  amount: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

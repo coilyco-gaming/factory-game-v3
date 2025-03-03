@@ -14,9 +14,9 @@ namespace Assets.Scripts.Components.Core
     public class InserterComponentCore
     {
         public string resourceType = "";
+        public uint insertionRate = 0;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
-        private uint insertionRate = 0;
 
         public InserterComponentCore(
             BatteryComponentCore battery,
