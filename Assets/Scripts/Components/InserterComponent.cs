@@ -58,28 +58,19 @@ namespace Assets.Scripts.Components.Core
                     resources != null
                     && this.resources != null
                     && this.battery != null
-                    && this.battery.Energy > 0
+                    && this.battery.Energy > 1
                 )
                 {
                     try
                     {
-                        this.battery.Energy -= 1;
                         this.resources.TakeResources(
                             resource,
                             this.resourceType,
                             this.insertionRate
                         );
+                        this.battery.Energy -= 1;
                     }
-                    catch (ResourcesComponentCore.ResourceException)
-                    {
-                        // Prevent infinite drain if no resources are moving.
-                        this.battery.Energy += 1;
-                        continue;
-                    }
-                    catch (BatteryComponentCore.BatteryCapacityException)
-                    {
-                        return;
-                    }
+                    catch (ResourcesComponentCore.ResourceException) { }
                 }
             }
         }
@@ -202,6 +193,50 @@ namespace Assets.Scripts.Components.Tests
             // assertions
             Assert.Equal(2u, worldObject0.Resources.Resources["wood"]);
             Assert.Equal(0u, worldObject1.Resources.Resources.GetValueOrDefault("wood", 0u));
+        }
+
+        [Fact]
+        public void TestBatteryMaxedAndStorageMaxed()
+        {
+            GameControllerCore gameController = new();
+
+            BatteryComponentCore battery = new(100, 100);
+
+            // object 0
+            ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 1, 1);
+            resources0.CreateResources("wood", 1);
+            WorldObjectCore worldObject0 = this.WorldObject(
+                gameController,
+                new System.Numerics.Vector2(0, 0),
+                new List<InserterComponentCore>()
+                {
+                    new(
+                        battery: battery,
+                        resourceType: "wood",
+                        insertionRate: 1,
+                        resources: resources0
+                    ),
+                },
+                resources0
+            );
+
+            // object 1
+            ResourcesComponentCore resources1 = new(new TestResourcesGameContent(), 1, 1);
+            resources1.CreateResources("wood", 1);
+            WorldObjectCore worldObject1 = this.WorldObject(
+                gameController,
+                new System.Numerics.Vector2(1, 0),
+                null,
+                resources1
+            );
+
+            // logic under test
+            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+
+            // assertions
+            Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
+            Assert.Equal(1u, worldObject1.Resources.Resources["wood"]);
+            Assert.Equal(100u, battery.Energy);
         }
 
         [Fact]

@@ -23,7 +23,11 @@ namespace Assets.Scripts.Components.Core
         {
             this.core = core;
             this.gameController = gameController;
-            this.battery = battery;
+            this.battery =
+                battery
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "Transfer Hub component requires a battery component"
+                );
         }
 
         public void Balance()

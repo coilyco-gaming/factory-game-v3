@@ -18,14 +18,14 @@ namespace Assets.Scripts.Components.Core
             set
             {
                 this.Degrade();
-                bool isNegative = value < 0;
-                bool isOverCapacity = value > this.Capacity;
-                if (isNegative)
+                bool isNegativeAndDecreasing = value < 0 && value < this.energy;
+                bool isOverCapacityAndIncreasing = value > this.Capacity && value > this.energy;
+                if (isNegativeAndDecreasing)
                 {
                     this.energy = 0;
                     throw new BatteryCapacityException("Battery empty");
                 }
-                if (isOverCapacity)
+                if (isOverCapacityAndIncreasing)
                 {
                     this.energy = this.Capacity;
                     throw new BatteryCapacityException("Battery over capacity");
@@ -101,8 +101,8 @@ namespace Assets.Scripts.Components.Core
             // Set the energy of each battery to the target % of battery capacity.
             foreach (BatteryComponentCore battery in batteries)
             {
-                // We set the "inner" battery variable to skip capacity validation.
-                battery.Energy = battery.Capacity * targetPercentage;
+                // Skip capacity validation so we don't bleed energy
+                battery.energy = battery.Capacity * targetPercentage;
             }
         }
 
@@ -262,6 +262,22 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
+        public void TestWildlyDifferentCapacitiesDoesntExplode()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+
+            BatteryComponentCore battery1 = this.Battery(
+                gameController,
+                uint.MaxValue,
+                uint.MaxValue
+            );
+            BatteryComponentCore battery2 = this.Battery(gameController, 0, 0);
+
+            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery2.Balance(new WorldObjectCore(null), gameController);
+        }
+
+        [Fact]
         public void TestBalanceTwoEmptyBatteries()
         {
             GameControllerCore gameController = new() { worldObjects = new() };
@@ -272,6 +288,22 @@ namespace Assets.Scripts.Components.Tests
             battery1.Balance(new WorldObjectCore(null), gameController);
             Assert.Equal(0u, (uint)battery1.Energy);
             Assert.Equal(0u, (uint)battery2.Energy);
+        }
+
+        [Fact]
+        public void TestCapacityDropout()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+
+            BatteryComponentCore battery1 = this.Battery(gameController, 100, 100);
+            BatteryComponentCore battery2 = this.Battery(gameController, 100, 100);
+
+            battery1.Capacity = 0;
+            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery2.Balance(new WorldObjectCore(null), gameController);
+
+            Assert.Equal(0u, (uint)battery1.Energy);
+            Assert.Equal(200u, (uint)battery2.Energy);
         }
 
         [Fact]

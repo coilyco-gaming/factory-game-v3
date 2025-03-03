@@ -429,7 +429,7 @@ namespace Assets.Scripts.Unity
 
             // TODO: grab the nearby objects, not just the ones at the player's position
             List<WorldObjectCore> worldObjects =
-                this.core.worldObjects.GetValueOrDefault(position, null)?.Values.ToList()
+                this?.core?.worldObjects?.GetValueOrDefault(position, null)?.Values.ToList()
                 ?? new List<WorldObjectCore>();
 
             // Display the status data in the UI

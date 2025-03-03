@@ -101,16 +101,16 @@ namespace Assets.Scripts.Components.Core
                 try
                 {
                     this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                    this.currentCraftProgress += 1;
+                    if (this.currentCraftProgress >= this.ProductItem.CraftTime)
+                    {
+                        this.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                        this.currentCraftProgress = 0;
+                    }
                 }
                 catch (BatteryComponentCore.BatteryCapacityException)
                 {
                     return;
-                }
-                this.currentCraftProgress += 1;
-                if (this.currentCraftProgress >= this.ProductItem.CraftTime)
-                {
-                    this.resources.ForceCreateResources(this.ProductItem.Name, 1);
-                    this.currentCraftProgress = 0;
                 }
             }
 
@@ -147,23 +147,22 @@ namespace Assets.Scripts.Components.Core
                 try
                 {
                     this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                    foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
+                    {
+                        this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
+                    }
+                    if (this.ProductItem.CraftTime == 1)
+                    {
+                        this.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                    }
+                    else
+                    {
+                        this.currentCraftProgress += 1;
+                    }
                 }
                 catch (BatteryComponentCore.BatteryCapacityException)
                 {
                     return;
-                }
-
-                foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
-                {
-                    this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
-                }
-                if (this.ProductItem.CraftTime == 1)
-                {
-                    this.resources.ForceCreateResources(this.ProductItem.Name, 1);
-                }
-                else
-                {
-                    this.currentCraftProgress += 1;
                 }
             }
         }
