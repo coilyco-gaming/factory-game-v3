@@ -126,10 +126,6 @@ namespace Assets.Scripts.Components.Core
                     .ToList()
                     .Sum() / (float)worldObjects.Count;
 
-            // UnityEngine.Debug.Log(
-            //     $"TransferHubComponent: {resource.Key} average deviation: {averageDeviation}"
-            // );
-
             // If the average deviation is less than 1, then we are balanced enough.
             // This acts as a threshold to prevent infinite back and forth transfers.
             if (averageDeviation < 1)
