@@ -199,7 +199,6 @@ namespace Assets.Scripts.Unity
         protected bool readyForTicks = false;
         public SpriteMapComponent Map { get; set; }
         protected PlayerComponent PlayerComponent { get; set; }
-        protected StatusUIComponent StatusUIComponent { get; set; }
         private float lastTick = 0;
 
         // PROPERTIES //

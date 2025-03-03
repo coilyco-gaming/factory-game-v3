@@ -10,13 +10,10 @@ namespace Assets.Scripts.Components.Unity
     using YamlDotNet.Serialization;
     using YamlDotNet.Serialization.NamingConventions;
 
-    public class StatusUIComponent : MonoBehaviour
+    public class StatusUILeftComponent : MonoBehaviour
     {
         // FIELDS //
 
-        private GameObject childObject;
-        private GameObject userInterface;
-        private RectTransform rectTransform;
         private TextMeshProUGUI textMeshPro;
         private ISerializer serializer = new SerializerBuilder()
             .WithNamingConvention(PascalCaseNamingConvention.Instance)
@@ -25,27 +22,9 @@ namespace Assets.Scripts.Components.Unity
 
         // FUNCTIONS //
 
-        public void Instantiate(GameObject userInterface)
+        public void Instantiate()
         {
-            this.userInterface = userInterface;
-
-            this.childObject = new("StatusUIComponent");
-            this.childObject.transform.SetParent(this.userInterface.transform);
-            this.childObject.layer = 5; // UI layer
-
-            this.rectTransform = this.childObject.AddComponent<RectTransform>();
-            this.rectTransform.sizeDelta = new Vector2(320, 400);
-            this.rectTransform.localScale = new Vector3(1, 1, 1);
-            this.rectTransform.localPosition = new Vector3(330, -100, 10);
-            this.rectTransform.rotation = Quaternion.Euler(0, 0, 0);
-            this.rectTransform.anchorMin = new Vector2(0, 1);
-            this.rectTransform.anchorMax = new Vector2(0, 1);
-            this.rectTransform.pivot = new Vector2(1, 1);
-
-            this.textMeshPro = this.childObject.AddComponent<TextMeshProUGUI>();
-            this.textMeshPro.fontSize = 16;
-            this.textMeshPro.color = new Color(1, 1, 1, 1);
-            this.textMeshPro.overflowMode = TextOverflowModes.Truncate;
+            this.textMeshPro = this.transform.GetComponent<TextMeshProUGUI>();
         }
 
         public void Display(List<WorldObjectCore> worldObjects)

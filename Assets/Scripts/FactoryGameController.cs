@@ -15,12 +15,16 @@ namespace Assets.Scripts.Unity
     {
         public GameObject resetButton;
         public GameObject pauseButton;
+        public GameObject StatusUILeft;
+        public GameObject StatusUIRight;
         public int HQOreBuffer = 5; // TODO: world init settings screen for these values
         public int spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
         public int OreQuantityBase = 2000;
         public int OreQuantityRange = 1000;
         private TextMeshProUGUI pauseTextComponent;
+        private StatusUILeftComponent StatusUILeftComponent;
+        private StatusUIRightComponent StatusUIRightComponent;
 
         public override void Start()
         {
@@ -32,8 +36,11 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent = this.GetComponent<PlayerComponent>();
             this.PlayerComponent.Instantiate(this.Map.mapSize.x, this.Map.mapSize.y);
 
-            this.StatusUIComponent = this.GetComponent<StatusUIComponent>();
-            this.StatusUIComponent.Instantiate(this.userInterface);
+            this.StatusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
+            this.StatusUILeftComponent.Instantiate();
+
+            this.StatusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
+            this.StatusUIRightComponent.Instantiate();
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -50,7 +57,8 @@ namespace Assets.Scripts.Unity
         public override void Update()
         {
             base.Update();
-            this.WriteStatusUI();
+            this.WriteStatusUILeft();
+            this.WriteStatusUIRight();
         }
 
         protected override void Reset()
@@ -420,7 +428,7 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
         }
 
-        private void WriteStatusUI()
+        private void WriteStatusUILeft()
         {
             // Update the UI state with whatever the player is looking at
 
@@ -433,7 +441,27 @@ namespace Assets.Scripts.Unity
                 ?? new List<WorldObjectCore>();
 
             // Display the status data in the UI
-            this.StatusUIComponent.Display(worldObjects);
+            this.StatusUILeftComponent.Display(worldObjects);
+        }
+
+        private void WriteStatusUIRight()
+        {
+            // TODO: grab the nearby objects, not just the ones at the player's position
+            List<WorldObjectCore> worldObjects =
+                this?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
+                    .Where(worldObject => worldObject != null)
+                    .Where(worldObject =>
+                        !new List<string>
+                        {
+                            FactoryGameContent.Resources.Iron.ToString(),
+                            FactoryGameContent.Resources.Copper.ToString(),
+                            FactoryGameContent.Resources.Coal.ToString(),
+                        }.Contains(worldObject.WorldObjectType)
+                    )
+                    .ToList() ?? new List<WorldObjectCore>();
+
+            // Display the status data in the UI
+            this.StatusUIRightComponent.Display(worldObjects);
         }
     }
 }
