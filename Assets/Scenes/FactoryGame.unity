@@ -177,8 +177,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: CoalPlant\r\n  Info:\r\n    Coal: 1000\r\n    Storage Volume:
-    100%\r\n    Energy: 100%\r\n"
+  m_text: "- Name: Radar\r\n  Info:\r\n    Target: Iron\r\n    Energy: 0%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2964,7 +2963,7 @@ MonoBehaviour:
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
   StatusUIRight: {fileID: 153855361}
-  HQOreBuffer: 10
+  HQOreBuffer: 6
   spawnAttempts: 10
   oreSpawnFactor: 1
   OreQuantityBase: 2000
