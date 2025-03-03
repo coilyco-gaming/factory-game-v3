@@ -20,18 +20,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.transferHub = new(
-                new FactoryGameContent(),
-                gameController.core,
-                this.core,
-                this.core.battery
-            );
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.transferHub.Balance();
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
