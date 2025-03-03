@@ -4,11 +4,12 @@ namespace Assets.Scripts.Components.Core
     using System.Collections.Generic;
     using Assets.Scripts.Core;
 
+    [Serializable]
     public class ResourcesComponentCore
     {
         // FIELDS //
-        private static uint reservedInputBufferMultiplier = 2;
-        private static uint reservedOuputBufferMultiplier = 4;
+        public uint reservedInputBufferMultiplier = 2;
+        public uint reservedOuputBufferMultiplier = 4;
         public uint weightCapacity = 0;
         public uint volumeCapacity = 0;
 
@@ -26,14 +27,14 @@ namespace Assets.Scripts.Components.Core
 
         // PROPERTIES //
 
-        public Dictionary<string, uint> Resources { get; private set; } = new();
+        public Dictionary<string, uint> resources = new();
 
         public virtual Dictionary<string, string> ResourceInfo
         {
             get
             {
                 Dictionary<string, string> info = new();
-                foreach (KeyValuePair<string, uint> resource in this.Resources)
+                foreach (KeyValuePair<string, uint> resource in this.resources)
                 {
                     info.Add(resource.Key, resource.Value.ToString());
                 }
@@ -46,7 +47,7 @@ namespace Assets.Scripts.Components.Core
             get
             {
                 uint total = 0;
-                foreach (uint resource in this.Resources.Values)
+                foreach (uint resource in this.resources.Values)
                 {
                     total += resource;
                 }
@@ -61,7 +62,7 @@ namespace Assets.Scripts.Components.Core
             get
             {
                 uint totalWeight = 0;
-                foreach (KeyValuePair<string, uint> resourcePair in this.Resources)
+                foreach (KeyValuePair<string, uint> resourcePair in this.resources)
                 {
                     GameContent.Item item = this.GameContent.Items.GetValueOrDefault(
                         resourcePair.Key
@@ -90,7 +91,7 @@ namespace Assets.Scripts.Components.Core
             get
             {
                 uint totalVolume = 0;
-                foreach (KeyValuePair<string, uint> resourcePair in this.Resources)
+                foreach (KeyValuePair<string, uint> resourcePair in this.resources)
                 {
                     GameContent.Item item = this.GameContent.Items.GetValueOrDefault(
                         resourcePair.Key
@@ -187,8 +188,8 @@ namespace Assets.Scripts.Components.Core
             // resource container because the container is full.
             // Letting the container "overfill" prevents the resouce
             // from being lost.
-            uint currentResources = this.Resources.GetValueOrDefault(resourceName, 0u);
-            this.Resources[resourceName] = currentResources + amountToCreate;
+            uint currentResources = this.resources.GetValueOrDefault(resourceName, 0u);
+            this.resources[resourceName] = currentResources + amountToCreate;
         }
 
         public void CreateResources(string resourceName, uint amountToCreate)
@@ -203,7 +204,7 @@ namespace Assets.Scripts.Components.Core
             uint originalAmountToCreate = amountToCreate;
             uint weightToCreate = amountToCreate * item.Weight;
             uint volumeToCreate = amountToCreate * item.Volume;
-            uint currentResources = this.Resources.GetValueOrDefault(resourceName, 0u);
+            uint currentResources = this.resources.GetValueOrDefault(resourceName, 0u);
 
             if (this.reservedCapacity != null && !this.reservedCapacity.ContainsKey(resourceName))
             {
@@ -215,7 +216,7 @@ namespace Assets.Scripts.Components.Core
             if (this.RemainingWeightCapacity < weightToCreate)
             {
                 amountToCreate = (uint)(this.RemainingWeightCapacity / (float)item.Weight);
-                this.Resources[resourceName] = currentResources + amountToCreate;
+                this.resources[resourceName] = currentResources + amountToCreate;
                 throw new ResourceWeightCapacityException(
                     $"Not enough weight capacity to create {originalAmountToCreate} {resourceName}"
                 );
@@ -224,18 +225,18 @@ namespace Assets.Scripts.Components.Core
             if (this.RemainingVolumeCapacity < volumeToCreate)
             {
                 amountToCreate = (uint)(this.RemainingVolumeCapacity / (float)item.Volume);
-                this.Resources[resourceName] = currentResources + amountToCreate;
+                this.resources[resourceName] = currentResources + amountToCreate;
                 throw new ResourceVolumeCapacityException(
                     $"Not enough volume capacity to create {originalAmountToCreate} {resourceName}"
                 );
             }
 
-            this.Resources[resourceName] = currentResources + amountToCreate;
+            this.resources[resourceName] = currentResources + amountToCreate;
         }
 
         public void ConsumeResources(string resourceName, uint amountToConsume)
         {
-            uint availableResources = this.Resources.GetValueOrDefault(resourceName, 0u);
+            uint availableResources = this.resources.GetValueOrDefault(resourceName, 0u);
             if (availableResources < amountToConsume)
             {
                 throw new ResourceException(
@@ -245,7 +246,7 @@ namespace Assets.Scripts.Components.Core
 
             if (amountToConsume != 0)
             {
-                this.Resources[resourceName] -= amountToConsume;
+                this.resources[resourceName] -= amountToConsume;
             }
         }
 
@@ -266,7 +267,7 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
-            uint availableResources = this.Resources.GetValueOrDefault(resourceName ?? "", (uint)0);
+            uint availableResources = this.resources.GetValueOrDefault(resourceName ?? "", (uint)0);
 
             GameContent.Item item =
                 this.GameContent.Items.GetValueOrDefault(
@@ -277,7 +278,7 @@ namespace Assets.Scripts.Components.Core
             uint originalAmountToGive = amountToGive;
             uint weightToGive = amountToGive * item.Weight;
             uint volumeToGive = amountToGive * item.Volume;
-            uint currentResources = target.Resources.GetValueOrDefault(resourceName, (uint)0);
+            uint currentResources = target.resources.GetValueOrDefault(resourceName, (uint)0);
 
             if (availableResources == 0)
             {
@@ -299,9 +300,9 @@ namespace Assets.Scripts.Components.Core
             // we (this) can't give resources.
             if (
                 this.reservedCapacity != null
-                && this.Resources.GetValueOrDefault(resourceName, 0u)
+                && this.resources.GetValueOrDefault(resourceName, 0u)
                     < this.reservedCapacity.GetValueOrDefault(resourceName, 0u)
-                        * ResourcesComponentCore.reservedInputBufferMultiplier
+                        * this.reservedInputBufferMultiplier
             )
             {
                 throw new ResourceReservedCapacitySpaceException(
@@ -314,9 +315,9 @@ namespace Assets.Scripts.Components.Core
             // they (target) can't recieve resources.
             if (
                 target.reservedCapacity != null
-                && target.Resources.GetValueOrDefault(resourceName, 0u)
+                && target.resources.GetValueOrDefault(resourceName, 0u)
                     > target.reservedCapacity.GetValueOrDefault(resourceName, 0u)
-                        * ResourcesComponentCore.reservedOuputBufferMultiplier
+                        * this.reservedOuputBufferMultiplier
             )
             {
                 throw new ResourceReservedCapacitySpaceException(
@@ -335,8 +336,8 @@ namespace Assets.Scripts.Components.Core
             if (target.RemainingWeightCapacity < weightToGive)
             {
                 amountToGive = (uint)(target.RemainingWeightCapacity / (float)item.Weight);
-                this.Resources[resourceName] -= amountToGive;
-                target.Resources[resourceName] = currentResources + amountToGive;
+                this.resources[resourceName] -= amountToGive;
+                target.resources[resourceName] = currentResources + amountToGive;
                 throw new ResourceWeightCapacityException(
                     $"Not enough weight capacity to give {originalAmountToGive} {resourceName}"
                 );
@@ -345,15 +346,15 @@ namespace Assets.Scripts.Components.Core
             if (target.RemainingVolumeCapacity < volumeToGive)
             {
                 amountToGive = (uint)(target.RemainingVolumeCapacity / (float)item.Volume);
-                this.Resources[resourceName] -= amountToGive;
-                target.Resources[resourceName] = currentResources + amountToGive;
+                this.resources[resourceName] -= amountToGive;
+                target.resources[resourceName] = currentResources + amountToGive;
                 throw new ResourceVolumeCapacityException(
                     $"Not enough volume capacity to give {originalAmountToGive} {resourceName}"
                 );
             }
 
-            this.Resources[resourceName] -= amountToGive;
-            target.Resources[resourceName] = currentResources + amountToGive;
+            this.resources[resourceName] -= amountToGive;
+            target.resources[resourceName] = currentResources + amountToGive;
         }
 
         public void TakeResources(
@@ -405,7 +406,7 @@ namespace Assets.Scripts.Components.Tests
                 volumeCapacity: 100
             );
             Assert.Equal((uint)0, resourcesComponent.TotalResources);
-            Assert.Equal(resourcesComponent.Resources.Count, 0);
+            Assert.Equal(resourcesComponent.resources.Count, 0);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 0);
             Assert.False(resourcesComponent.HasResources);
         }
@@ -422,7 +423,7 @@ namespace Assets.Scripts.Components.Tests
             resourcesComponent.CreateResources("stone", 20);
             resourcesComponent.CreateResources("iron", 30);
             Assert.Equal((uint)60, resourcesComponent.TotalResources);
-            Assert.Equal(resourcesComponent.Resources.Count, 3);
+            Assert.Equal(resourcesComponent.resources.Count, 3);
             Assert.Equal(resourcesComponent.ResourceInfo.Count, 3);
             Assert.True(resourcesComponent.HasResources);
         }
@@ -440,7 +441,7 @@ namespace Assets.Scripts.Components.Tests
             resourcesComponent.CreateResources("iron", 30);
             resourcesComponent.ConsumeResources("wood", 5);
             Assert.Equal((uint)55, resourcesComponent.TotalResources);
-            Assert.Equal((uint)5, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)5, resourcesComponent.resources["wood"]);
         }
 
         [Fact]
@@ -466,15 +467,15 @@ namespace Assets.Scripts.Components.Tests
 
             resourcesComponent.GiveResources(targetResourcesComponent, "wood", 5);
             Assert.Equal((uint)55, resourcesComponent.TotalResources);
-            Assert.Equal((uint)5, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)5, resourcesComponent.resources["wood"]);
             Assert.Equal((uint)35, targetResourcesComponent.TotalResources);
-            Assert.Equal((uint)10, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)10, targetResourcesComponent.resources["wood"]);
 
             resourcesComponent.TakeResources(targetResourcesComponent, "wood", 5);
             Assert.Equal((uint)60, resourcesComponent.TotalResources);
-            Assert.Equal((uint)10, resourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)10, resourcesComponent.resources["wood"]);
             Assert.Equal((uint)30, targetResourcesComponent.TotalResources);
-            Assert.Equal((uint)5, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal((uint)5, targetResourcesComponent.resources["wood"]);
         }
 
         [Fact]
@@ -551,7 +552,7 @@ namespace Assets.Scripts.Components.Tests
             );
             targetResourcesComponent.CreateResources("wood", 90);
 
-            Assert.Equal(90u, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal(90u, targetResourcesComponent.resources["wood"]);
             Assert.Equal(100u, targetResourcesComponent.weightCapacity);
             Assert.Equal(10u, targetResourcesComponent.RemainingWeightCapacity);
             Assert.Equal("90%", targetResourcesComponent.UsedWeightString);
@@ -577,7 +578,7 @@ namespace Assets.Scripts.Components.Tests
             );
             targetResourcesComponent.CreateResources("wood", 90);
 
-            Assert.Equal(90u, targetResourcesComponent.Resources["wood"]);
+            Assert.Equal(90u, targetResourcesComponent.resources["wood"]);
             Assert.Equal(100u, targetResourcesComponent.volumeCapacity);
             Assert.Equal(10u, targetResourcesComponent.RemainingVolumeCapacity);
             Assert.Equal("90%", targetResourcesComponent.UsedVolumeString);
@@ -918,7 +919,7 @@ namespace Assets.Scripts.Components.Tests
                 weightCapacity: 1
             );
             resourcesComponent.ForceCreateResources("wood", 100);
-            Assert.Equal(100u, resourcesComponent.Resources["wood"]);
+            Assert.Equal(100u, resourcesComponent.resources["wood"]);
         }
     }
 }

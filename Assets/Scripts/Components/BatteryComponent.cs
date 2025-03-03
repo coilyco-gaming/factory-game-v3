@@ -6,10 +6,11 @@ namespace Assets.Scripts.Components.Core
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
 
+    [Serializable]
     public class BatteryComponentCore
     {
-        private static uint minimumStartingCapacity = 5; // The electrical capacity of empty air... or something. This is really here to prevent infinite charging and NaNs.
-        private static double minimumHealth = 0.10f;
+        public uint minimumStartingCapacity = 5; // The electrical capacity of empty air... or something. This is really here to prevent infinite charging and NaNs.
+        public double minimumHealth = 0.10f;
         private float energy = 0;
 
         public float Energy
@@ -49,7 +50,7 @@ namespace Assets.Scripts.Components.Core
                 ? Math.Round((double)(this.Capacity / (double)this.StartingCapaity), 2)
                 : 0;
 
-        public bool Healthy => this.Health > BatteryComponentCore.minimumHealth * 2;
+        public bool Healthy => this.Health > this.minimumHealth * 2;
 
         public string HealthStatus => this.Healthy ? "Healthy" : "Unhealthy";
 
@@ -65,8 +66,8 @@ namespace Assets.Scripts.Components.Core
             // prevent a battery being charged infinitely.
             this.Capacity = capacity == 0 ? (uint)startingEnergy : capacity;
             this.Capacity =
-                this.Capacity < BatteryComponentCore.minimumStartingCapacity
-                    ? BatteryComponentCore.minimumStartingCapacity
+                this.Capacity < this.minimumStartingCapacity
+                    ? this.minimumStartingCapacity
                     : this.Capacity;
             this.StartingCapaity = this.Capacity;
             this.energy = startingEnergy;
@@ -81,7 +82,7 @@ namespace Assets.Scripts.Components.Core
             );
 
             List<BatteryComponentCore> batteries = localWorldObjects
-                .Select(localWorldObject => localWorldObject.Battery)
+                .Select(localWorldObject => localWorldObject.battery)
                 .Distinct()
                 .ToList();
 
@@ -109,7 +110,7 @@ namespace Assets.Scripts.Components.Core
         private void Degrade()
         {
             // Batteries degrade over time, reducing their charging capacity.
-            if (this.Health > BatteryComponentCore.minimumHealth)
+            if (this.Health > this.minimumHealth)
             {
                 // TODO: swap capacity to a float,
                 // TODO: grade by a smaller amount (0.1?)
@@ -137,17 +138,17 @@ namespace Assets.Scripts.Components.Tests
         {
             WorldObjectCore core = new(null)
             {
-                Battery = new BatteryComponentCore(energy, capacity),
+                battery = new BatteryComponentCore(energy, capacity),
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
-            core.Guid = core.CreateGuid();
+            core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
             if (!gameController.worldObjects.ContainsKey(core.GridPosition))
             {
                 gameController.worldObjects[core.GridPosition] = new();
             }
-            gameController.worldObjects[core.GridPosition][core.Guid] = core;
-            return core.Battery;
+            gameController.worldObjects[core.GridPosition][core.guid] = core;
+            return core.battery;
         }
 
         [Fact]

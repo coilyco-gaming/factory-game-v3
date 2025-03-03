@@ -5,26 +5,31 @@ namespace Assets.Scripts.WorldObjects.Core
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
 
+    [Serializable]
     public class WorldObjectCore
     {
-        public object backref;
-        private System.Numerics.Vector2 gridPosition;
-
         // PROPERTIES //
 
         public float ZIndex => 1;
 
-        public TransferHubComponent TransferHub { get; set; }
-        public ResourcesComponentCore Resources { get; set; }
-        public BatteryComponentCore Battery { get; set; }
-        public List<InserterComponentCore> Inserters { get; set; }
-        public ProductionComponentCore Production { get; set; }
-        public PowerComponentCore Power { get; set; }
-        public StatusDataComponentCore Status { get; set; }
+        // TODO: turn all of these into fields
 
-        public string Guid { get; set; }
+        // TODO: make each component manage its state via a "data" field on the world object
 
-        public string WorldObjectType { get; set; }
+        // TODO: add odin inspector to all of the serializable classes
+        // https://odininspector.com/tutorials
+
+        public TransferHubComponent transferHub;
+        public ResourcesComponentCore resources;
+        public BatteryComponentCore battery;
+        public List<InserterComponentCore> inserters;
+        public ProductionComponentCore production;
+        public PowerComponentCore power;
+        public StatusDataComponentCore status;
+        public string guid;
+        public string worldObjectType;
+        public object backref;
+        public System.Numerics.Vector2 gridPosition;
 
         public System.Numerics.Vector2 GridPosition
         {
@@ -46,7 +51,7 @@ namespace Assets.Scripts.WorldObjects.Core
         {
             spawnQueueItem.instantiateCallback?.Invoke(gameController, this);
             this.GridPosition = spawnQueueItem.gridPosition;
-            this.Guid = this.CreateGuid();
+            this.guid = this.CreateGuid();
         }
 
         public void PostInstantiate(
@@ -80,6 +85,7 @@ namespace Assets.Scripts.WorldObjects.Unity
     using Assets.Scripts.WorldObjects.Core;
     using UnityEngine;
 
+    [Serializable]
     public class WorldObject : MonoBehaviour
     {
         public WorldObjectCore core;
@@ -90,14 +96,14 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         public string Guid
         {
-            get => this.core.Guid;
-            set => this.core.Guid = value;
+            get => this.core.guid;
+            set => this.core.guid = value;
         }
 
         public string WorldObjectType
         {
-            get => this.core.WorldObjectType;
-            set => this.core.WorldObjectType = value;
+            get => this.core.worldObjectType;
+            set => this.core.worldObjectType = value;
         }
 
         public System.Numerics.Vector2 GridPosition
@@ -132,7 +138,7 @@ namespace Assets.Scripts.WorldObjects.Unity
         )
         {
             this.core.PostInstantiate(gameController.core, spawnQueueItem);
-            this.core.Status = new() { Data = this.GetStatusData() };
+            this.core.status = new() { Data = this.GetStatusData() };
         }
 
         public void MoveTo(GameController gameController, System.Numerics.Vector2 movement)

@@ -178,7 +178,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "- Name: TransferWarehouse\r\n  Info:\r\n    Frames: 9\r\n    BuildingMaterials:
-    6\r\n    Motors: 12\r\n    Iron: 398\r\n    Copper: 131\r\n    Circuits: 9\r\n   
+    6\r\n    Motors: 12\r\n    Iron: 397\r\n    Copper: 131\r\n    Circuits: 9\r\n   
     Storage Volume: 7%\r\n    Energy: 99%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

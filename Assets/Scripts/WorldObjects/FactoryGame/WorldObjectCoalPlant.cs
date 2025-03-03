@@ -7,14 +7,15 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectCoalPlant : WorldObject
     {
-        private static uint totalVolumeCapacity = 1000;
-        private static uint totalWeightCapacity = uint.MaxValue;
-        private static uint totalBatteryCapacity = 5000;
-        private static uint insertionRate = 5;
-        private static uint powerBurnRate = 5;
-        private static uint powerGainRate = 100;
+        public uint totalVolumeCapacity = 1000;
+        public uint totalWeightCapacity = uint.MaxValue;
+        public uint totalBatteryCapacity = 5000;
+        public uint insertionRate = 5;
+        public uint powerBurnRate = 5;
+        public uint powerGainRate = 100;
 
         public override void Instantiate(
             GameController gameController,
@@ -22,48 +23,48 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.Resources = new(
+            this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: WorldObjectCoalPlant.totalWeightCapacity,
-                volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
+                weightCapacity: this.totalWeightCapacity,
+                volumeCapacity: this.totalVolumeCapacity
             );
 
-            this.core.Battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
-            this.core.Inserters = new List<InserterComponentCore>()
+            this.core.inserters = new List<InserterComponentCore>()
             {
                 new(
-                    this.core.Battery,
-                    this.core.Resources,
+                    this.core.battery,
+                    this.core.resources,
                     FactoryGameContent.Resources.Coal.ToString(),
-                    WorldObjectCoalPlant.insertionRate
+                    this.insertionRate
                 ),
                 new(
-                    this.core.Battery,
-                    this.core.Resources,
+                    this.core.battery,
+                    this.core.resources,
                     FactoryGameContent.Resources.Coal.ToString(),
-                    WorldObjectCoalPlant.insertionRate
+                    this.insertionRate
                 ),
             };
 
-            this.core.Power = new PowerComponentCore(
-                this.core.Battery,
-                this.core.Resources,
+            this.core.power = new PowerComponentCore(
+                this.core.battery,
+                this.core.resources,
                 FactoryGameContent.Resources.Coal.ToString(),
-                WorldObjectCoalPlant.powerBurnRate,
-                WorldObjectCoalPlant.powerGainRate
+                this.powerBurnRate,
+                this.powerGainRate
             );
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponentCore inserter in this.core.Inserters)
+            foreach (InserterComponentCore inserter in this.core.inserters)
             {
                 inserter.Insert(this.core, gameController.core);
             }
-            this.core.Power.GeneratePower();
-            this.core.Battery.Balance(this.core, gameController.core);
+            this.core.power.GeneratePower();
+            this.core.battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -73,10 +74,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.Resources.ResourceInfo,
+                    Info = this.core.resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
+                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
+                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;
             };
         }

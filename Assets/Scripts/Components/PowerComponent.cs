@@ -1,8 +1,10 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
     using Assets.Scripts.Core;
 
+    [Serializable]
     public class PowerComponentCore
     {
         private string burnResource = ""; // ex: coal
@@ -41,7 +43,7 @@ namespace Assets.Scripts.Components.Core
             {
                 return;
             }
-            uint resourcesToBurn = this.resources.Resources.GetValueOrDefault(
+            uint resourcesToBurn = this.resources.resources.GetValueOrDefault(
                 this.burnResource,
                 (uint)0
             );
@@ -80,20 +82,20 @@ namespace Assets.Scripts.Components.Tests
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             WorldObjectCore core = new(null)
             {
-                Battery = battery,
+                battery = battery,
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
             if (gainRate != 0)
             {
-                core.Power = new PowerComponentCore(battery, resources, gainRate: gainRate);
+                core.power = new PowerComponentCore(battery, resources, gainRate: gainRate);
             }
-            core.Guid = core.CreateGuid();
+            core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
             if (!gameController.worldObjects.ContainsKey(core.GridPosition))
             {
                 gameController.worldObjects[core.GridPosition] = new();
             }
-            gameController.worldObjects[core.GridPosition][core.Guid] = core;
+            gameController.worldObjects[core.GridPosition][core.guid] = core;
             return core;
         }
 
@@ -244,32 +246,32 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore core3 = this.WorldObject(gameController, 0, 100);
             WorldObjectCore core4 = this.WorldObject(gameController, 0, 100);
 
-            core1.Power.GeneratePower();
-            core2.Power.GeneratePower();
+            core1.power.GeneratePower();
+            core2.power.GeneratePower();
 
             // Round 1
-            core1.Battery.Balance(new WorldObjectCore(null), gameController);
-            core2.Battery.Balance(new WorldObjectCore(null), gameController);
-            core3.Battery.Balance(new WorldObjectCore(null), gameController);
-            core4.Battery.Balance(new WorldObjectCore(null), gameController);
+            core1.battery.Balance(new WorldObjectCore(null), gameController);
+            core2.battery.Balance(new WorldObjectCore(null), gameController);
+            core3.battery.Balance(new WorldObjectCore(null), gameController);
+            core4.battery.Balance(new WorldObjectCore(null), gameController);
 
             // Round 2
-            core1.Battery.Balance(new WorldObjectCore(null), gameController);
-            core2.Battery.Balance(new WorldObjectCore(null), gameController);
-            core3.Battery.Balance(new WorldObjectCore(null), gameController);
-            core4.Battery.Balance(new WorldObjectCore(null), gameController);
+            core1.battery.Balance(new WorldObjectCore(null), gameController);
+            core2.battery.Balance(new WorldObjectCore(null), gameController);
+            core3.battery.Balance(new WorldObjectCore(null), gameController);
+            core4.battery.Balance(new WorldObjectCore(null), gameController);
 
             float totalEnergy =
-                core1.Battery.Energy
-                + core2.Battery.Energy
-                + core3.Battery.Energy
-                + core4.Battery.Energy;
+                core1.battery.Energy
+                + core2.battery.Energy
+                + core3.battery.Energy
+                + core4.battery.Energy;
 
             Assert.Equal(20u, Math.Round(totalEnergy));
-            Assert.Equal(5u, Math.Round(core1.Battery.Energy));
-            Assert.Equal(5u, Math.Round(core2.Battery.Energy));
-            Assert.Equal(5u, Math.Round(core3.Battery.Energy));
-            Assert.Equal(5u, Math.Round(core4.Battery.Energy));
+            Assert.Equal(5u, Math.Round(core1.battery.Energy));
+            Assert.Equal(5u, Math.Round(core2.battery.Energy));
+            Assert.Equal(5u, Math.Round(core3.battery.Energy));
+            Assert.Equal(5u, Math.Round(core4.battery.Energy));
         }
     }
 }

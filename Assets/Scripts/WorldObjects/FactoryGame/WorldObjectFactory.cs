@@ -8,13 +8,14 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectFactory : WorldObject
     {
         public string productType;
-        private static uint totalVolumeCapacity = 1000;
-        private static uint totalWeightCapacity = uint.MaxValue;
-        private static uint totalBatteryCapacity = 1000;
-        private static uint insertionRate = 5;
+        public uint totalVolumeCapacity = 1000;
+        public uint totalWeightCapacity = uint.MaxValue;
+        public uint totalBatteryCapacity = 1000;
+        public uint insertionRate = 5;
 
         public override void Instantiate(
             GameController gameController,
@@ -23,36 +24,31 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(gameController, spawnQueueItem);
 
-            this.core.Resources = new(
+            this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: WorldObjectFactory.totalWeightCapacity,
-                volumeCapacity: WorldObjectFactory.totalVolumeCapacity
+                weightCapacity: this.totalWeightCapacity,
+                volumeCapacity: this.totalVolumeCapacity
             );
 
-            this.core.Battery = new(capacity: WorldObjectFactory.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             List<string> ingredients = new FactoryGameContent()
                 .Items[this.productType]
                 .Ingredients.Keys.ToList();
 
-            this.core.Inserters = new();
+            this.core.inserters = new();
             foreach (string ingredient in ingredients)
             {
-                this.core.Inserters.Add(
-                    new(
-                        this.core.Battery,
-                        this.core.Resources,
-                        ingredient,
-                        WorldObjectFactory.insertionRate
-                    )
+                this.core.inserters.Add(
+                    new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
                 );
             }
 
-            this.core.Production = new ProductionComponentCore(
+            this.core.production = new ProductionComponentCore(
                 new FactoryGameContent(),
-                this.core.Resources,
-                this.core.Battery,
-                this.core.Inserters,
+                this.core.resources,
+                this.core.battery,
+                this.core.inserters,
                 this.productType
             );
         }
@@ -60,12 +56,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponentCore inserter in this.core.Inserters)
+            foreach (InserterComponentCore inserter in this.core.inserters)
             {
                 inserter.Insert(this.core, gameController.core);
             }
-            this.core.Battery.Balance(this.core, gameController.core);
-            this.core.Production.Produce();
+            this.core.battery.Balance(this.core, gameController.core);
+            this.core.production.Produce();
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -75,11 +71,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.Resources.ResourceInfo,
+                    Info = this.core.resources.ResourceInfo,
                 };
                 statusData.Info["Product"] = this.productType;
-                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
+                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
+                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;
             };
         }

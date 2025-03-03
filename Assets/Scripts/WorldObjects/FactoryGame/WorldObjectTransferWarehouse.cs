@@ -6,11 +6,12 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectTransferWarehouse : WorldObject
     {
-        private static uint totalBatteryCapacity = 10000;
-        private static uint totalVolumeCapacity = 10000;
-        private static uint totalWeightCapacity = uint.MaxValue;
+        public uint totalBatteryCapacity = 10000;
+        public uint totalVolumeCapacity = 10000;
+        public uint totalWeightCapacity = uint.MaxValue;
 
         public override void Instantiate(
             GameController gameController,
@@ -18,19 +19,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.Resources = new(
+            this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: WorldObjectTransferWarehouse.totalWeightCapacity,
-                volumeCapacity: WorldObjectTransferWarehouse.totalVolumeCapacity
+                weightCapacity: this.totalWeightCapacity,
+                volumeCapacity: this.totalVolumeCapacity
             );
-            this.core.Battery = new(capacity: WorldObjectTransferWarehouse.totalBatteryCapacity);
-            this.core.TransferHub = new(gameController.core, this.core, this.core.Battery);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.transferHub = new(gameController.core, this.core, this.core.battery);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.TransferHub.Balance();
+            this.core.transferHub.Balance();
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -40,10 +41,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.Resources.ResourceInfo,
+                    Info = this.core.resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.Battery.PercentEnergyStatus;
+                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
+                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;
             };
         }

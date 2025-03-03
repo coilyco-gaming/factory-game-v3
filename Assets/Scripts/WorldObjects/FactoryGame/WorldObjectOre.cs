@@ -6,9 +6,10 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectOre : WorldObject
     {
-        public uint Amount { get; set; }
+        public uint amount;
 
         public override void Instantiate(
             GameController gameController,
@@ -16,12 +17,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.Resources = new(
+            this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: this.Amount,
-                volumeCapacity: this.Amount
+                weightCapacity: this.amount,
+                volumeCapacity: this.amount
             );
-            this.core.Resources.CreateResources(this.WorldObjectType, this.Amount);
+            this.core.resources.CreateResources(this.WorldObjectType, this.amount);
         }
 
         public override void Tick(GameController gameController)
@@ -29,7 +30,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
 
             // If the ore is empty, delete it.
-            if (!this.core.Resources.HasResources)
+            if (!this.core.resources.HasResources)
             {
                 gameController.QueueForDeletion(
                     new GameControllerCore.DeletionQueueItem(this.core, this.GridPosition)
@@ -43,7 +44,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new StatusDataComponentCore.StatusData()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.Resources.ResourceInfo,
+                    Info = this.core.resources.ResourceInfo,
                 };
         }
     }

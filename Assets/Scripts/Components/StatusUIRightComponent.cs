@@ -39,9 +39,9 @@ namespace Assets.Scripts.Components.Unity
             // Total battery energy, via Energy attribute
             worldObjects?.ForEach(worldObject =>
             {
-                if (worldObject.Battery != null)
+                if (worldObject.battery != null)
                 {
-                    data.BatteryEnergy += worldObject.Battery.Energy;
+                    data.BatteryEnergy += worldObject.battery.Energy;
                 }
             });
             data.BatteryEnergy = (float)Math.Round(data.BatteryEnergy, 0);
@@ -49,9 +49,9 @@ namespace Assets.Scripts.Components.Unity
             // Total resources of every type, via Resources attribute
             worldObjects?.ForEach(worldObject =>
             {
-                if (worldObject.Resources != null)
+                if (worldObject.resources != null)
                 {
-                    foreach (KeyValuePair<string, uint> resource in worldObject.Resources.Resources)
+                    foreach (KeyValuePair<string, uint> resource in worldObject.resources.resources)
                     {
                         if (!data.Resources.ContainsKey(resource.Key))
                         {

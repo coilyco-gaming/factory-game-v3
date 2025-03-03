@@ -167,7 +167,7 @@ namespace Assets.Scripts.Core
             List<WorldObjectCore> matchingWorldObjects = new();
             foreach (WorldObjectCore worldObject in worldObjects)
             {
-                if (types.Contains(worldObject.WorldObjectType))
+                if (types.Contains(worldObject.worldObjectType))
                 {
                     matchingWorldObjects.Add(worldObject);
                 }
@@ -344,7 +344,7 @@ namespace Assets.Scripts.Unity
             if (this.core.worldObjects.GetValueOrDefault(movementQueueItem.oldPosition) != null)
             {
                 this.core.worldObjects[movementQueueItem.oldPosition]
-                    .Remove(movementQueueItem.worldObject.Guid);
+                    .Remove(movementQueueItem.worldObject.guid);
             }
             // Initialize the new position if it doesn't exist, this happens frequently
             if (this.core.worldObjects.GetValueOrDefault(movementQueueItem.newPosition) == null)
@@ -361,7 +361,7 @@ namespace Assets.Scripts.Unity
             WorldObject worldObject = movementQueueItem.worldObject.backref as WorldObject;
 
             // --- Put the object in the new position, position indexes on `core`.
-            this.core.worldObjects[movementQueueItem.newPosition][worldObject.Guid] =
+            this.core.worldObjects[movementQueueItem.newPosition][worldObject.core.guid] =
                 worldObjectCore;
 
             // --- Tell the object about its new position, this needs to be set on `backref`.
@@ -383,7 +383,7 @@ namespace Assets.Scripts.Unity
 
             // Find the thing
             WorldObjectCore worldObject = worldObjects.GetValueOrDefault(
-                deletionQueueItem.worldObject.Guid,
+                deletionQueueItem.worldObject.guid,
                 null
             );
 
@@ -396,7 +396,7 @@ namespace Assets.Scripts.Unity
             // Delete the thing
             // Destroy(worldObject.gameObject);
             this.core.worldObjects[deletionQueueItem.position]
-                .Remove(deletionQueueItem.worldObject.Guid);
+                .Remove(deletionQueueItem.worldObject.guid);
             deletionQueueItem.worldObject = null;
         }
 

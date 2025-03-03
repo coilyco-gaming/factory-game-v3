@@ -39,9 +39,9 @@ namespace Assets.Scripts.Components.Unity
             List<StatusDataComponentCore.StatusData> statusDataList =
                 worldObjects
                     ?.Where(worldObject => worldObject != null)
-                    .Where(worldObject => worldObject.Status != null)
-                    .Where(worldObject => worldObject.Status.Data != null)
-                    .Select(worldObject => worldObject.Status.Data?.Invoke())
+                    .Where(worldObject => worldObject.status != null)
+                    .Where(worldObject => worldObject.status.Data != null)
+                    .Select(worldObject => worldObject.status.Data?.Invoke())
                     .Where(data => data != null)
                     .ToList() ?? new List<StatusDataComponentCore.StatusData>();
 

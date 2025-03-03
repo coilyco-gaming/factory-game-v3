@@ -45,11 +45,11 @@ namespace Assets.Scripts.Components.Core
 
             List<WorldObjectCore> localWorldObjects = this
                 .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
-                .Where(worldObject => worldObject.Resources != null)
+                .Where(worldObject => worldObject.resources != null)
                 .ToList();
 
             List<ProductionComponentCore> localProductionComponents = localWorldObjects
-                .Select(worldObject => worldObject.Production)
+                .Select(worldObject => worldObject.production)
                 .Where(production => production != null)
                 .ToList();
 
@@ -79,19 +79,19 @@ namespace Assets.Scripts.Components.Core
                     .Where(worldObject =>
                         (
                             worldObject != null
-                            && worldObject.Production != null
-                            && worldObject.Production.ProductItem != null
-                            && worldObject.Production.ProductItem.Ingredients != null
-                            && worldObject.Production.ProductItem.Ingredients.Count != 0
-                            && worldObject.Production.ProductItem.Ingredients.ContainsKey(
+                            && worldObject.production != null
+                            && worldObject.production.ProductItem != null
+                            && worldObject.production.ProductItem.Ingredients != null
+                            && worldObject.production.ProductItem.Ingredients.Count != 0
+                            && worldObject.production.ProductItem.Ingredients.ContainsKey(
                                 resource.Key
                             )
                         )
                         || (
                             worldObject != null
-                            && worldObject.Production != null
-                            && worldObject.Production.ProductItem != null
-                            && worldObject.Production.ProductItem.Name == resource.Key
+                            && worldObject.production != null
+                            && worldObject.production.ProductItem != null
+                            && worldObject.production.ProductItem.Name == resource.Key
                         )
                     )
                     .ToList();
@@ -105,10 +105,10 @@ namespace Assets.Scripts.Components.Core
                 uint totalAmount = 0;
                 foreach (WorldObjectCore worldObject in resourceScopedWorldObjects)
                 {
-                    if (worldObject.Resources.Resources.ContainsKey(resource.Key))
+                    if (worldObject.resources.resources.ContainsKey(resource.Key))
                     {
-                        totalAmount += worldObject.Resources.Resources[resource.Key];
-                        worldObject.Resources.Resources[resource.Key] = 0;
+                        totalAmount += worldObject.resources.resources[resource.Key];
+                        worldObject.resources.resources[resource.Key] = 0;
                     }
                 }
 
@@ -118,14 +118,14 @@ namespace Assets.Scripts.Components.Core
                 );
                 foreach (WorldObjectCore worldObject in resourceScopedWorldObjects)
                 {
-                    worldObject.Resources.Resources[resource.Key] = amountPerContainer;
+                    worldObject.resources.resources[resource.Key] = amountPerContainer;
                 }
 
                 // If there is a remainder, distribute it evenly.
                 uint remainder = totalAmount % (uint)resourceScopedWorldObjects.Count;
                 for (int i = 0; i < remainder; i++)
                 {
-                    resourceScopedWorldObjects[i].Resources.Resources[resource.Key] += 1;
+                    resourceScopedWorldObjects[i].resources.resources[resource.Key] += 1;
                 }
             }
         }
@@ -207,20 +207,20 @@ namespace Assets.Scripts.Components.Tests
             );
             WorldObjectCore core = new(null)
             {
-                Battery = battery,
-                Resources = resources,
+                battery = battery,
+                resources = resources,
                 GridPosition = gridPosition,
-                Production = production,
+                production = production,
             };
             TransferHubComponent transfer = new(gameController, core, battery);
-            core.TransferHub = transfer;
-            core.Guid = core.CreateGuid();
+            core.transferHub = transfer;
+            core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
             if (!gameController.worldObjects.ContainsKey(core.GridPosition))
             {
                 gameController.worldObjects[core.GridPosition] = new();
             }
-            gameController.worldObjects[core.GridPosition][core.Guid] = core;
+            gameController.worldObjects[core.GridPosition][core.guid] = core;
             return core;
         }
 
@@ -231,13 +231,13 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
 
-            core1.Resources.CreateResources("wood", 100);
-            core2.Resources.CreateResources("wood", 100);
+            core1.resources.CreateResources("wood", 100);
+            core2.resources.CreateResources("wood", 100);
 
-            core1.TransferHub.Balance();
+            core1.transferHub.Balance();
 
-            Assert.Equal(100u, core1.Resources.Resources["wood"]);
-            Assert.Equal(100u, core2.Resources.Resources["wood"]);
+            Assert.Equal(100u, core1.resources.resources["wood"]);
+            Assert.Equal(100u, core2.resources.resources["wood"]);
         }
 
         [Fact]
@@ -247,13 +247,13 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
 
-            core1.Resources.CreateResources("wood", 100);
-            core2.Resources.CreateResources("wood", 0);
+            core1.resources.CreateResources("wood", 100);
+            core2.resources.CreateResources("wood", 0);
 
-            core1.TransferHub.Balance();
+            core1.transferHub.Balance();
 
-            Assert.Equal(50u, core1.Resources.Resources["wood"]);
-            Assert.Equal(50u, core2.Resources.Resources["wood"]);
+            Assert.Equal(50u, core1.resources.resources["wood"]);
+            Assert.Equal(50u, core2.resources.resources["wood"]);
         }
 
         [Fact]
@@ -263,17 +263,17 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore core1 = this.WorldObject(gameController);
             WorldObjectCore core2 = this.WorldObject(gameController);
 
-            core1.Resources.CreateResources("wood", 100);
-            core1.Resources.CreateResources("nails", 0);
-            core2.Resources.CreateResources("wood", 0);
-            core2.Resources.CreateResources("nails", 100);
+            core1.resources.CreateResources("wood", 100);
+            core1.resources.CreateResources("nails", 0);
+            core2.resources.CreateResources("wood", 0);
+            core2.resources.CreateResources("nails", 100);
 
-            core1.TransferHub.Balance();
+            core1.transferHub.Balance();
 
-            Assert.Equal(50u, core1.Resources.Resources["wood"]);
-            Assert.Equal(50u, core1.Resources.Resources["nails"]);
-            Assert.Equal(50u, core2.Resources.Resources["wood"]);
-            Assert.Equal(50u, core2.Resources.Resources["nails"]);
+            Assert.Equal(50u, core1.resources.resources["wood"]);
+            Assert.Equal(50u, core1.resources.resources["nails"]);
+            Assert.Equal(50u, core2.resources.resources["wood"]);
+            Assert.Equal(50u, core2.resources.resources["nails"]);
         }
 
         [Fact]
@@ -284,24 +284,24 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore core2 = this.WorldObject(gameController);
             WorldObjectCore core3 = this.WorldObject(gameController);
 
-            core1.Resources.CreateResources("wood", 100);
-            core2.Resources.CreateResources("wood", 0);
-            core3.Resources.CreateResources("wood", 0);
+            core1.resources.CreateResources("wood", 100);
+            core2.resources.CreateResources("wood", 0);
+            core3.resources.CreateResources("wood", 0);
 
-            core1.TransferHub.Balance();
+            core1.transferHub.Balance();
 
             Assert.Equal(
                 new List<float>
                 {
-                    core1.Resources.Resources["wood"],
-                    core2.Resources.Resources["wood"],
-                    core3.Resources.Resources["wood"],
+                    core1.resources.resources["wood"],
+                    core2.resources.resources["wood"],
+                    core3.resources.resources["wood"],
                 }.Sum(),
                 100u
             );
-            Assert.Equal(34u, core1.Resources.Resources["wood"]);
-            Assert.Equal(33u, core2.Resources.Resources["wood"]);
-            Assert.Equal(33u, core3.Resources.Resources["wood"]);
+            Assert.Equal(34u, core1.resources.resources["wood"]);
+            Assert.Equal(33u, core2.resources.resources["wood"]);
+            Assert.Equal(33u, core3.resources.resources["wood"]);
         }
     }
 }

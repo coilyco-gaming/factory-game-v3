@@ -4,11 +4,13 @@
 
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
 
+    [Serializable]
     public class InserterComponentCore
     {
         public string resourceType = "";
@@ -43,11 +45,11 @@ namespace Assets.Scripts.Components.Core
                 worldObject.GridPosition
             );
             List<ResourcesComponentCore> resources = localWorldObjects
-                .Select(localWorldObject => localWorldObject.Resources)
+                .Select(localWorldObject => localWorldObject.resources)
                 .Where(theseResources => theseResources != this.resources)
                 .Where(theseResources => theseResources != null)
                 .Where(theseResources =>
-                    theseResources.Resources.GetValueOrDefault(this.resourceType, 0u) > 0
+                    theseResources.resources.GetValueOrDefault(this.resourceType, 0u) > 0
                 )
                 .Distinct()
                 .ToList();
@@ -96,17 +98,17 @@ namespace Assets.Scripts.Components.Tests
         {
             WorldObjectCore core = new(null)
             {
-                Inserters = inserters,
-                Resources = resources,
+                inserters = inserters,
+                resources = resources,
                 GridPosition = gridPosition, // TODO: why can't these all be at the same grid position?
             };
-            core.Guid = core.CreateGuid();
+            core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
             if (!gameController.worldObjects.ContainsKey(core.GridPosition))
             {
                 gameController.worldObjects[core.GridPosition] = new();
             }
-            gameController.worldObjects[core.GridPosition][core.Guid] = core;
+            gameController.worldObjects[core.GridPosition][core.guid] = core;
             return core;
         }
 
@@ -144,12 +146,12 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject0.inserters[0].Insert(worldObject0, gameController);
 
             // assertions
-            Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
+            Assert.Equal(1u, worldObject0.resources.resources["wood"]);
             Assert.Equal(100u, battery.Energy);
-            Assert.Equal(0u, worldObject1.Resources.Resources.GetValueOrDefault("wood", 0u));
+            Assert.Equal(0u, worldObject1.resources.resources.GetValueOrDefault("wood", 0u));
         }
 
         [Fact]
@@ -188,11 +190,11 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject0.inserters[0].Insert(worldObject0, gameController);
 
             // assertions
-            Assert.Equal(2u, worldObject0.Resources.Resources["wood"]);
-            Assert.Equal(0u, worldObject1.Resources.Resources.GetValueOrDefault("wood", 0u));
+            Assert.Equal(2u, worldObject0.resources.resources["wood"]);
+            Assert.Equal(0u, worldObject1.resources.resources.GetValueOrDefault("wood", 0u));
         }
 
         [Fact]
@@ -231,11 +233,11 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject0.inserters[0].Insert(worldObject0, gameController);
 
             // assertions
-            Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
-            Assert.Equal(1u, worldObject1.Resources.Resources["wood"]);
+            Assert.Equal(1u, worldObject0.resources.resources["wood"]);
+            Assert.Equal(1u, worldObject1.resources.resources["wood"]);
             Assert.Equal(100u, battery.Energy);
         }
 
@@ -275,11 +277,11 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject0.inserters[0].Insert(worldObject0, gameController);
 
             // assertions
-            Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
-            Assert.Equal(1u, worldObject1.Resources.Resources["wood"]);
+            Assert.Equal(1u, worldObject0.resources.resources["wood"]);
+            Assert.Equal(1u, worldObject1.resources.resources["wood"]);
         }
 
         [Fact]
@@ -328,12 +330,12 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.Inserters[0].Insert(worldObject0, gameController);
+            worldObject0.inserters[0].Insert(worldObject0, gameController);
 
             // assertions
-            Assert.Equal(3u, worldObject0.Resources.Resources["wood"]);
-            Assert.Equal(0u, worldObject1.Resources.Resources.GetValueOrDefault("wood", 0u));
-            Assert.Equal(0u, worldObject2.Resources.Resources.GetValueOrDefault("wood", 0u));
+            Assert.Equal(3u, worldObject0.resources.resources["wood"]);
+            Assert.Equal(0u, worldObject1.resources.resources.GetValueOrDefault("wood", 0u));
+            Assert.Equal(0u, worldObject2.resources.resources.GetValueOrDefault("wood", 0u));
         }
     }
 }

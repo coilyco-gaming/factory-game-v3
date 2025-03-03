@@ -6,10 +6,11 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectRadar : WorldObject
     {
-        private static uint totalBatteryCapacity = 1000;
-        public string Target { get; set; }
+        public uint totalBatteryCapacity = 1000;
+        public string target;
 
         public override void Instantiate(
             GameController gameController,
@@ -17,13 +18,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.Battery = new(capacity: WorldObjectRadar.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Battery.Balance(this.core, gameController.core);
+            this.core.battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -35,8 +36,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     Name = this.WorldObjectType,
                     Info = new System.Collections.Generic.Dictionary<string, string>
                     {
-                        { "Target", this.Target },
-                        { "Energy", this.core.Battery.PercentEnergyStatus.ToString() },
+                        { "Target", this.target },
+                        { "Energy", this.core.battery.PercentEnergyStatus.ToString() },
                     },
                 };
                 return statusData;

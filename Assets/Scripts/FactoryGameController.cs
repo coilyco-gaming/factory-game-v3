@@ -352,7 +352,7 @@ namespace Assets.Scripts.Unity
             {
                 WorldObjectCoalPlant worldObjectCoalPlant =
                     worldObject.backref as WorldObjectCoalPlant;
-                worldObjectCoalPlant.core.Resources.CreateResources(
+                worldObjectCoalPlant.core.resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
                     100 // jumpstart the inserters
                 );
@@ -364,7 +364,7 @@ namespace Assets.Scripts.Unity
             return (gameController, worldObject) =>
             {
                 WorldObjectRadar worldObjectRadar = worldObject.backref as WorldObjectRadar;
-                worldObjectRadar.Target = target;
+                worldObjectRadar.target = target;
             };
         }
 
@@ -376,7 +376,7 @@ namespace Assets.Scripts.Unity
                 int oreQuantityChange = (int)(randomPercent * this.OreQuantityRange);
                 uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
                 WorldObjectOre worldObjectOre = worldObject.backref as WorldObjectOre;
-                worldObjectOre.Amount = oreQuantity;
+                worldObjectOre.amount = oreQuantity;
             };
         }
 
@@ -386,7 +386,7 @@ namespace Assets.Scripts.Unity
             {
                 WorldObjectStorageWarehouse worldObjectWarehouse =
                     worldObject.backref as WorldObjectStorageWarehouse;
-                worldObjectWarehouse.core.Resources.CreateResources(
+                worldObjectWarehouse.core.resources.CreateResources(
                     FactoryGameContent.Resources.Coal.ToString(),
                     5000
                 );
@@ -399,15 +399,15 @@ namespace Assets.Scripts.Unity
             {
                 WorldObjectStorageWarehouse worldObjectWarehouse =
                     worldObject.backref as WorldObjectStorageWarehouse;
-                worldObjectWarehouse.core.Resources.CreateResources(
+                worldObjectWarehouse.core.resources.CreateResources(
                     FactoryGameContent.Resources.Iron.ToString(),
                     2000
                 );
-                worldObjectWarehouse.core.Resources.CreateResources(
+                worldObjectWarehouse.core.resources.CreateResources(
                     FactoryGameContent.Resources.Stone.ToString(),
                     1000
                 );
-                worldObjectWarehouse.core.Resources.CreateResources(
+                worldObjectWarehouse.core.resources.CreateResources(
                     FactoryGameContent.Resources.Copper.ToString(),
                     500
                 );
@@ -456,7 +456,7 @@ namespace Assets.Scripts.Unity
                             FactoryGameContent.Resources.Iron.ToString(),
                             FactoryGameContent.Resources.Copper.ToString(),
                             FactoryGameContent.Resources.Coal.ToString(),
-                        }.Contains(worldObject.WorldObjectType)
+                        }.Contains(worldObject.worldObjectType)
                     )
                     .ToList() ?? new List<WorldObjectCore>();
 

@@ -6,10 +6,11 @@ using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
+    [Serializable]
     public class WorldObjectStorageWarehouse : WorldObject
     {
-        private static uint totalVolumeCapacity = 10000;
-        private static uint totalWeightCapacity = uint.MaxValue;
+        public uint totalVolumeCapacity = 10000;
+        public uint totalWeightCapacity = uint.MaxValue;
 
         public override void Instantiate(
             GameController gameController,
@@ -17,10 +18,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         )
         {
             base.Instantiate(gameController, spawnQueueItem);
-            this.core.Resources = new(
+            this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: WorldObjectStorageWarehouse.totalWeightCapacity,
-                volumeCapacity: WorldObjectStorageWarehouse.totalVolumeCapacity
+                weightCapacity: this.totalWeightCapacity,
+                volumeCapacity: this.totalVolumeCapacity
             );
         }
 
@@ -31,9 +32,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.Resources.ResourceInfo,
+                    Info = this.core.resources.ResourceInfo,
                 };
-                statusData.Info["Storage Volume"] = this.core.Resources.UsedVolumeString;
+                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
                 return statusData;
             };
         }

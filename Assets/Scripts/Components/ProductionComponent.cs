@@ -5,6 +5,7 @@ namespace Assets.Scripts.Components.Core
     using System.Linq;
     using Assets.Scripts.Core;
 
+    [Serializable]
     public class ProductionComponentCore
     {
         // TODO: Make this a "stack size" variable that varies by item
@@ -29,7 +30,7 @@ namespace Assets.Scripts.Components.Core
         public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
 
         public bool OutputStacksFullfilled =>
-            this.resources.Resources.GetValueOrDefault(this.Product, 0u)
+            this.resources.resources.GetValueOrDefault(this.Product, 0u)
             >= this.ProductItem.StackSize;
         public bool OutputWeightFull =>
             this.ProductItem.Weight > this.resources.RemainingWeightCapacity;
@@ -131,8 +132,8 @@ namespace Assets.Scripts.Components.Core
             foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
             {
                 if (
-                    !this.resources.Resources.ContainsKey(ingredient.Key)
-                    || this.resources.Resources[ingredient.Key] < ingredient.Value
+                    !this.resources.resources.ContainsKey(ingredient.Key)
+                    || this.resources.resources[ingredient.Key] < ingredient.Value
                 )
                 {
                     canCraft = false;
@@ -305,8 +306,8 @@ namespace Assets.Scripts.Components.Tests
                 new(battery, resources, "wood", 1),
             };
 
-            Assert.Equal(5u, resources.Resources["wood"]);
-            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(5u, resources.resources["wood"]);
+            Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
 
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
@@ -317,8 +318,8 @@ namespace Assets.Scripts.Components.Tests
             );
             production.Produce();
 
-            Assert.Equal(0u, resources.Resources["wood"]);
-            Assert.Equal(1u, resources.Resources["planks"]);
+            Assert.Equal(0u, resources.resources["wood"]);
+            Assert.Equal(1u, resources.resources["planks"]);
         }
 
         [Fact]
@@ -334,8 +335,8 @@ namespace Assets.Scripts.Components.Tests
             BatteryComponentCore battery = new(100, 100);
             List<InserterComponentCore> inserters = new() { };
 
-            Assert.Equal(5u, resources.Resources["wood"]);
-            Assert.Equal(0u, resources.Resources.GetValueOrDefault("nails", 0u));
+            Assert.Equal(5u, resources.resources["wood"]);
+            Assert.Equal(0u, resources.resources.GetValueOrDefault("nails", 0u));
 
             ProductionComponentCore production = new(
                 new TestProductionGameContent(),
@@ -346,8 +347,8 @@ namespace Assets.Scripts.Components.Tests
             );
             production.Produce();
 
-            Assert.Equal(5u, resources.Resources["wood"]);
-            Assert.Equal(1u, resources.Resources["nails"]);
+            Assert.Equal(5u, resources.resources["wood"]);
+            Assert.Equal(1u, resources.resources["nails"]);
         }
 
         [Fact]
@@ -374,8 +375,8 @@ namespace Assets.Scripts.Components.Tests
                 "house"
             );
             production.Produce();
-            Assert.Equal(0u, resources.Resources.GetValueOrDefault("house", 0u));
-            Assert.Equal(4u, resources.Resources["wall"]);
+            Assert.Equal(0u, resources.resources.GetValueOrDefault("house", 0u));
+            Assert.Equal(4u, resources.resources["wall"]);
         }
 
         [Fact]
@@ -405,8 +406,8 @@ namespace Assets.Scripts.Components.Tests
             production.Produce();
             production.Produce();
 
-            Assert.Equal(5u, resources.Resources["wood"]);
-            Assert.Equal(3u, resources.Resources["planks"]);
+            Assert.Equal(5u, resources.resources["wood"]);
+            Assert.Equal(3u, resources.resources["planks"]);
         }
 
         [Fact]
@@ -435,22 +436,22 @@ namespace Assets.Scripts.Components.Tests
 
             production.Produce();
             Assert.Equal(90u, battery.Energy);
-            Assert.Equal(0u, resources.Resources["wood"]);
-            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(0u, resources.resources["wood"]);
+            Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(1u, production.currentCraftProgress);
             Assert.Equal("33%", production.PrecentProgressStatus);
 
             production.Produce();
             Assert.Equal(80u, battery.Energy);
-            Assert.Equal(0u, resources.Resources["wood"]);
-            Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(0u, resources.resources["wood"]);
+            Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(2u, production.currentCraftProgress);
             Assert.Equal("67%", production.PrecentProgressStatus);
 
             production.Produce();
             Assert.Equal(70u, battery.Energy);
-            Assert.Equal(0u, resources.Resources["wood"]);
-            Assert.Equal(1u, resources.Resources["planks"]);
+            Assert.Equal(0u, resources.resources["wood"]);
+            Assert.Equal(1u, resources.resources["planks"]);
         }
     }
 }
