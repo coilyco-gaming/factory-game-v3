@@ -40,7 +40,6 @@ namespace Assets.Scripts.Components.Core
         private GameContent gameContent;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
-        private List<InserterComponentCore> inserters;
 
         public class ProductionQueueRequests
         {
@@ -91,7 +90,6 @@ namespace Assets.Scripts.Components.Core
             {
                 inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
             }
-            this.inserters = inserters;
         }
 
         public void Produce()
@@ -99,13 +97,21 @@ namespace Assets.Scripts.Components.Core
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)
             {
+                // Perform no crafting if the battery is empty.
+                try
+                {
+                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                }
+                catch (BatteryComponentCore.BatteryCapacityException)
+                {
+                    return;
+                }
                 this.currentCraftProgress += 1;
                 if (this.currentCraftProgress >= this.ProductItem.CraftTime)
                 {
                     this.resources.ForceCreateResources(this.ProductItem.Name, 1);
                     this.currentCraftProgress = 0;
                 }
-                this.battery.Energy -= ProductionComponentCore.PowerUsage;
             }
 
             // If we have already produced the desired quantity, return.
@@ -137,6 +143,16 @@ namespace Assets.Scripts.Components.Core
             // If we can craft the product, do so.
             if (canCraft)
             {
+                // Perform no crafting if the battery is empty.
+                try
+                {
+                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                }
+                catch (BatteryComponentCore.BatteryCapacityException)
+                {
+                    return;
+                }
+
                 foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
                 {
                     this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
@@ -149,7 +165,6 @@ namespace Assets.Scripts.Components.Core
                 {
                     this.currentCraftProgress += 1;
                 }
-                this.battery.Energy -= ProductionComponentCore.PowerUsage;
             }
         }
     }
@@ -420,21 +435,21 @@ namespace Assets.Scripts.Components.Tests
             );
 
             production.Produce();
-            Assert.Equal(89u, battery.Energy);
+            Assert.Equal(90u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(1u, production.currentCraftProgress);
             Assert.Equal("33%", production.PrecentProgressStatus);
 
             production.Produce();
-            Assert.Equal(79u, battery.Energy);
+            Assert.Equal(80u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(0u, resources.Resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(2u, production.currentCraftProgress);
             Assert.Equal("67%", production.PrecentProgressStatus);
 
             production.Produce();
-            Assert.Equal(69u, battery.Energy);
+            Assert.Equal(70u, battery.Energy);
             Assert.Equal(0u, resources.Resources["wood"]);
             Assert.Equal(1u, resources.Resources["planks"]);
         }

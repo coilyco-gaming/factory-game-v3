@@ -63,16 +63,22 @@ namespace Assets.Scripts.Components.Core
                 {
                     try
                     {
+                        this.battery.Energy -= 1;
                         this.resources.TakeResources(
                             resource,
                             this.resourceType,
                             this.insertionRate
                         );
-                        this.battery.Energy -= 1;
                     }
                     catch (ResourcesComponentCore.ResourceException)
                     {
+                        // Prevent infinite drain if no resources are moving.
+                        this.battery.Energy += 1;
                         continue;
+                    }
+                    catch (BatteryComponentCore.BatteryCapacityException)
+                    {
+                        return;
                     }
                 }
             }
@@ -151,7 +157,7 @@ namespace Assets.Scripts.Components.Tests
 
             // assertions
             Assert.Equal(1u, worldObject0.Resources.Resources["wood"]);
-            Assert.Equal(99u, battery.Energy);
+            Assert.Equal(100u, battery.Energy);
             Assert.Equal(0u, worldObject1.Resources.Resources.GetValueOrDefault("wood", 0u));
         }
 

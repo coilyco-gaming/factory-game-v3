@@ -47,8 +47,13 @@ namespace Assets.Scripts.Components.Core
             );
             if (resourcesToBurn >= this.burnRate)
             {
-                this.resources.ConsumeResources(this.burnResource, this.burnRate);
-                this.battery.Energy += this.gainRate;
+                // Consume no resources if the battery is full
+                try
+                {
+                    this.battery.Energy += this.gainRate;
+                    this.resources.ConsumeResources(this.burnResource, this.burnRate);
+                }
+                catch (BatteryComponentCore.BatteryCapacityException) { }
             }
         }
     }
@@ -180,7 +185,7 @@ namespace Assets.Scripts.Components.Tests
                 200
             );
             power.GeneratePower();
-            Assert.Equal(98, battery.Energy);
+            Assert.Equal(99, battery.Energy);
         }
 
         [Fact]
@@ -191,7 +196,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("coal", 1);
             PowerComponentCore power = new(battery, resources, "coal", 1, 200);
             power.GeneratePower();
-            Assert.Equal(99, battery.Energy);
+            Assert.Equal(100, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
 
@@ -225,8 +230,8 @@ namespace Assets.Scripts.Components.Tests
             );
             power.GeneratePower();
             Assert.Equal(95, battery.Energy);
-            Assert.Equal(Math.Round(0.97, 2), Math.Round(battery.PercentEnergy, 2));
-            Assert.Equal("97%", battery.PercentEnergyStatus);
+            Assert.Equal(Math.Round(0.96, 2), Math.Round(battery.PercentEnergy, 2));
+            Assert.Equal("96%", battery.PercentEnergyStatus);
         }
 
         [Fact]

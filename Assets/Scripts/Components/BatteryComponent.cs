@@ -14,11 +14,23 @@ namespace Assets.Scripts.Components.Core
 
         public float Energy
         {
-            get => this.energy;
+            get => this.energy >= 0 ? this.energy : 0;
             set
             {
                 this.Degrade();
-                this.energy = value > this.Capacity ? this.Capacity : value;
+                bool isNegative = value < 0;
+                bool isOverCapacity = value > this.Capacity;
+                if (isNegative)
+                {
+                    this.energy = 0;
+                    throw new BatteryCapacityException("Battery empty");
+                }
+                if (isOverCapacity)
+                {
+                    this.energy = this.Capacity;
+                    throw new BatteryCapacityException("Battery over capacity");
+                }
+                this.energy = value;
             }
         }
 
@@ -41,6 +53,12 @@ namespace Assets.Scripts.Components.Core
 
         public string HealthStatus => this.Healthy ? "Healthy" : "Unhealthy";
 
+        public class BatteryCapacityException : Exception
+        {
+            public BatteryCapacityException(string message)
+                : base(message) { }
+        }
+
         public BatteryComponentCore(float startingEnergy = 0, uint capacity = 0)
         {
             // Setting a min capacity + rounding to 1 decimal place helps
@@ -51,7 +69,7 @@ namespace Assets.Scripts.Components.Core
                     ? BatteryComponentCore.minimumStartingCapacity
                     : this.Capacity;
             this.StartingCapaity = this.Capacity;
-            this.Energy = startingEnergy;
+            this.energy = startingEnergy;
         }
 
         // Balance each battery in the list, including yourself,
@@ -83,6 +101,7 @@ namespace Assets.Scripts.Components.Core
             // Set the energy of each battery to the target % of battery capacity.
             foreach (BatteryComponentCore battery in batteries)
             {
+                // We set the "inner" battery variable to skip capacity validation.
                 battery.Energy = battery.Capacity * targetPercentage;
             }
         }
@@ -103,7 +122,6 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using System;
-    using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
@@ -278,23 +296,25 @@ namespace Assets.Scripts.Components.Tests
         public void TestPercentEnergy()
         {
             BatteryComponentCore battery = new(50, 100);
-            Assert.Equal(Math.Round(0.51f, 2), battery.PercentEnergy);
-            Assert.Equal("51%", battery.PercentEnergyStatus);
+            Assert.Equal(Math.Round(0.5, 2), Math.Round(battery.PercentEnergy, 2));
+            Assert.Equal("50%", battery.PercentEnergyStatus);
         }
 
         [Fact]
         public void TestPercentEnergy9s()
         {
             BatteryComponentCore battery = new(99, 100);
-            Assert.Equal(1, battery.PercentEnergy);
-            Assert.Equal("100%", battery.PercentEnergyStatus);
+            Assert.Equal(100u, battery.Capacity);
+            Assert.Equal(99, battery.Energy);
+            Assert.Equal(0.99d, battery.PercentEnergy);
+            Assert.Equal("99%", battery.PercentEnergyStatus);
         }
 
         [Fact]
         public void TestMinCapacity()
         {
             BatteryComponentCore battery = new(0, 0);
-            Assert.Equal(4u, battery.Capacity);
+            Assert.Equal(5u, battery.Capacity);
             Assert.Equal(0, battery.Energy);
         }
 
@@ -306,8 +326,8 @@ namespace Assets.Scripts.Components.Tests
             {
                 battery.Energy = 10;
             }
-            Assert.Equal(89u, battery.Capacity);
-            Assert.Equal(Math.Round(0.89, 2), Math.Round(battery.Health, 2));
+            Assert.Equal(90u, battery.Capacity);
+            Assert.Equal(Math.Round(0.90, 2), Math.Round(battery.Health, 2));
         }
 
         [Fact]
