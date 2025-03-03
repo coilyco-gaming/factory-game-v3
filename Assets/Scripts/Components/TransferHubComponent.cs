@@ -1,15 +1,13 @@
 // A type of component that tries to balance all available
 // resources between all connected entities.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using Assets.Scripts.Core;
-using Assets.Scripts.WorldObjects.Core;
-
 namespace Assets.Scripts.Components.Core
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Core;
+
     public class TransferHubComponent
     {
         private GameControllerCore gameController;
@@ -78,82 +76,31 @@ namespace Assets.Scripts.Components.Core
             List<WorldObjectCore> _worldObjects
         )
         {
-            // Only include in this loop the local world objects whose factory
-            // has this resource as an product or ingredient.
-            List<WorldObjectCore> worldObjects = _worldObjects
-                .Where(worldObject =>
-                    (
-                        worldObject != null
-                        && worldObject.production != null
-                        && worldObject.production.ProductItem != null
-                        && worldObject.production.ProductItem.Ingredients != null
-                        && worldObject.production.ProductItem.Ingredients.Count != 0
-                        && worldObject.production.ProductItem.Ingredients.ContainsKey(resource.Key)
-                    )
-                    || (
-                        worldObject != null
-                        && worldObject.production != null
-                        && worldObject.production.ProductItem != null
-                        && worldObject.production.ProductItem.Name == resource.Key
-                    )
-                )
+            // Local world objects whose factories produce this resource.
+            List<WorldObjectCore> producers = this
+                .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
+                .Where(worldObject => worldObject?.production?.Product == resource.Key)
+                .Distinct()
                 .ToList();
 
-            // // Also include yourself, but only if that doesn't duplicate.
-            // worldObjects.Add(this.core);d
-            // worldObjects = worldObjects.Distinct().ToList();
+            // Local world objects whose factories consume this resource.
+            List<WorldObjectCore> consumers = this
+                .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
+                .Where(worldObject =>
+                    worldObject?.production?.ProductItem?.Ingredients != null
+                    && new List<string>(
+                        worldObject?.production?.ProductItem?.Ingredients.Keys
+                    ).Contains(resource.Key)
+                )
+                .Distinct()
+                .ToList();
 
-            // Cache a map of containers to their resource count, in addition to the total count.
-            // This is used to determine the size of the potential resource distribution.
-            Dictionary<WorldObjectCore, uint> resourceCounts = new();
-            uint totalAmount = 0;
-            foreach (WorldObjectCore worldObject in worldObjects)
-            {
-                if (worldObject.resources.resources.ContainsKey(resource.Key))
-                {
-                    resourceCounts[worldObject] = worldObject.resources.resources[resource.Key];
-                    totalAmount += worldObject.resources.resources[resource.Key];
-                }
-            }
-
-            // Determine how much to distribute per container.
-            uint amountPerContainer = (uint)(totalAmount / (float)worldObjects.Count);
-
-            // Determine how much the current resource quantities
-            // deviate from the average. This is used to determine
-            // Whether to transfer resources or not.
-            float averageDeviation =
-                worldObjects
-                    .Where(worldObject => resourceCounts.ContainsKey(worldObject))
-                    .Select(worldObject =>
-                        Math.Abs((int)resourceCounts[worldObject] - (int)amountPerContainer)
-                    )
-                    .ToList()
-                    .Sum() / (float)worldObjects.Count;
-
-            // If the average deviation is less than 1, then we are balanced enough.
-            // This acts as a threshold to prevent infinite back and forth transfers.
-            if (averageDeviation < 1)
+            // Check some exit conditions.
+            if (producers.Count == 0 || consumers.Count == 0 || this.battery.Energy < 1)
             {
                 return;
             }
 
-            // If we are transferring less than 1/10th of a stack of the resource,
-            // then we are not transferring enough to make a difference.
-            if (amountPerContainer < this.gameContent.Items[resource.Key].StackSize / 10f)
-            {
-                return;
-            }
-
-            // If the deviation is less than 1/10th of a stack of the resource,
-            // then we are balanced enough.
-            if (averageDeviation < this.gameContent.Items[resource.Key].StackSize / 10f)
-            {
-                return;
-            }
-
-            // If we have reached this point, then we have decided that we
-            // need to balance the resources. So it's time to consume energy.
             try
             {
                 this.battery.Energy -= 1;
@@ -163,27 +110,36 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
-            // Consume all the resources in every surrounding container.
-            // While doing so, aggregate the total amount of resources consumed.
-            foreach (WorldObjectCore worldObject in worldObjects)
+            // For every producer, try and consume a stack of the resource.
+            uint resourcesToDistribute = 0;
+            foreach (WorldObjectCore producer in producers)
             {
-                if (worldObject.resources.resources.ContainsKey(resource.Key))
+                try
                 {
-                    worldObject.resources.resources[resource.Key] = 0;
+                    producer.resources.ConsumeResources(
+                        resource.Key,
+                        this.gameContent.Items[resource.Key].StackSize
+                    );
+                    resourcesToDistribute += this.gameContent.Items[resource.Key].StackSize;
                 }
+                catch (ResourcesComponentCore.ResourceException) { }
             }
 
-            // Then distribute the resources evenly.
-            foreach (WorldObjectCore worldObject in worldObjects)
+            // Determine how many resources each consumer should get.
+            uint resourcesPerConsumer = 0;
+            if (consumers.Count > 0)
             {
-                worldObject.resources.resources[resource.Key] = amountPerContainer;
+                resourcesPerConsumer = (uint)(resourcesToDistribute / (float)consumers.Count);
             }
 
-            // If there is a remainder, distribute it evenly.
-            uint remainder = totalAmount % (uint)worldObjects.Count;
-            for (int i = 0; i < remainder; i++)
+            // For every consumer, force create a batch of the resource.
+            foreach (WorldObjectCore consumer in consumers)
             {
-                worldObjects[i].resources.resources[resource.Key] += 1;
+                try
+                {
+                    consumer.resources.ForceCreateResources(resource.Key, resourcesPerConsumer);
+                }
+                catch (ResourcesComponentCore.ResourceException) { }
             }
         }
     }
@@ -192,6 +148,7 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using System.Collections.Generic;
+    using System.Numerics;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
@@ -284,124 +241,6 @@ namespace Assets.Scripts.Components.Tests
             }
             gameController.worldObjects[core.GridPosition][core.guid] = core;
             return core;
-        }
-
-        [Fact]
-        public void TestOneOneTransferNOOP()
-        {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            WorldObjectCore core1 = this.WorldObject(gameController);
-            WorldObjectCore core2 = this.WorldObject(gameController);
-            WorldObjectCore core3 = this.WorldObject(gameController);
-
-            core1.resources.CreateResources("wood", 100);
-            core2.resources.CreateResources("wood", 100);
-            core3.resources.CreateResources("wood", 100);
-
-            core1.transferHub.Balance();
-
-            Assert.Equal(100u, core1.resources.resources["wood"]);
-            Assert.Equal(100u, core2.resources.resources["wood"]);
-            Assert.Equal(100u, core3.resources.resources["wood"]);
-        }
-
-        [Fact]
-        public void TestOneZeroTransfer()
-        {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            WorldObjectCore core1 = this.WorldObject(gameController);
-            WorldObjectCore core2 = this.WorldObject(gameController);
-            WorldObjectCore core3 = this.WorldObject(gameController);
-
-            core1.resources.CreateResources("wood", 100);
-            core2.resources.CreateResources("wood", 0);
-            core3.resources.CreateResources("wood", 0);
-
-            core1.transferHub.Balance();
-
-            Assert.Equal(34u, core1.resources.resources["wood"]);
-            Assert.Equal(33u, core2.resources.resources["wood"]);
-            Assert.Equal(33u, core3.resources.resources["wood"]);
-        }
-
-        [Fact]
-        public void TestTwoTwoTransfer()
-        {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            WorldObjectCore core1 = this.WorldObject(gameController);
-            WorldObjectCore core2 = this.WorldObject(gameController);
-            WorldObjectCore core3 = this.WorldObject(gameController);
-
-            core1.resources.CreateResources("wood", 100);
-            core1.resources.CreateResources("nails", 0);
-            core2.resources.CreateResources("wood", 0);
-            core2.resources.CreateResources("nails", 100);
-
-            core1.transferHub.Balance();
-
-            Assert.Equal(34u, core1.resources.resources["wood"]);
-            Assert.Equal(34u, core1.resources.resources["nails"]);
-            Assert.Equal(33u, core2.resources.resources["wood"]);
-            Assert.Equal(33u, core2.resources.resources["nails"]);
-        }
-
-        [Fact]
-        public void TestTruncation()
-        {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            WorldObjectCore core1 = this.WorldObject(gameController);
-            WorldObjectCore core2 = this.WorldObject(gameController);
-            WorldObjectCore core3 = this.WorldObject(gameController);
-
-            core1.resources.CreateResources("wood", 100);
-            core2.resources.CreateResources("wood", 0);
-            core3.resources.CreateResources("wood", 0);
-
-            core1.transferHub.Balance();
-
-            Assert.Equal(
-                new List<float>
-                {
-                    core1.resources.resources["wood"],
-                    core2.resources.resources["wood"],
-                    core3.resources.resources["wood"],
-                }.Sum(),
-                100u
-            );
-            Assert.Equal(34u, core1.resources.resources["wood"]);
-            Assert.Equal(33u, core2.resources.resources["wood"]);
-            Assert.Equal(33u, core3.resources.resources["wood"]);
-        }
-
-        [Fact]
-        public void TestInfiniteTransferError()
-        {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            WorldObjectCore core1 = this.WorldObject(gameController);
-            WorldObjectCore core2 = this.WorldObject(gameController);
-            WorldObjectCore core3 = this.WorldObject(gameController);
-
-            core1.resources.CreateResources("wood", 399);
-            core2.resources.CreateResources("wood", 400);
-            core3.resources.CreateResources("wood", 399);
-
-            core1.transferHub.Balance();
-
-            Assert.Equal(399u, core1.resources.resources["wood"]);
-            Assert.Equal(400u, core2.resources.resources["wood"]);
-            Assert.Equal(399u, core3.resources.resources["wood"]);
-
-            core2.transferHub.Balance();
-
-            Assert.Equal(399u, core1.resources.resources["wood"]);
-            Assert.Equal(400u, core2.resources.resources["wood"]);
-            Assert.Equal(399u, core3.resources.resources["wood"]);
-
-            core3.transferHub.Balance();
-
-            Assert.Equal(399u, core1.resources.resources["wood"]);
-            Assert.Equal(400u, core2.resources.resources["wood"]);
-            Assert.Equal(399u, core3.resources.resources["wood"]);
         }
     }
 }
