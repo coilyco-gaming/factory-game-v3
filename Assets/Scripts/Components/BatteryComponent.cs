@@ -35,8 +35,8 @@ namespace Assets.Scripts.Components.Core
             }
         }
 
-        public uint Capacity { get; set; } = 0;
-        public uint StartingCapaity { get; set; } = 0;
+        public float Capacity { get; set; } = 0;
+        public float StartingCapaity { get; set; } = 0;
 
         public double PercentEnergy =>
             this.Capacity != 0 //
@@ -112,9 +112,7 @@ namespace Assets.Scripts.Components.Core
             // Batteries degrade over time, reducing their charging capacity.
             if (this.Health > this.minimumHealth)
             {
-                // TODO: swap capacity to a float,
-                // TODO: grade by a smaller amount (0.1?)
-                this.Capacity -= 1;
+                this.Capacity -= 0.1f;
             }
         }
     }
@@ -355,11 +353,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestManyChargesDegradeHealth()
         {
             BatteryComponentCore battery = new(0, 100);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 100; i++)
             {
                 battery.Energy = 10;
             }
-            Assert.Equal(90u, battery.Capacity);
+            Assert.Equal(90f, Math.Round(battery.Capacity, 2));
             Assert.Equal(Math.Round(0.90, 2), Math.Round(battery.Health, 2));
         }
 
@@ -367,11 +365,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestHealthDegradeHasAFloor()
         {
             BatteryComponentCore battery = new(0, 100);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 10000; i++)
             {
                 battery.Energy = 10;
             }
-            Assert.Equal(10u, battery.Capacity);
+            Assert.Equal(Math.Round(10.4f, 2), Math.Round(battery.Capacity, 2));
             Assert.Equal(Math.Round(0.1f, 2), Math.Round(battery.Health, 2));
             Assert.False(battery.Healthy);
         }

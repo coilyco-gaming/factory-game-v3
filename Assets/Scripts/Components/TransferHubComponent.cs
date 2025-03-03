@@ -1,6 +1,7 @@
 // A type of component that tries to balance all available
 // resources between all connected entities.
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -33,22 +34,12 @@ namespace Assets.Scripts.Components.Core
         public void Balance()
         {
             // Do nothing if we don't have enough energy.
-            // TODO: the transfer hub should have a no-op state that consumes no energy.
-            try
-            {
-                this.battery.Energy -= 1;
-            }
-            catch (BatteryComponentCore.BatteryCapacityException)
-            {
-                return;
-            }
-
-            List<WorldObjectCore> localWorldObjects = this
+            List<WorldObjectCore> worldObjects = this
                 .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject => worldObject.resources != null)
                 .ToList();
 
-            List<ProductionComponentCore> localProductionComponents = localWorldObjects
+            List<ProductionComponentCore> localProductionComponents = worldObjects
                 .Select(worldObject => worldObject.production)
                 .Where(production => production != null)
                 .ToList();
@@ -73,60 +64,111 @@ namespace Assets.Scripts.Components.Core
             // For each resource, distribute it evenly.
             foreach (KeyValuePair<string, uint> resource in localIngredientsCounts)
             {
-                // Only include in this loop the local world objects whose factory
-                // has this resource as an product or ingredient.
-                List<WorldObjectCore> resourceScopedWorldObjects = localWorldObjects
-                    .Where(worldObject =>
-                        (
-                            worldObject != null
-                            && worldObject.production != null
-                            && worldObject.production.ProductItem != null
-                            && worldObject.production.ProductItem.Ingredients != null
-                            && worldObject.production.ProductItem.Ingredients.Count != 0
-                            && worldObject.production.ProductItem.Ingredients.ContainsKey(
-                                resource.Key
-                            )
-                        )
-                        || (
-                            worldObject != null
-                            && worldObject.production != null
-                            && worldObject.production.ProductItem != null
-                            && worldObject.production.ProductItem.Name == resource.Key
-                        )
+                this.BalanceResource(resource, worldObjects);
+            }
+        }
+
+        private void BalanceResource(
+            KeyValuePair<string, uint> resource,
+            List<WorldObjectCore> _worldObjects
+        )
+        {
+            // Only include in this loop the local world objects whose factory
+            // has this resource as an product or ingredient.
+            List<WorldObjectCore> worldObjects = _worldObjects
+                .Where(worldObject =>
+                    (
+                        worldObject != null
+                        && worldObject.production != null
+                        && worldObject.production.ProductItem != null
+                        && worldObject.production.ProductItem.Ingredients != null
+                        && worldObject.production.ProductItem.Ingredients.Count != 0
+                        && worldObject.production.ProductItem.Ingredients.ContainsKey(resource.Key)
                     )
-                    .ToList();
+                    || (
+                        worldObject != null
+                        && worldObject.production != null
+                        && worldObject.production.ProductItem != null
+                        && worldObject.production.ProductItem.Name == resource.Key
+                    )
+                )
+                .ToList();
 
-                // Also include yourself, but only if that doesn't duplicate.
-                resourceScopedWorldObjects.Add(this.core);
-                resourceScopedWorldObjects = resourceScopedWorldObjects.Distinct().ToList();
+            // Also include yourself, but only if that doesn't duplicate.
+            worldObjects.Add(this.core);
+            worldObjects = worldObjects.Distinct().ToList();
 
-                // First consume all the resources in every surrounding container.
-                // Aggregating the total amount of resources consumed.
-                uint totalAmount = 0;
-                foreach (WorldObjectCore worldObject in resourceScopedWorldObjects)
+            // Cache a map of containers to their resource count, in addition to the total count.
+            // This is used to determine the size of the potential resource distribution.
+            Dictionary<WorldObjectCore, uint> resourceCounts = new();
+            uint totalAmount = 0;
+            foreach (WorldObjectCore worldObject in worldObjects)
+            {
+                if (worldObject.resources.resources.ContainsKey(resource.Key))
                 {
-                    if (worldObject.resources.resources.ContainsKey(resource.Key))
-                    {
-                        totalAmount += worldObject.resources.resources[resource.Key];
-                        worldObject.resources.resources[resource.Key] = 0;
-                    }
+                    resourceCounts[worldObject] = worldObject.resources.resources[resource.Key];
+                    totalAmount += worldObject.resources.resources[resource.Key];
                 }
+            }
 
-                // Then distribute the resources evenly.
-                uint amountPerContainer = (uint)(
-                    totalAmount / (float)resourceScopedWorldObjects.Count
-                );
-                foreach (WorldObjectCore worldObject in resourceScopedWorldObjects)
-                {
-                    worldObject.resources.resources[resource.Key] = amountPerContainer;
-                }
+            // Determine how much to distribute per container.
+            uint amountPerContainer = (uint)(totalAmount / (float)worldObjects.Count);
 
-                // If there is a remainder, distribute it evenly.
-                uint remainder = totalAmount % (uint)resourceScopedWorldObjects.Count;
-                for (int i = 0; i < remainder; i++)
+            // Determine how much the current resource quantities
+            // deviate from the average. This is used to determine
+            // Whether to transfer resources or not.
+            float averageDeviation =
+                worldObjects
+                    .Where(worldObject => resourceCounts.ContainsKey(worldObject))
+                    .Select(worldObject =>
+                        Math.Abs((int)resourceCounts[worldObject] - (int)amountPerContainer)
+                    )
+                    .ToList()
+                    .Sum() / (float)worldObjects.Count;
+
+            // UnityEngine.Debug.Log(
+            //     $"TransferHubComponent: {resource.Key} average deviation: {averageDeviation}"
+            // );
+
+            // If the average deviation is less than 1, then we are balanced enough.
+            // This acts as a threshold to prevent infinite back and forth transfers.
+            if (averageDeviation < 1)
+            {
+                return;
+            }
+
+            // If we have reached this point, then we have decided that we
+            // need to balance the resources. So it's time to consume energy.
+            try
+            {
+                this.battery.Energy -= 1;
+            }
+            catch (BatteryComponentCore.BatteryCapacityException)
+            {
+                return;
+            }
+
+            // Consume all the resources in every surrounding container.
+            // While doing so, aggregate the total amount of resources consumed.
+            foreach (WorldObjectCore worldObject in worldObjects)
+            {
+                if (worldObject.resources.resources.ContainsKey(resource.Key))
                 {
-                    resourceScopedWorldObjects[i].resources.resources[resource.Key] += 1;
+                    worldObject.resources.resources[resource.Key] = 0;
                 }
+            }
+
+            // Then distribute the resources evenly.
+            foreach (WorldObjectCore worldObject in worldObjects)
+            {
+                worldObject.resources.resources[resource.Key] = amountPerContainer;
+            }
+
+            // If there is a remainder, distribute it evenly.
+            uint remainder = totalAmount % (uint)worldObjects.Count;
+            for (int i = 0; i < remainder; i++)
+            {
+                worldObjects[i].resources.resources[resource.Key] += 1;
             }
         }
     }
@@ -302,6 +344,37 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(34u, core1.resources.resources["wood"]);
             Assert.Equal(33u, core2.resources.resources["wood"]);
             Assert.Equal(33u, core3.resources.resources["wood"]);
+        }
+
+        [Fact]
+        public void TestInfiniteTransferError()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+            WorldObjectCore core1 = this.WorldObject(gameController);
+            WorldObjectCore core2 = this.WorldObject(gameController);
+            WorldObjectCore core3 = this.WorldObject(gameController);
+
+            core1.resources.CreateResources("wood", 399);
+            core2.resources.CreateResources("wood", 400);
+            core3.resources.CreateResources("wood", 399);
+
+            core1.transferHub.Balance();
+
+            Assert.Equal(399u, core1.resources.resources["wood"]);
+            Assert.Equal(400u, core2.resources.resources["wood"]);
+            Assert.Equal(399u, core3.resources.resources["wood"]);
+
+            core2.transferHub.Balance();
+
+            Assert.Equal(399u, core1.resources.resources["wood"]);
+            Assert.Equal(400u, core2.resources.resources["wood"]);
+            Assert.Equal(399u, core3.resources.resources["wood"]);
+
+            core3.transferHub.Balance();
+
+            Assert.Equal(399u, core1.resources.resources["wood"]);
+            Assert.Equal(400u, core2.resources.resources["wood"]);
+            Assert.Equal(399u, core3.resources.resources["wood"]);
         }
     }
 }

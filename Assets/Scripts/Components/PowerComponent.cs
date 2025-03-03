@@ -187,7 +187,7 @@ namespace Assets.Scripts.Components.Tests
                 200
             );
             power.GeneratePower();
-            Assert.Equal(99, battery.Energy);
+            Assert.Equal(99.9f, battery.Energy);
         }
 
         [Fact]
@@ -232,8 +232,8 @@ namespace Assets.Scripts.Components.Tests
             );
             power.GeneratePower();
             Assert.Equal(95, battery.Energy);
-            Assert.Equal(Math.Round(0.96, 2), Math.Round(battery.PercentEnergy, 2));
-            Assert.Equal("96%", battery.PercentEnergyStatus);
+            Assert.Equal(Math.Round(0.95, 2), Math.Round(battery.PercentEnergy, 2));
+            Assert.Equal("95%", battery.PercentEnergyStatus);
         }
 
         [Fact]
