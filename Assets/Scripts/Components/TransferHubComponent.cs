@@ -92,8 +92,9 @@ namespace Assets.Scripts.Components.Core
                     )
                     .ToList();
 
-                // Also include yourself.
+                // Also include yourself, but only if that doesn't duplicate.
                 resourceScopedWorldObjects.Add(this.core);
+                resourceScopedWorldObjects = resourceScopedWorldObjects.Distinct().ToList();
 
                 // First consume all the resources in every surrounding container.
                 // Aggregating the total amount of resources consumed.
@@ -219,89 +220,84 @@ namespace Assets.Scripts.Components.Tests
             return core;
         }
 
-        // [Fact]
-        // public void TestOneOneTransferNOOP()
-        // {
-        //     GameControllerCore gameController = new() { worldObjects = new() };
-        //     WorldObjectCore core1 = this.WorldObject(gameController);
-        //     WorldObjectCore core2 = this.WorldObject(gameController);
+        [Fact]
+        public void TestOneOneTransferNOOP()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+            WorldObjectCore core1 = this.WorldObject(gameController);
+            WorldObjectCore core2 = this.WorldObject(gameController);
 
-        //     core1.Resources.CreateResources("wood", 100);
-        //     core2.Resources.CreateResources("wood", 100);
+            core1.Resources.CreateResources("wood", 100);
+            core2.Resources.CreateResources("wood", 100);
 
-        //     core1.TransferHub.Balance();
-        //     core2.TransferHub.Balance();
+            core1.TransferHub.Balance();
 
-        //     Assert.Equal(100u, core1.Resources.Resources["wood"]);
-        //     Assert.Equal(100u, core2.Resources.Resources["wood"]);
-        // }
+            Assert.Equal(100u, core1.Resources.Resources["wood"]);
+            Assert.Equal(100u, core2.Resources.Resources["wood"]);
+        }
 
-        // [Fact]
-        // public void TestOneZeroTransfer()
-        // {
-        //     GameControllerCore gameController = new() { worldObjects = new() };
-        //     WorldObjectCore core1 = this.WorldObject(gameController);
-        //     WorldObjectCore core2 = this.WorldObject(gameController);
+        [Fact]
+        public void TestOneZeroTransfer()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+            WorldObjectCore core1 = this.WorldObject(gameController);
+            WorldObjectCore core2 = this.WorldObject(gameController);
 
-        //     core1.Resources.CreateResources("wood", 100);
-        //     core2.Resources.CreateResources("wood", 0);
+            core1.Resources.CreateResources("wood", 100);
+            core2.Resources.CreateResources("wood", 0);
 
-        //     core1.TransferHub.Balance();
-        //     core2.TransferHub.Balance();
+            core1.TransferHub.Balance();
 
-        //     Assert.Equal(50u, core1.Resources.Resources["wood"]);
-        //     Assert.Equal(50u, core2.Resources.Resources["wood"]);
-        // }
+            Assert.Equal(50u, core1.Resources.Resources["wood"]);
+            Assert.Equal(50u, core2.Resources.Resources["wood"]);
+        }
 
-        // [Fact]
-        // public void TestTwoTwoTransfer()
-        // {
-        //     GameControllerCore gameController = new() { worldObjects = new() };
-        //     WorldObjectCore core1 = this.WorldObject(gameController);
-        //     WorldObjectCore core2 = this.WorldObject(gameController);
+        [Fact]
+        public void TestTwoTwoTransfer()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+            WorldObjectCore core1 = this.WorldObject(gameController);
+            WorldObjectCore core2 = this.WorldObject(gameController);
 
-        //     core1.Resources.CreateResources("wood", 100);
-        //     core1.Resources.CreateResources("nails", 0);
-        //     core2.Resources.CreateResources("wood", 0);
-        //     core2.Resources.CreateResources("nails", 100);
+            core1.Resources.CreateResources("wood", 100);
+            core1.Resources.CreateResources("nails", 0);
+            core2.Resources.CreateResources("wood", 0);
+            core2.Resources.CreateResources("nails", 100);
 
-        //     core1.TransferHub.Balance();
-        //     core2.TransferHub.Balance();
+            core1.TransferHub.Balance();
 
-        //     Assert.Equal(50u, core1.Resources.Resources["wood"]);
-        //     Assert.Equal(50u, core1.Resources.Resources["nails"]);
-        //     Assert.Equal(50u, core2.Resources.Resources["wood"]);
-        //     Assert.Equal(50u, core2.Resources.Resources["nails"]);
-        // }
+            Assert.Equal(50u, core1.Resources.Resources["wood"]);
+            Assert.Equal(50u, core1.Resources.Resources["nails"]);
+            Assert.Equal(50u, core2.Resources.Resources["wood"]);
+            Assert.Equal(50u, core2.Resources.Resources["nails"]);
+        }
 
-        // [Fact]
-        // public void TestTruncation()
-        // {
-        //     GameControllerCore gameController = new() { worldObjects = new() };
-        //     WorldObjectCore core1 = this.WorldObject(gameController);
-        //     WorldObjectCore core2 = this.WorldObject(gameController);
-        //     WorldObjectCore core3 = this.WorldObject(gameController);
+        [Fact]
+        public void TestTruncation()
+        {
+            GameControllerCore gameController = new() { worldObjects = new() };
+            WorldObjectCore core1 = this.WorldObject(gameController);
+            WorldObjectCore core2 = this.WorldObject(gameController);
+            WorldObjectCore core3 = this.WorldObject(gameController);
 
-        //     core1.Resources.CreateResources("wood", 100);
-        //     core2.Resources.CreateResources("wood", 0);
-        //     core3.Resources.CreateResources("wood", 0);
+            core1.Resources.CreateResources("wood", 100);
+            core2.Resources.CreateResources("wood", 0);
+            core3.Resources.CreateResources("wood", 0);
 
-        //     core1.TransferHub.Balance();
-        //     core2.TransferHub.Balance();
-        //     core3.TransferHub.Balance();
+            core1.TransferHub.Balance();
 
-        //     Assert.Equal(
-        //         new List<float>
-        //         {
-        //             core1.Resources.Resources["wood"],
-        //             core2.Resources.Resources["wood"],
-        //             core3.Resources.Resources["wood"],
-        //         }.Sum(),
-        //         100u
-        //     );
-        //     Assert.Equal(34u, core1.Resources.Resources["wood"]);
-        //     Assert.Equal(33u, core2.Resources.Resources["wood"]);
-        //     Assert.Equal(33u, core3.Resources.Resources["wood"]);
-        // }
+            Assert.Equal(
+                new List<float>
+                {
+                    core1.Resources.Resources["wood"],
+                    core2.Resources.Resources["wood"],
+                    core3.Resources.Resources["wood"],
+                }.Sum(),
+                100u
+            );
+            Assert.Equal(34u, core1.Resources.Resources["wood"]);
+            Assert.Equal(33u, core2.Resources.Resources["wood"]);
+            Assert.Equal(33u, core3.Resources.Resources["wood"]);
+        }
     }
 }
