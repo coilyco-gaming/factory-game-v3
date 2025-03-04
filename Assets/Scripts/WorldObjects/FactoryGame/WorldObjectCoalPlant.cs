@@ -11,21 +11,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     public class WorldObjectCoalPlant : WorldObject
     {
         public uint totalVolumeCapacity = 1000;
-        public uint totalWeightCapacity = uint.MaxValue;
         public uint totalBatteryCapacity = 5000;
         public uint insertionRate = 5;
         public uint powerBurnRate = 5;
         public uint powerGainRate = 100;
 
-        public override void Instantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            base.Instantiate(gameController, spawnQueueItem);
+            base.Instantiate(spawnQueueItem);
             this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: this.totalWeightCapacity,
+                weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
 

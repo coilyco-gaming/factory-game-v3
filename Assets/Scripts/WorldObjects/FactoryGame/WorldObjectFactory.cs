@@ -11,29 +11,24 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFactory : WorldObject
     {
-        public string productType;
         public uint totalVolumeCapacity = 1000;
-        public uint totalWeightCapacity = uint.MaxValue;
         public uint totalBatteryCapacity = 1000;
         public uint insertionRate = 5;
 
-        public override void Instantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            base.Instantiate(gameController, spawnQueueItem);
+            base.Instantiate(spawnQueueItem);
 
             this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: this.totalWeightCapacity,
+                weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             List<string> ingredients = new FactoryGameContent()
-                .Items[this.productType]
+                .Items[this.core.targetType]
                 .Ingredients.Keys.ToList();
 
             this.core.inserters = new();
@@ -49,7 +44,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.resources,
                 this.core.battery,
                 this.core.inserters,
-                this.productType
+                this.core.targetType
             );
         }
 
@@ -77,7 +72,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 {
                     statusData.Info["Progress"] = this.core.production.PrecentProgressStatus;
                 }
-                statusData.Info["Product"] = this.productType;
+                statusData.Info["Product"] = this.core.targetType;
                 statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
                 statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;

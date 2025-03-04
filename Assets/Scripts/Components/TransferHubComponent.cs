@@ -10,21 +10,18 @@ namespace Assets.Scripts.Components.Core
 
     public class TransferHubComponent
     {
-        private GameControllerCore gameController;
         private WorldObjectCore core;
         private BatteryComponentCore battery;
         private GameContent gameContent;
 
         public TransferHubComponent(
             GameContent gameContent,
-            GameControllerCore gameController,
             WorldObjectCore core,
             BatteryComponentCore battery
         )
         {
             this.gameContent = gameContent;
             this.core = core;
-            this.gameController = gameController;
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
@@ -32,11 +29,11 @@ namespace Assets.Scripts.Components.Core
                 );
         }
 
-        public void Balance()
+        public void Balance(GameControllerCore gameController)
         {
             // Do nothing if we don't have enough energy.
-            List<WorldObjectCore> worldObjects = this
-                .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
+            List<WorldObjectCore> worldObjects = gameController
+                .GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject => worldObject.resources != null)
                 .Distinct()
                 .ToList();
@@ -67,22 +64,25 @@ namespace Assets.Scripts.Components.Core
             // For each resource, distribute it evenly.
             foreach (KeyValuePair<string, uint> resource in localIngredientsCounts)
             {
-                this.BalanceResource(resource);
+                this.BalanceResource(gameController, resource);
             }
         }
 
-        private void BalanceResource(KeyValuePair<string, uint> resource)
+        private void BalanceResource(
+            GameControllerCore gameController,
+            KeyValuePair<string, uint> resource
+        )
         {
             // Local world objects whose factories produce this resource.
-            List<WorldObjectCore> producers = this
-                .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
+            List<WorldObjectCore> producers = gameController
+                .GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject => worldObject?.production?.Product == resource.Key)
                 .Distinct()
                 .ToList();
 
             // Local world objects whose factories consume this resource.
-            List<WorldObjectCore> consumers = this
-                .gameController.GetAdjacentWorldObjects(this.core.GridPosition)
+            List<WorldObjectCore> consumers = gameController
+                .GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject =>
                     worldObject?.production?.ProductItem?.Ingredients != null
                     && new List<string>(
@@ -223,12 +223,7 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = gridPosition,
                 production = production,
             };
-            TransferHubComponent transfer = new(
-                new TestGameContent(),
-                gameController,
-                core,
-                battery
-            );
+            TransferHubComponent transfer = new(new TestGameContent(), core, battery);
             core.transferHub = transfer;
             core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();

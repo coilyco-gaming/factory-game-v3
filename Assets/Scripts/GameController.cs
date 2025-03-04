@@ -3,6 +3,7 @@ namespace Assets.Scripts.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Numerics;
     using Assets.Scripts.WorldObjects.Core;
 
     public class GameControllerCore
@@ -41,33 +42,32 @@ namespace Assets.Scripts.Core
             }
         }
 
+        [Serializable]
         public class SpawnQueueItem
         {
             public string name;
-            public WorldObjectCore parent;
-            public System.Numerics.Vector2 gridPosition;
-            public int size;
-            public Predicate<GameControllerCore> conditions;
-            public Action<GameControllerCore, WorldObjectCore> instantiateCallback;
-            public Action<GameControllerCore, WorldObjectCore> postInstantiateCallback;
+            public bool xyCentered;
+            public int x;
+            public int y;
+            public Vector2 gridPosition;
+            public string targetType;
+            public Dictionary<string, uint> resources;
 
             public SpawnQueueItem(
                 string name,
-                System.Numerics.Vector2 gridPosition,
-                WorldObjectCore parent = null,
-                int size = 1,
-                Predicate<GameControllerCore> conditions = null,
-                Action<GameControllerCore, WorldObjectCore> instantiateCallback = null,
-                Action<GameControllerCore, WorldObjectCore> postInstantiateCallback = null
+                int x,
+                int y,
+                bool xyCentered = false,
+                string targetType = "",
+                Dictionary<string, uint> resources = null
             )
             {
                 this.name = name;
-                this.parent = parent;
-                this.gridPosition = gridPosition;
-                this.size = size;
-                this.conditions = conditions;
-                this.instantiateCallback = instantiateCallback;
-                this.postInstantiateCallback = postInstantiateCallback;
+                this.targetType = targetType;
+                this.resources = resources;
+                this.xyCentered = xyCentered;
+                this.x = x;
+                this.y = y;
             }
         }
 
@@ -405,17 +405,14 @@ namespace Assets.Scripts.Unity
             GameObject thisGameObject = null;
             try
             {
-                // TODO: don't allow spawning 2 buildings on the same tile
+                spawnQueueItem.gridPosition = spawnQueueItem.xyCentered
+                    ? new System.Numerics.Vector2(
+                        (this.Map.mapSize.x / 2) + spawnQueueItem.x,
+                        (this.Map.mapSize.y / 2) + spawnQueueItem.y
+                    )
+                    : new System.Numerics.Vector2(spawnQueueItem.x, spawnQueueItem.y);
 
-                // If spawn conditions are set and aren't met, don't spawn
-                if (spawnQueueItem.conditions != null)
-                {
-                    if (!spawnQueueItem.conditions.Invoke(this.core))
-                    {
-                        // TODO: write to UI state as an error message
-                        return;
-                    }
-                }
+                // TODO: don't allow spawning 2 buildings on the same tile
 
                 // TODO: find spawnables once, then cache
                 Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.name);
@@ -427,16 +424,16 @@ namespace Assets.Scripts.Unity
                 WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
                 thisGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
 
-                // Instantiate is a custom function on each world object, it only conceptaully relates to Unity's Instantiate
+                // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate
                 // This base Instantiate function (eg. not PostInstantiate) is responsible for setting simple values like
                 // grid position, and initializing "simple" components like the resource component.
-                worldObject.Instantiate(this, spawnQueueItem);
+                worldObject.Instantiate(spawnQueueItem);
 
                 // PostInstantiate is a custom function on each world object, similar to Instantiate above. It is responsible
                 // for setting up more complex components like the status component, and calling the callback function.
                 // The exists because the children of WorldObject have their own custom components that need to be initialized,
                 // in a particular order. For example the ResourcesComponent needs to be initialized before the StatusComponent.
-                worldObject.PostInstantiate(this, spawnQueueItem);
+                worldObject.PostInstantiate(spawnQueueItem);
 
                 // Initialize the dictionary if it doesn't exist, this will only happen once
                 this.core.worldObjects ??=

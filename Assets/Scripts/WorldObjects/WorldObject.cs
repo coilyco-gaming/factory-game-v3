@@ -28,6 +28,7 @@ namespace Assets.Scripts.WorldObjects.Core
         public StatusDataComponentCore status;
         public string guid;
         public string worldObjectType;
+        public string targetType;
         public object backref;
         public System.Numerics.Vector2 gridPosition;
 
@@ -44,22 +45,19 @@ namespace Assets.Scripts.WorldObjects.Core
             this.backref = backref;
         }
 
-        public void Instantiate(
-            GameControllerCore gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            spawnQueueItem.instantiateCallback?.Invoke(gameController, this);
             this.GridPosition = spawnQueueItem.gridPosition;
+            this.targetType = spawnQueueItem.targetType;
             this.guid = this.CreateGuid();
         }
 
-        public void PostInstantiate(
-            GameControllerCore gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public void PostInstantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            spawnQueueItem.postInstantiateCallback?.Invoke(gameController, this);
+            if (spawnQueueItem.resources != null)
+            {
+                this.resources.resources = spawnQueueItem.resources;
+            }
         }
 
         public string CreateGuid()
@@ -120,24 +118,18 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         public virtual void Tick(GameController gameController) { }
 
-        public virtual void Instantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public virtual void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
             this.core = new WorldObjectCore(this);
-            this.core.Instantiate(gameController.core, spawnQueueItem);
+            this.core.Instantiate(spawnQueueItem);
             this.GridPosition = spawnQueueItem.gridPosition; // This is a special case because it sets the transform position
             this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.SetName();
         }
 
-        public virtual void PostInstantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public virtual void PostInstantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            this.core.PostInstantiate(gameController.core, spawnQueueItem);
+            this.core.PostInstantiate(spawnQueueItem);
             this.core.status = new() { Data = this.GetStatusData() };
         }
 

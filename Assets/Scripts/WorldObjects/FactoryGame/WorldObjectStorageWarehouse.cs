@@ -10,17 +10,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     public class WorldObjectStorageWarehouse : WorldObject
     {
         public uint totalVolumeCapacity = 10000;
-        public uint totalWeightCapacity = uint.MaxValue;
 
-        public override void Instantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            base.Instantiate(gameController, spawnQueueItem);
+            base.Instantiate(spawnQueueItem);
             this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: this.totalWeightCapacity,
+                weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
         }

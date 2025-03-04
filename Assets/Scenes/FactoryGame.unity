@@ -177,7 +177,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: Radar\r\n  Info:\r\n    Target: Iron\r\n    Energy: 0%\r\n"
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -892,7 +892,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
-  amount: 0
+    targetType: 
 --- !u!1 &412395827
 GameObject:
   m_ObjectHideFlags: 0
@@ -1205,7 +1205,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
-  amount: 0
+    targetType: 
 --- !u!1 &545687439
 GameObject:
   m_ObjectHideFlags: 0
@@ -1621,6 +1621,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
 --- !u!1 &678344652
 GameObject:
   m_ObjectHideFlags: 0
@@ -1738,9 +1739,8 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
-  productType: 
+    targetType: 
   totalVolumeCapacity: 1000
-  totalWeightCapacity: 4294967295
   totalBatteryCapacity: 1000
   insertionRate: 5
 --- !u!1 &875974723
@@ -1860,6 +1860,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0
@@ -2310,6 +2311,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
 --- !u!1 &1141577915
 GameObject:
   m_ObjectHideFlags: 11
@@ -2609,6 +2611,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
 --- !u!1 &1210551303
 GameObject:
   m_ObjectHideFlags: 0
@@ -2900,6 +2903,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
   totalBatteryCapacity: 1000
   target: 
 --- !u!1 &1318506227
@@ -2968,6 +2972,7 @@ MonoBehaviour:
   oreSpawnFactor: 1
   OreQuantityBase: 2000
   OreQuantityRange: 1000
+  spawnQueueItems: []
 --- !u!223 &1318506233
 Canvas:
   m_ObjectHideFlags: 0
@@ -3358,8 +3363,8 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
   totalVolumeCapacity: 10000
-  totalWeightCapacity: 4294967295
 --- !u!212 &1611820092
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4034,8 +4039,8 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
   totalVolumeCapacity: 1000
-  totalWeightCapacity: 4294967295
   totalBatteryCapacity: 5000
   insertionRate: 5
   powerBurnRate: 5
@@ -4157,9 +4162,8 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
+    targetType: 
   totalBatteryCapacity: 10000
-  totalVolumeCapacity: 10000
-  totalWeightCapacity: 4294967295
 --- !u!1 &2093853404
 GameObject:
   m_ObjectHideFlags: 0
@@ -4364,7 +4368,7 @@ MonoBehaviour:
       outputBufferOccupied: 0
     guid: 
     worldObjectType: 
-  amount: 0
+    targetType: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

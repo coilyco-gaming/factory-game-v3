@@ -17,11 +17,12 @@ namespace Assets.Scripts.Unity
         public GameObject pauseButton;
         public GameObject StatusUILeft;
         public GameObject StatusUIRight;
-        public int HQOreBuffer = 5; // TODO: world init settings screen for these values
-        public int spawnAttempts = 5;
+        public uint HQOreBuffer = 5;
+        public uint spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
-        public int OreQuantityBase = 2000;
-        public int OreQuantityRange = 1000;
+        public uint OreQuantityBase = 2000;
+        public uint OreQuantityRange = 1000;
+        public List<GameControllerCore.SpawnQueueItem> spawnQueueItems;
         private TextMeshProUGUI pauseTextComponent;
         private StatusUILeftComponent StatusUILeftComponent;
         private StatusUIRightComponent StatusUIRightComponent;
@@ -78,8 +79,8 @@ namespace Assets.Scripts.Unity
             // S = Radar
             //
             //   W F F F
-            // R C R X X
-            // R C F F F F <== the radar on the far left is our 0x 0y
+            //   C   X X
+            //   C F F F F <== the radar on the far left is our 0x 0y
             //   W W W W W
             //
             // Both coal plants have a warehouse beside them with a stockpile of coal.
@@ -101,185 +102,192 @@ namespace Assets.Scripts.Unity
             //
             // TODO: a proper HQ building that has enhanced capabilities
 
-            System.Numerics.Vector2 HQPosition = new(
-                this.Map.mapSize.x / 2,
-                this.Map.mapSize.y / 2
-            );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Radar.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y),
-                    postInstantiateCallback: this.SpawnRadarCallback(
-                        FactoryGameContent.Resources.Coal.ToString()
-                    )
+                    "CoalPlant",
+                    x: 1,
+                    y: 0,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Radar.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X, HQPosition.Y + 1),
-                    postInstantiateCallback: this.SpawnRadarCallback(
-                        FactoryGameContent.Resources.Copper.ToString()
-                    )
+                    "CoalPlant",
+                    x: 1,
+                    y: 1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Radar.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 1),
-                    postInstantiateCallback: this.SpawnRadarCallback(
-                        FactoryGameContent.Resources.Iron.ToString()
-                    )
+                    "Factory",
+                    x: 2,
+                    y: 0,
+                    xyCentered: true,
+                    targetType: "Frames"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.CoalPlant.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y),
-                    postInstantiateCallback: this.SpawnCoalPlantCallback()
+                    "Factory",
+                    x: 3,
+                    y: 0,
+                    xyCentered: true,
+                    targetType: "Circuits"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.CoalPlant.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 1)
+                    "Factory",
+                    x: 4,
+                    y: 0,
+                    xyCentered: true,
+                    targetType: "Motors"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Products.Frames.ToString()
-                    )
+                    "Factory",
+                    x: 5,
+                    y: 0,
+                    xyCentered: true,
+                    targetType: "BuildingMaterials"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Products.Circuits.ToString()
-                    )
+                    "Factory",
+                    x: 2,
+                    y: 2,
+                    xyCentered: true,
+                    targetType: "Factory"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Products.Motors.ToString()
-                    )
+                    "Factory",
+                    x: 3,
+                    y: 2,
+                    xyCentered: true,
+                    targetType: "StorageWarehouse"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 5, HQPosition.Y),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Products.BuildingMaterials.ToString()
-                    )
+                    "Factory",
+                    x: 4,
+                    y: 2,
+                    xyCentered: true,
+                    targetType: "CoalPlant"
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y + 2),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Spawnables.Factory.ToString()
-                    )
+                    "StorageWarehouse",
+                    x: 1,
+                    y: -1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y + 2),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Spawnables.StorageWarehouse.ToString()
-                    )
+                    "StorageWarehouse",
+                    x: 1,
+                    y: 2,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.Factory.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y + 2),
-                    instantiateCallback: this.SpawnFactoryCallback(
-                        FactoryGameContent.Spawnables.CoalPlant.ToString()
-                    )
+                    "StorageWarehouse",
+                    x: 2,
+                    y: -1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint>
+                    {
+                        { "Stone", 4000 },
+                        { "Iron", 2000 },
+                        { "Copper", 1000 },
+                    }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y - 1),
-                    postInstantiateCallback: this.SpawnCoalWarehouseCallback()
+                    "StorageWarehouse",
+                    x: 3,
+                    y: -1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint>
+                    {
+                        { "Stone", 4000 },
+                        { "Iron", 2000 },
+                        { "Copper", 1000 },
+                    }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 1, HQPosition.Y + 2),
-                    postInstantiateCallback: this.SpawnCoalWarehouseCallback()
+                    "StorageWarehouse",
+                    x: 4,
+                    y: -1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint>
+                    {
+                        { "Stone", 4000 },
+                        { "Iron", 2000 },
+                        { "Copper", 1000 },
+                    }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 2, HQPosition.Y - 1),
-                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                    "StorageWarehouse",
+                    x: 5,
+                    y: -1,
+                    xyCentered: true,
+                    resources: new Dictionary<string, uint>
+                    {
+                        { "Stone", 4000 },
+                        { "Iron", 2000 },
+                        { "Copper", 1000 },
+                    }
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y - 1),
-                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
+                    "TransferWarehouse",
+                    x: 3,
+                    y: 1,
+                    xyCentered: true
                 )
             );
 
             this.Spawn(
                 new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y - 1),
-                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
-                )
-            );
-
-            this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.StorageWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 5, HQPosition.Y - 1),
-                    postInstantiateCallback: this.SpawnFactoryWarehouseCallback()
-                )
-            );
-
-            this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 3, HQPosition.Y + 1)
-                )
-            );
-
-            this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    FactoryGameContent.Spawnables.TransferWarehouse.ToString(),
-                    new System.Numerics.Vector2(HQPosition.X + 4, HQPosition.Y + 1)
+                    "TransferWarehouse",
+                    x: 4,
+                    y: 1,
+                    xyCentered: true
                 )
             );
 
@@ -323,76 +331,29 @@ namespace Assets.Scripts.Unity
                             }
                         ) != null;
 
-                    // Spawn Ore
+                    // Get ore amount
+                    float randomPercent = (float)this.random.Next(-100, 100) / 100;
+                    int oreQuantityChange = (int)(randomPercent * this.OreQuantityRange);
+                    uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
+
+                    // Spawn ore
                     if (!oreAtPosition)
                     {
                         this.Spawn(
                             new GameControllerCore.SpawnQueueItem(
                                 objectName,
-                                gridPosition,
-                                instantiateCallback: this.SpawnOreCallback()
+                                x: x,
+                                y: y,
+                                resources: new Dictionary<string, uint>
+                                {
+                                    { objectName, oreQuantity },
+                                }
                             )
                         );
                         break;
                     }
                 }
             }
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnFactoryCallback(string product)
-        {
-            return (gameController, worldObject) =>
-            {
-                WorldObjectFactory worldObjectFactory = worldObject.backref as WorldObjectFactory;
-                worldObjectFactory.productType = product;
-            };
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnCoalPlantCallback()
-        {
-            return (gameController, worldObject) =>
-            {
-                WorldObjectCoalPlant worldObjectCoalPlant =
-                    worldObject.backref as WorldObjectCoalPlant;
-                worldObjectCoalPlant.core.resources.CreateResources(
-                    FactoryGameContent.Resources.Coal.ToString(),
-                    100 // jumpstart the inserters
-                );
-            };
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnRadarCallback(string target)
-        {
-            return (gameController, worldObject) =>
-            {
-                WorldObjectRadar worldObjectRadar = worldObject.backref as WorldObjectRadar;
-                worldObjectRadar.target = target;
-            };
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnOreCallback()
-        {
-            return (gameController, worldObject) =>
-            {
-                float randomPercent = (float)this.random.Next(-100, 100) / 100;
-                int oreQuantityChange = (int)(randomPercent * this.OreQuantityRange);
-                uint oreQuantity = (uint)(this.OreQuantityBase + oreQuantityChange);
-                WorldObjectOre worldObjectOre = worldObject.backref as WorldObjectOre;
-                worldObjectOre.amount = oreQuantity;
-            };
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnCoalWarehouseCallback()
-        {
-            return (gameController, worldObject) =>
-            {
-                WorldObjectStorageWarehouse worldObjectWarehouse =
-                    worldObject.backref as WorldObjectStorageWarehouse;
-                worldObjectWarehouse.core.resources.CreateResources(
-                    FactoryGameContent.Resources.Coal.ToString(),
-                    5000
-                );
-            };
         }
 
         private Action<GameControllerCore, WorldObjectCore> SpawnFactoryWarehouseCallback()

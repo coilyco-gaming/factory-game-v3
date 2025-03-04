@@ -9,20 +9,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectOre : WorldObject
     {
-        public uint amount;
-
-        public override void Instantiate(
-            GameController gameController,
-            GameControllerCore.SpawnQueueItem spawnQueueItem
-        )
+        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
         {
-            base.Instantiate(gameController, spawnQueueItem);
+            base.Instantiate(spawnQueueItem);
             this.core.resources = new(
                 new FactoryGameContent(),
-                weightCapacity: this.amount,
-                volumeCapacity: this.amount
+                weightCapacity: uint.MaxValue,
+                volumeCapacity: uint.MaxValue
             );
-            this.core.resources.CreateResources(this.WorldObjectType, this.amount);
         }
 
         public override void Tick(GameController gameController)
