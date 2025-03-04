@@ -185,21 +185,22 @@ namespace Assets.Scripts.Unity
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.Unity;
+    using Sirenix.OdinInspector;
     using UnityEngine;
 
-    public class GameController : MonoBehaviour
+    public class GameController : SerializedMonoBehaviour
     {
         public GameControllerCore core;
 
         public GameObject spawnables;
         public GameObject userInterface;
         public float tickFrequency = 0.1f;
-        protected int randomSeed = 0;
-        protected System.Random random;
-        protected bool readyForTicks = false;
+        public int randomSeed = 0;
+        public System.Random random;
+        public bool readyForTicks = false;
         public SpriteMapComponent Map { get; set; }
-        protected PlayerComponent PlayerComponent { get; set; }
-        private float lastTick = 0;
+        public PlayerComponent PlayerComponent { get; set; }
+        public float lastTick = 0;
 
         // PROPERTIES //
 
