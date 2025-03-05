@@ -1,6 +1,6 @@
 using System;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.Core;
+using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -12,7 +12,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public uint totalBatteryCapacity = 1000;
         public string target;
 
-        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
+        public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
             this.core.battery = new(capacity: this.totalBatteryCapacity);

@@ -11,15 +11,6 @@
     <PackageReference Include="ReportGenerator" Version="5.4.4" />
   </ItemGroup>
 
-  <!-- !!! IMPORTANT !!! -->
-  <!-- !!! THESE VERSIONS MUST BE KEPT IN SYNC -->
-  <!-- !!! WITH THE DOWNLOADED DLLS INSIDE OF THE PLUGIN FOLDER -->
-  <!-- !!! FAILURE TO DO THIS WILL RESULT IN UNDEFINED BEHAVIOR -->
-  <!-- !!! IMPORTANT !!! -->
-  <ItemGroup>
-    <PackageReference Include="RoyT.AStar" Version="3.0.2" />
-  </ItemGroup>
-
   <ItemGroup>
     <Content Remove="Library\**" />
     <Compile Remove="Library\**" />
@@ -63,18 +54,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="Xunit.Core">
-      <HintPath>Assets\Plugins\xunit.core.dll</HintPath>
-    </Reference>
-    <Reference Include="Xunit.Assert">
-      <HintPath>Assets\Plugins\xunit.assert.dll</HintPath>
-    </Reference>
-    <Reference Include="Xunit.Abstractions">
-      <HintPath>Assets\Plugins\xunit.abstractions.dll</HintPath>
-    </Reference>
-    <Reference Include="Xunit.Execution.DotNet">
-      <HintPath>Assets\Plugins\xunit.execution.dotnet.dll</HintPath>
-    </Reference>
+      <Reference Include="Assets\Plugins\*.dll" />
+      <Reference Include="Assets\Plugins\**\*.dll" />
+      <Reference Include="\Applications\Unity\Hub\Editor\**\UnityEngine\*.dll" />
   </ItemGroup>
 
 </Project>

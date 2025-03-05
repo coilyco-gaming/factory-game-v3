@@ -1,6 +1,6 @@
 using System;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.Core;
+using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -11,7 +11,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         public uint totalVolumeCapacity = 10000;
 
-        public override void Instantiate(GameControllerCore.SpawnQueueItem spawnQueueItem)
+        public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
             this.core.resources = new(

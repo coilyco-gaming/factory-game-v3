@@ -3,7 +3,7 @@ namespace Assets.Scripts.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Numerics;
+    using Assets.Scripts.ScriptableObject;
     using Assets.Scripts.WorldObjects.Core;
 
     public class GameControllerCore
@@ -39,35 +39,6 @@ namespace Assets.Scripts.Core
             {
                 this.worldObject = worldObject;
                 this.position = position;
-            }
-        }
-
-        [Serializable]
-        public class SpawnQueueItem
-        {
-            public string name;
-            public bool xyCentered;
-            public int x;
-            public int y;
-            public Vector2 gridPosition;
-            public string targetType;
-            public Dictionary<string, uint> resources;
-
-            public SpawnQueueItem(
-                string name,
-                int x,
-                int y,
-                bool xyCentered = false,
-                string targetType = "",
-                Dictionary<string, uint> resources = null
-            )
-            {
-                this.name = name;
-                this.targetType = targetType;
-                this.resources = resources;
-                this.xyCentered = xyCentered;
-                this.x = x;
-                this.y = y;
             }
         }
 
@@ -183,6 +154,7 @@ namespace Assets.Scripts.Unity
     using System.Collections.Generic;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
+    using Assets.Scripts.ScriptableObject;
     using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.Unity;
     using Sirenix.OdinInspector;
@@ -265,9 +237,7 @@ namespace Assets.Scripts.Unity
                 // Spawn queued objects
                 if (this.core.queuedForSpawn != null)
                 {
-                    foreach (
-                        GameControllerCore.SpawnQueueItem spawnQueueItem in this.core.queuedForSpawn
-                    )
+                    foreach (SpawnQueueItem spawnQueueItem in this.core.queuedForSpawn)
                     {
                         this.Spawn(spawnQueueItem);
                     }
@@ -303,9 +273,9 @@ namespace Assets.Scripts.Unity
             this.core.queuedForDeletion.Add(deletionQueueItem);
         }
 
-        public void QueueForSpawn(GameControllerCore.SpawnQueueItem spawnQueueItem)
+        public void QueueForSpawn(SpawnQueueItem spawnQueueItem)
         {
-            this.core.queuedForSpawn ??= new List<GameControllerCore.SpawnQueueItem>();
+            this.core.queuedForSpawn ??= new List<SpawnQueueItem>();
             this.core.queuedForSpawn.Add(spawnQueueItem);
         }
 
@@ -401,7 +371,7 @@ namespace Assets.Scripts.Unity
             deletionQueueItem.worldObject = null;
         }
 
-        protected virtual void Spawn(GameControllerCore.SpawnQueueItem spawnQueueItem)
+        protected virtual void Spawn(SpawnQueueItem spawnQueueItem)
         {
             GameObject thisGameObject = null;
             try
@@ -416,7 +386,7 @@ namespace Assets.Scripts.Unity
                 // TODO: don't allow spawning 2 buildings on the same tile
 
                 // TODO: find spawnables once, then cache
-                Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.name);
+                Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.type);
                 GameObject gameObject = spawnablesTransform.gameObject;
                 thisGameObject = Instantiate(gameObject, new Vector2(), Quaternion.identity);
 

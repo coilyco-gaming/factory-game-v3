@@ -64,11 +64,17 @@ namespace Assets.Scripts.Components.Unity
                         (int)Camera.main.transform.position.z
                     ) + Vector3.right;
             }
-            if (Input.mouseScrollDelta.y > 0 && Camera.main.orthographicSize > 1)
+            if (
+                (Input.mouseScrollDelta.y > 0 || this.GetKey(KeyCode.E))
+                && Camera.main.orthographicSize > 1
+            )
             {
                 Camera.main.orthographicSize--;
             }
-            if (Input.mouseScrollDelta.y < 0 && Camera.main.orthographicSize < this.maxZoom)
+            if (
+                (Input.mouseScrollDelta.y < 0 || this.GetKey(KeyCode.Q))
+                && Camera.main.orthographicSize < this.maxZoom
+            )
             {
                 Camera.main.orthographicSize++;
             }

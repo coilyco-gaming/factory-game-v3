@@ -2990,7 +2990,9 @@ MonoBehaviour:
   oreSpawnFactor: 1
   OreQuantityBase: 2000
   OreQuantityRange: 1000
-  spawnQueueItems: []
+  spawnQueueItems:
+  - {fileID: 11400000, guid: 0d1ea713c2f2b4a7bb7614c899269aa7, type: 2}
+  - {fileID: 11400000, guid: 4cb680b9e0e6f4a53aa8d920e1f897b8, type: 2}
 --- !u!223 &1318506233
 Canvas:
   m_ObjectHideFlags: 0

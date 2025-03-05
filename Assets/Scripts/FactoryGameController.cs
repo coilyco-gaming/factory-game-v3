@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Components.Unity;
-using Assets.Scripts.Core;
+using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.WorldObjects.Core;
-using Assets.Scripts.WorldObjects.FactoryGame;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace Assets.Scripts.Unity
@@ -22,7 +22,7 @@ namespace Assets.Scripts.Unity
         public float oreSpawnFactor = 0.5f;
         public uint OreQuantityBase = 2000;
         public uint OreQuantityRange = 1000;
-        public List<GameControllerCore.SpawnQueueItem> spawnQueueItems;
+        public List<SpawnQueueItem> spawnQueueItems;
         private TextMeshProUGUI pauseTextComponent;
         private StatusUILeftComponent StatusUILeftComponent;
         private StatusUIRightComponent StatusUIRightComponent;
@@ -104,57 +104,39 @@ namespace Assets.Scripts.Unity
 
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "CoalPlant",
                     x: 1,
                     y: 0,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
+                    resources: new SerializedDictionary<string, uint> { { "Coal", 100 } }
                 )
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "CoalPlant",
                     x: 1,
                     y: 1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
+                    resources: new SerializedDictionary<string, uint> { { "Coal", 100 } }
                 )
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "Factory",
-                    x: 2,
-                    y: 0,
-                    xyCentered: true,
-                    targetType: "Frames"
-                )
+                new SpawnQueueItem("Factory", x: 2, y: 0, xyCentered: true, targetType: "Frames")
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "Factory",
-                    x: 3,
-                    y: 0,
-                    xyCentered: true,
-                    targetType: "Circuits"
-                )
+                new SpawnQueueItem("Factory", x: 3, y: 0, xyCentered: true, targetType: "Circuits")
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "Factory",
-                    x: 4,
-                    y: 0,
-                    xyCentered: true,
-                    targetType: "Motors"
-                )
+                new SpawnQueueItem("Factory", x: 4, y: 0, xyCentered: true, targetType: "Motors")
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "Factory",
                     x: 5,
                     y: 0,
@@ -164,17 +146,11 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "Factory",
-                    x: 2,
-                    y: 2,
-                    xyCentered: true,
-                    targetType: "Factory"
-                )
+                new SpawnQueueItem("Factory", x: 2, y: 2, xyCentered: true, targetType: "Factory")
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "Factory",
                     x: 3,
                     y: 2,
@@ -184,42 +160,36 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "Factory",
-                    x: 4,
-                    y: 2,
-                    xyCentered: true,
-                    targetType: "CoalPlant"
-                )
+                new SpawnQueueItem("Factory", x: 4, y: 2, xyCentered: true, targetType: "CoalPlant")
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 1,
                     y: -1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
+                    resources: new SerializedDictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 1,
                     y: 2,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
+                    resources: new SerializedDictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 2,
                     y: -1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint>
+                    resources: new SerializedDictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -229,12 +199,12 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 3,
                     y: -1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint>
+                    resources: new SerializedDictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -244,12 +214,12 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 4,
                     y: -1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint>
+                    resources: new SerializedDictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -259,12 +229,12 @@ namespace Assets.Scripts.Unity
             );
 
             this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
+                new SpawnQueueItem(
                     "StorageWarehouse",
                     x: 5,
                     y: -1,
                     xyCentered: true,
-                    resources: new Dictionary<string, uint>
+                    resources: new SerializedDictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -273,23 +243,9 @@ namespace Assets.Scripts.Unity
                 )
             );
 
-            this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "TransferWarehouse",
-                    x: 3,
-                    y: 1,
-                    xyCentered: true
-                )
-            );
+            this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 3, y: 1, xyCentered: true));
 
-            this.Spawn(
-                new GameControllerCore.SpawnQueueItem(
-                    "TransferWarehouse",
-                    x: 4,
-                    y: 1,
-                    xyCentered: true
-                )
-            );
+            this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 4, y: 1, xyCentered: true));
 
             this.readyForTicks = false;
         }
@@ -340,11 +296,11 @@ namespace Assets.Scripts.Unity
                     if (!oreAtPosition)
                     {
                         this.Spawn(
-                            new GameControllerCore.SpawnQueueItem(
+                            new SpawnQueueItem(
                                 objectName,
                                 x: x,
                                 y: y,
-                                resources: new Dictionary<string, uint>
+                                resources: new SerializedDictionary<string, uint>
                                 {
                                     { objectName, oreQuantity },
                                 }
@@ -354,27 +310,6 @@ namespace Assets.Scripts.Unity
                     }
                 }
             }
-        }
-
-        private Action<GameControllerCore, WorldObjectCore> SpawnFactoryWarehouseCallback()
-        {
-            return (gameController, worldObject) =>
-            {
-                WorldObjectStorageWarehouse worldObjectWarehouse =
-                    worldObject.backref as WorldObjectStorageWarehouse;
-                worldObjectWarehouse.core.resources.CreateResources(
-                    FactoryGameContent.Resources.Iron.ToString(),
-                    2000
-                );
-                worldObjectWarehouse.core.resources.CreateResources(
-                    FactoryGameContent.Resources.Stone.ToString(),
-                    1000
-                );
-                worldObjectWarehouse.core.resources.CreateResources(
-                    FactoryGameContent.Resources.Copper.ToString(),
-                    500
-                );
-            };
         }
 
         private void TogglePausePlay()
