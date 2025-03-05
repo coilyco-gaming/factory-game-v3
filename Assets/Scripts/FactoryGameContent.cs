@@ -5,9 +5,12 @@ namespace Assets.Scripts.Unity
 {
     public class FactoryGameContent : GameContent
     {
+        public override Dictionary<string, Object> Objects { get; } = new() { };
+
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
+                // Resources
                 {
                     Resources.Iron.ToString(), //
                     new Item(Resources.Iron.ToString(), stackSize: 200)
@@ -24,6 +27,7 @@ namespace Assets.Scripts.Unity
                     Resources.Stone.ToString(),
                     new Item(Resources.Stone.ToString(), stackSize: 200)
                 },
+                // Products
                 {
                     Products.BuildingMaterials.ToString(),
                     new Item(
@@ -78,46 +82,18 @@ namespace Assets.Scripts.Unity
                         }
                     )
                 },
+                // Large Buildings
                 {
                     Spawnables.StorageWarehouse.ToString(),
                     new Item(
                         Spawnables.StorageWarehouse.ToString(),
-                        weight: 300,
-                        volume: 150,
+                        weight: 400,
+                        volume: 200,
                         craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 10 },
                             { Products.BuildingMaterials.ToString(), 10 },
-                        }
-                    )
-                },
-                {
-                    Spawnables.TransferWarehouse.ToString(),
-                    new Item(
-                        Spawnables.TransferWarehouse.ToString(),
-                        weight: 300,
-                        volume: 150,
-                        craftTime: 50,
-                        ingredients: new Dictionary<string, uint>
-                        {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
-                        }
-                    )
-                },
-                {
-                    Spawnables.Radar.ToString(),
-                    new Item(
-                        Spawnables.Radar.ToString(),
-                        weight: 150,
-                        volume: 75,
-                        craftTime: 50,
-                        ingredients: new Dictionary<string, uint>
-                        {
-                            { Products.Frames.ToString(), 5 },
-                            { Products.BuildingMaterials.ToString(), 5 },
-                            { Products.Circuits.ToString(), 5 },
                         }
                     )
                 },
@@ -125,8 +101,8 @@ namespace Assets.Scripts.Unity
                     Spawnables.CoalPlant.ToString(),
                     new Item(
                         Spawnables.CoalPlant.ToString(),
-                        weight: 300,
-                        volume: 150,
+                        weight: 400,
+                        volume: 200,
                         craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
@@ -136,6 +112,53 @@ namespace Assets.Scripts.Unity
                         }
                     )
                 },
+                {
+                    Spawnables.Factory.ToString(),
+                    new Item(
+                        Spawnables.Factory.ToString(),
+                        weight: 400,
+                        volume: 200,
+                        craftTime: 50,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Products.Frames.ToString(), 10 },
+                            { Products.BuildingMaterials.ToString(), 10 },
+                            { Products.Circuits.ToString(), 5 },
+                            { Products.Motors.ToString(), 5 },
+                        }
+                    )
+                },
+                // Medium Buildings
+                {
+                    Spawnables.TransferWarehouse.ToString(),
+                    new Item(
+                        Spawnables.TransferWarehouse.ToString(),
+                        weight: 200,
+                        volume: 100,
+                        craftTime: 50,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Products.Frames.ToString(), 10 },
+                            { Products.BuildingMaterials.ToString(), 10 },
+                        }
+                    )
+                },
+                // {
+                //     Spawnables.Radar.ToString(),
+                //     new Item(
+                //         Spawnables.Radar.ToString(),
+                //         weight: 200,
+                //         volume: 100,
+                //         craftTime: 50,
+                //         ingredients: new Dictionary<string, uint>
+                //         {
+                //             { Products.Frames.ToString(), 5 },
+                //             { Products.BuildingMaterials.ToString(), 5 },
+                //             { Products.Circuits.ToString(), 5 },
+                //         }
+                //     )
+                // },
+                // Small Buildings
                 {
                     Spawnables.Mine.ToString(),
                     new Item(
@@ -145,24 +168,8 @@ namespace Assets.Scripts.Unity
                         craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 10 },
+                            { Products.Frames.ToString(), 5 },
                             { Products.Motors.ToString(), 1 },
-                        }
-                    )
-                },
-                {
-                    Spawnables.Factory.ToString(),
-                    new Item(
-                        Spawnables.Factory.ToString(),
-                        weight: 300,
-                        volume: 150,
-                        craftTime: 50,
-                        ingredients: new Dictionary<string, uint>
-                        {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
-                            { Products.Circuits.ToString(), 5 },
-                            { Products.Motors.ToString(), 5 },
                         }
                     )
                 },
@@ -186,7 +193,7 @@ namespace Assets.Scripts.Unity
 
         public enum Spawnables
         {
-            Radar,
+            Truck,
             CoalPlant,
             Mine,
             Factory,

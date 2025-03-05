@@ -1,11 +1,8 @@
-using Sirenix.OdinInspector;
-using UnityEngine;
-using UnityEngine.Rendering;
+using System.Collections.Generic;
 
 namespace Assets.Scripts.ScriptableObject
 {
-    [CreateAssetMenu]
-    public class SpawnQueueItem : SerializedScriptableObject
+    public class SpawnQueueItem
     {
         public string type;
         public bool xyCentered;
@@ -13,7 +10,7 @@ namespace Assets.Scripts.ScriptableObject
         public int y;
         public System.Numerics.Vector2 gridPosition;
         public string targetType;
-        public SerializedDictionary<string, uint> resources;
+        public Dictionary<string, uint> resources;
 
         public SpawnQueueItem(
             string type,
@@ -21,7 +18,7 @@ namespace Assets.Scripts.ScriptableObject
             int y,
             bool xyCentered = false,
             string targetType = "",
-            SerializedDictionary<string, uint> resources = null
+            Dictionary<string, uint> resources = null
         )
         {
             this.type = type;

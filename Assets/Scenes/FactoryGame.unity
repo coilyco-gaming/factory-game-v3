@@ -177,7 +177,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "- Name: Factory\n  Info:\n    Frames: 21\n    Motors: 45\n    Circuits:
+    135\n    BuildingMaterials: 15\n    Factory: 1\n    Product: Factory\n    Storage
+    Volume: 66%\n    Energy: 99%\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1622,6 +1624,9 @@ MonoBehaviour:
     guid: 
     worldObjectType: 
     targetType: 
+  totalVolumeCapacity: 500
+  totalWeightCapacity: 500
+  totalBatteryCapacity: 1000
 --- !u!1 &678344652
 GameObject:
   m_ObjectHideFlags: 0
@@ -2294,24 +2299,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0a3044733f3d9a449ff870238f64d32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
 --- !u!1 &1141577915
 GameObject:
   m_ObjectHideFlags: 11
@@ -2594,24 +2581,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 359a21388782012428a2ca8eedeac7d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
 --- !u!1 &1210551303
 GameObject:
   m_ObjectHideFlags: 0
@@ -2905,7 +2874,6 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
   totalBatteryCapacity: 1000
-  target: 
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -2975,12 +2943,15 @@ MonoBehaviour:
     - Name: random
       Entry: 6
       Data: 
+    - Name: spawnQueueItems
+      Entry: 6
+      Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
   tickFrequency: 0.1
   randomSeed: 0
-  readyForTicks: 0
-  lastTick: 0
+  readyForTicks: 1
+  lastTick: 123.774796
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
@@ -2990,9 +2961,6 @@ MonoBehaviour:
   oreSpawnFactor: 1
   OreQuantityBase: 2000
   OreQuantityRange: 1000
-  spawnQueueItems:
-  - {fileID: 11400000, guid: 0d1ea713c2f2b4a7bb7614c899269aa7, type: 2}
-  - {fileID: 11400000, guid: 4cb680b9e0e6f4a53aa8d920e1f897b8, type: 2}
 --- !u!223 &1318506233
 Canvas:
   m_ObjectHideFlags: 0

@@ -85,7 +85,7 @@ namespace Assets.Scripts.Components.Unity
                 return;
             }
 
-            Dictionary<int, string> alertDict = new() { { gameController.Tick, alert } };
+            Dictionary<int, string> alertDict = new();
             this.Alerts.Add(alertDict);
 
             // string alertsYaml = this.serializer.Serialize(this.Alerts);

@@ -176,7 +176,6 @@ namespace Assets.Scripts.Unity
 
         // PROPERTIES //
 
-        public int Tick { get; protected set; } = 0;
         public Dictionary<
             System.Numerics.Vector2,
             Dictionary<string, WorldObjectCore>
@@ -246,7 +245,6 @@ namespace Assets.Scripts.Unity
 
                 // Handle ticks
                 this.lastTick = Time.time;
-                this.Tick++;
             }
         }
 
@@ -284,7 +282,7 @@ namespace Assets.Scripts.Unity
             // TODO: reset every component as well
             this.Clear();
             this.random = new System.Random(this.randomSeed);
-            this.Tick = 0;
+            this.lastTick = 0;
             this.readyForTicks = false;
         }
 

@@ -19,6 +19,8 @@ namespace Assets.Scripts.WorldObjects.Core
         // TODO: add odin inspector to all of the serializable classes
         // https://odininspector.com/tutorials
 
+        public DispatchComponentCore dispatch;
+        public DispatchReceiverComponentCore receiver;
         public TransferHubComponent transferHub;
         public ResourcesComponentCore resources;
         public BatteryComponentCore battery;

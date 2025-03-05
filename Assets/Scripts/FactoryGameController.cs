@@ -77,10 +77,12 @@ namespace Assets.Scripts.Unity
             // W = Storage Warehouse  <== simply stores things
             // X = Transfer Warehouse <== acts as a buffer between buildings
             // S = Radar
+            // T = Truck
             //
-            //   W F F F
-            //   C   X X
-            //   C F F F F <== the radar on the far left is our 0x 0y
+            //   T T T T
+            // R W F F F
+            // R C   X X
+            // R C F F F F <== the radar on the far left is our 0x 0y
             //   W W W W W
             //
             // Both coal plants have a warehouse beside them with a stockpile of coal.
@@ -109,7 +111,7 @@ namespace Assets.Scripts.Unity
                     x: 1,
                     y: 0,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint> { { "Coal", 100 } }
+                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
                 )
             );
 
@@ -119,8 +121,20 @@ namespace Assets.Scripts.Unity
                     x: 1,
                     y: 1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint> { { "Coal", 100 } }
+                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
                 )
+            );
+
+            this.Spawn(
+                new SpawnQueueItem("Radar", x: 0, y: 0, xyCentered: true, targetType: "Iron")
+            );
+
+            this.Spawn(
+                new SpawnQueueItem("Radar", x: 0, y: 1, xyCentered: true, targetType: "Copper")
+            );
+
+            this.Spawn(
+                new SpawnQueueItem("Radar", x: 0, y: 2, xyCentered: true, targetType: "Coal")
             );
 
             this.Spawn(
@@ -169,7 +183,7 @@ namespace Assets.Scripts.Unity
                     x: 1,
                     y: -1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint> { { "Coal", 5000 } }
+                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
@@ -179,7 +193,7 @@ namespace Assets.Scripts.Unity
                     x: 1,
                     y: 2,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint> { { "Coal", 5000 } }
+                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
                 )
             );
 
@@ -189,7 +203,7 @@ namespace Assets.Scripts.Unity
                     x: 2,
                     y: -1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint>
+                    resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -204,7 +218,7 @@ namespace Assets.Scripts.Unity
                     x: 3,
                     y: -1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint>
+                    resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -219,7 +233,7 @@ namespace Assets.Scripts.Unity
                     x: 4,
                     y: -1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint>
+                    resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -234,7 +248,7 @@ namespace Assets.Scripts.Unity
                     x: 5,
                     y: -1,
                     xyCentered: true,
-                    resources: new SerializedDictionary<string, uint>
+                    resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
                         { "Iron", 2000 },
@@ -246,6 +260,11 @@ namespace Assets.Scripts.Unity
             this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 3, y: 1, xyCentered: true));
 
             this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 4, y: 1, xyCentered: true));
+
+            this.Spawn(new SpawnQueueItem("Truck", x: 1, y: 3, xyCentered: true));
+            this.Spawn(new SpawnQueueItem("Truck", x: 2, y: 3, xyCentered: true));
+            this.Spawn(new SpawnQueueItem("Truck", x: 3, y: 3, xyCentered: true));
+            this.Spawn(new SpawnQueueItem("Truck", x: 4, y: 3, xyCentered: true));
 
             this.readyForTicks = false;
         }
@@ -300,7 +319,7 @@ namespace Assets.Scripts.Unity
                                 objectName,
                                 x: x,
                                 y: y,
-                                resources: new SerializedDictionary<string, uint>
+                                resources: new Dictionary<string, uint>
                                 {
                                     { objectName, oreQuantity },
                                 }

@@ -4,7 +4,10 @@ namespace Assets.Scripts.Core
 {
     public class GameContent
     {
+        public virtual Dictionary<string, Object> Objects { get; }
         public virtual Dictionary<string, Item> Items { get; }
+
+        public class Object { }
 
         public class Item
         {
