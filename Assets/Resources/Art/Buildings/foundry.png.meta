@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 0e8c3a1c4a409c444b2c67bffea23077
+guid: 21c76ea7c587a58479c0fbbc888d4a6e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7245868139673468748
-    second: HQ-3_0
+      213: 722156864034272822
+    second: foundry_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: HQ-3_0
+      name: foundry_0
       rect:
         serializedVersion: 2
-        x: 7
-        y: 15
-        width: 102
-        height: 107
+        x: 20
+        y: 71
+        width: 979
+        height: 876
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 4b041753151817b90800000000000000
-      internalID: -7245868139673468748
+      spriteID: 6367fd877dd950a00800000000000000
+      internalID: 722156864034272822
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      HQ-3_0: -7245868139673468748
+      foundry_0: 722156864034272822
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

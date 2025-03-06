@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 9964021a074c4cf43b99bce4b92bb63f
+guid: 02c465aaca0a3ff4f964898375385ec4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -9176122009169712612
-    second: tank_0
+      213: -1009044336197005148
+    second: arm-assembly_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: tank_0
+      name: arm-assembly_0
       rect:
         serializedVersion: 2
-        x: 5
-        y: 4
-        width: 111
-        height: 123
+        x: 16
+        y: 34
+        width: 990
+        height: 952
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c1aabcb56add7a080800000000000000
-      internalID: -9176122009169712612
+      spriteID: 4a09b5ab5872ff1f0800000000000000
+      internalID: -1009044336197005148
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      tank_0: -9176122009169712612
+      arm-assembly_0: -1009044336197005148
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

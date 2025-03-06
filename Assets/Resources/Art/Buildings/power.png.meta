@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 9e1c7628a036ea24cbe8ab97cb068c68
+guid: b25e1902da6b7f94f8b89f226006454f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 8229915071386768798
-    second: coalplant_0
+      213: -6743024233415356852
+    second: power_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: coalplant_0
+      name: power_0
       rect:
         serializedVersion: 2
-        x: 18
-        y: 22
-        width: 92
-        height: 106
+        x: 150
+        y: 330
+        width: 717
+        height: 597
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: e9554a94728863270800000000000000
-      internalID: 8229915071386768798
+      spriteID: c4e4d6f8f27fb62a0800000000000000
+      internalID: -6743024233415356852
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      coalplant_0: 8229915071386768798
+      power_0: -6743024233415356852
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
