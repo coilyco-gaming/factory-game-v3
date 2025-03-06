@@ -31,6 +31,7 @@ namespace Assets.Scripts.WorldObjects.Core
         public string guid;
         public string worldObjectType;
         public string targetType;
+        public string targetSubType;
         public object backref;
         public System.Numerics.Vector2 gridPosition;
 
