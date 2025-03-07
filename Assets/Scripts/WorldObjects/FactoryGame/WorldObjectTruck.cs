@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.Unity;
@@ -8,9 +8,34 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectTruck : WorldObject
     {
+        public uint insertionRate = 1;
         public uint totalVolumeCapacity = 500;
         public uint totalWeightCapacity = 500;
         public uint totalBatteryCapacity = 250;
+
+        public override StatusDataComponentCore StatusData =>
+            new()
+            {
+                Name = this.WorldObjectType,
+                Energy = this.core.battery.PercentEnergyStatus,
+                Resources = this.core.resources.ResourceInfo,
+                Info = new()
+                {
+                    { "Storage Volume", this.core.resources.UsedVolumeString },
+                    {
+                        "Target Description",
+                        this.core.receiver != null && this.core.receiver.dispatcher != null
+                            ? this.core.receiver.dispatcher.ReceiverDescription
+                            : "awaiting target"
+                    },
+                    {
+                        "Target Location",
+                        this.core.receiver != null && this.core.receiver.dispatcher != null
+                            ? this.core.receiver.targetPosition.ToString()
+                            : "awaiting target"
+                    },
+                },
+            };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
@@ -23,43 +48,26 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.receiver = new(
                 this.core,
+                this.core.resources,
                 DispatchComponentCore.Verbs.Retrieve.ToString(), // Deploy
                 FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
             ); // TODO: rotate around possible choices
             this.core.movement = new MovementComponentCore(this, this.core.receiver);
+            this.core.inserters = new List<InserterComponentCore>
+            {
+                new(
+                    this.core.battery,
+                    this.core.resources,
+                    FactoryGameContent.Spawnables.MiningDrill.ToString(), // Mining drill
+                    this.insertionRate
+                ),
+            };
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
             this.core.movement.Tick(gameController);
-        }
-
-        protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
-        {
-            return () =>
-                new()
-                {
-                    Name = this.WorldObjectType,
-                    Resources = this.core.resources.ResourceInfo,
-                    Info = new()
-                    {
-                        { "Storage Volume", this.core.resources.UsedVolumeString },
-                        { "Energy", this.core.battery.PercentEnergyStatus },
-                        {
-                            "Target Description",
-                            this.core.receiver != null && this.core.receiver.dispatcher != null
-                                ? this.core.receiver.dispatcher.ReceiverDescription
-                                : "awaiting target"
-                        },
-                        {
-                            "Target Location",
-                            this.core.receiver != null && this.core.receiver.dispatcher != null
-                                ? this.core.receiver.targetPosition.ToString()
-                                : "awaiting target"
-                        },
-                    },
-                };
         }
     }
 }

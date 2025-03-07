@@ -1,7 +1,6 @@
 #if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
-    using System;
     using System.Collections.Generic;
     using Assets.Scripts.WorldObjects.Core;
     using TMPro;
@@ -33,42 +32,41 @@ namespace Assets.Scripts.Components.Unity
             this.textMeshPro = this.transform.GetComponent<TextMeshProUGUI>();
         }
 
-        public void Display(List<WorldObjectCore> worldObjects)
+        public void Display(IEnumerable<WorldObjectCore> worldObjects)
         {
             StatusData data = new();
 
-            // Total battery energy, via Energy attribute
-            worldObjects?.ForEach(worldObject =>
+            if (worldObjects != null)
             {
-                if (worldObject.battery != null)
+                foreach (WorldObjectCore worldObject in worldObjects)
                 {
-                    data.BatteryEnergy += worldObject.battery.Energy;
-                }
-            });
-            data.BatteryEnergy = (float)Math.Round(data.BatteryEnergy, 0);
-
-            worldObjects?.ForEach(worldObject =>
-            {
-                // Count objects
-                if (!data.Objects.ContainsKey(worldObject.worldObjectType))
-                {
-                    data.Objects.Add(worldObject.worldObjectType, 0);
-                }
-                data.Objects[worldObject.worldObjectType] += 1;
-
-                // Count resources
-                if (worldObject.resources != null)
-                {
-                    foreach (KeyValuePair<string, uint> resource in worldObject.resources.resources)
+                    // Total battery energy, via Energy attribute
+                    if (worldObject.battery != null)
                     {
-                        if (!data.Resources.ContainsKey(resource.Key))
+                        data.BatteryEnergy += worldObject.battery.Energy;
+                    }
+                    // Count objects
+                    if (!data.Objects.ContainsKey(worldObject.worldObjectType))
+                    {
+                        data.Objects.Add(worldObject.worldObjectType, 0);
+                    }
+                    data.Objects[worldObject.worldObjectType] += 1;
+                    // Count resources
+                    if (worldObject.resources != null)
+                    {
+                        foreach (
+                            KeyValuePair<string, uint> resource in worldObject.resources.resources
+                        )
                         {
-                            data.Resources.Add(resource.Key, 0);
+                            if (!data.Resources.ContainsKey(resource.Key))
+                            {
+                                data.Resources.Add(resource.Key, 0);
+                            }
+                            data.Resources[resource.Key] += resource.Value;
                         }
-                        data.Resources[resource.Key] += resource.Value;
                     }
                 }
-            });
+            }
 
             // Serialize the status list to YAML, then update the status
             string statusYaml = this.serializer.Serialize(data);

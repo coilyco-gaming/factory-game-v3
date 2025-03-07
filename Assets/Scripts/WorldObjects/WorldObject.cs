@@ -28,7 +28,6 @@ namespace Assets.Scripts.WorldObjects.Core
         public List<InserterComponentCore> inserters;
         public ProductionComponentCore production;
         public PowerComponentCore power;
-        public StatusDataComponentCore status;
         public string guid;
         public string worldObjectType;
         public string targetType;
@@ -83,7 +82,6 @@ namespace Assets.Scripts.WorldObjects.Unity
 {
     using System;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Core;
     using Assets.Scripts.ScriptableObject;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Core;
@@ -120,6 +118,12 @@ namespace Assets.Scripts.WorldObjects.Unity
             }
         }
 
+        public virtual StatusDataComponentCore StatusData =>
+            new()
+            { //
+                Name = Util.HumanizedString(this.WorldObjectType),
+            };
+
         // FUNCTIONS //
 
         public virtual void Tick(GameController gameController) { }
@@ -136,22 +140,12 @@ namespace Assets.Scripts.WorldObjects.Unity
         public virtual void PostInstantiate(SpawnQueueItem spawnQueueItem)
         {
             this.core.PostInstantiate(spawnQueueItem);
-            this.core.status = new() { Data = this.GetStatusData() };
         }
 
         public void SetName()
         {
             this.transform.name =
                 $"{this.WorldObjectType} ({this.GridPosition.X}, {this.GridPosition.Y})";
-        }
-
-        protected virtual Func<StatusDataComponentCore.StatusData> GetStatusData()
-        {
-            return () =>
-                new StatusDataComponentCore.StatusData()
-                {
-                    Name = Util.HumanizedString(this.WorldObjectType),
-                };
         }
     }
 }

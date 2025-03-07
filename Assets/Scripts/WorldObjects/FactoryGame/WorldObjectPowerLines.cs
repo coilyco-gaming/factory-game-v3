@@ -11,6 +11,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         public uint totalBatteryCapacity = 1000;
 
+        public override StatusDataComponentCore StatusData =>
+            new()
+            {
+                Name = Util.HumanizedString(this.WorldObjectType),
+                Energy = this.core.battery.PercentEnergyStatus,
+            };
+
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
@@ -21,19 +28,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Tick(gameController);
             this.core.battery.Balance(this.core, gameController.core);
-        }
-
-        protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
-        {
-            return () =>
-                new()
-                {
-                    Name = Util.HumanizedString(this.WorldObjectType),
-                    Info = new()
-                    { //
-                        { "Energy", this.core.battery.PercentEnergyStatus },
-                    },
-                };
         }
     }
 }

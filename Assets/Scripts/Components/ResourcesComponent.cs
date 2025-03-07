@@ -163,8 +163,6 @@ namespace Assets.Scripts.Components.Core
 
         // CONSTRUCTORS //
 
-        private ResourcesComponentCore() { }
-
         public ResourcesComponentCore(
             GameContent gameContent,
             uint weightCapacity,

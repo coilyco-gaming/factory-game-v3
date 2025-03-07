@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using Assets.Scripts.Components.Unity;
 using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.WorldObjects.Core;
@@ -23,8 +25,10 @@ namespace Assets.Scripts.Unity
         public uint OreQuantityRange = 1000;
         public List<SpawnQueueItem> spawnQueueItems;
         private TextMeshProUGUI pauseTextComponent;
-        private StatusUILeftComponent StatusUILeftComponent;
-        private StatusUIRightComponent StatusUIRightComponent;
+        private StatusUILeftComponent statusUILeftComponent;
+        private StatusUIRightComponent statusUIRightComponent;
+        private BackgroundWorker statusUILeftWorker;
+        private BackgroundWorker statusUIRightWorker;
 
         public override void Start()
         {
@@ -36,11 +40,15 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent = this.GetComponent<PlayerComponent>();
             this.PlayerComponent.Instantiate((int)this.Map.MapSize.X, (int)this.Map.MapSize.Y);
 
-            this.StatusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
-            this.StatusUILeftComponent.Instantiate();
+            this.statusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
+            this.statusUILeftComponent.Instantiate();
+            this.statusUILeftWorker = new BackgroundWorker();
+            this.statusUILeftWorker.DoWork += (sender, e) => this.WriteStatusUILeft();
 
-            this.StatusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
-            this.StatusUIRightComponent.Instantiate();
+            this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
+            this.statusUIRightComponent.Instantiate();
+            this.statusUIRightWorker = new BackgroundWorker();
+            this.statusUIRightWorker.DoWork += (sender, e) => this.WriteStatusUIRight();
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -57,8 +65,8 @@ namespace Assets.Scripts.Unity
         public override void Update()
         {
             base.Update();
-            this.WriteStatusUILeft();
-            this.WriteStatusUIRight();
+            this.statusUILeftWorker.RunWorkerAsync();
+            this.statusUIRightWorker.RunWorkerAsync();
         }
 
         protected override void Reset()
@@ -244,38 +252,41 @@ namespace Assets.Scripts.Unity
 
         private void WriteStatusUILeft()
         {
-            // Update the UI state with whatever the player is looking at
+            // Only run every 10ms to avoid overloading the thread
+            Thread.Sleep(10);
 
             // Get the list of objects at the player's position
-            System.Numerics.Vector2 position = this.PlayerComponent.GetGridPosition();
-
-            // TODO: grab the nearby objects, not just the ones at the player's position
-            List<WorldObjectCore> worldObjects =
-                this?.core?.worldObjects?.GetValueOrDefault(position, null)?.Values.ToList()
-                ?? new List<WorldObjectCore>();
+            IEnumerable<WorldObjectCore> worldObjects = this
+                ?.core?.worldObjects?.GetValueOrDefault(
+                    this.PlayerComponent.GetGridPosition(),
+                    null
+                )
+                ?.Values.ToList();
 
             // Display the status data in the UI
-            this.StatusUILeftComponent.Display(worldObjects);
+            this.statusUILeftComponent.Display(worldObjects);
         }
 
         private void WriteStatusUIRight()
         {
-            // TODO: grab the nearby objects, not just the ones at the player's position
-            List<WorldObjectCore> worldObjects =
-                this?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
-                    .Where(worldObject => worldObject != null)
-                    .Where(worldObject =>
-                        !new List<string>
-                        {
-                            FactoryGameContent.Resources.IronOre.ToString(),
-                            FactoryGameContent.Resources.CopperOre.ToString(),
-                            FactoryGameContent.Resources.Coal.ToString(),
-                        }.Contains(worldObject.worldObjectType)
-                    )
-                    .ToList() ?? new List<WorldObjectCore>();
+            // Only run every 10ms to avoid overloading the thread
+            Thread.Sleep(10);
+
+            // Get the list of all objects
+            IEnumerable<WorldObjectCore> worldObjects = this
+                ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
+                .Where(worldObject => worldObject != null)
+                .Where(worldObject =>
+                    !new List<string>
+                    {
+                        FactoryGameContent.Resources.IronOre.ToString(),
+                        FactoryGameContent.Resources.CopperOre.ToString(),
+                        FactoryGameContent.Resources.Coal.ToString(),
+                    }.Contains(worldObject.worldObjectType)
+                );
 
             // Display the status data in the UI
-            this.StatusUIRightComponent.Display(worldObjects);
+            this.statusUIRightComponent.Display(worldObjects);
         }
     }
 }

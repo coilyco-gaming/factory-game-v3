@@ -5,6 +5,7 @@ namespace Assets.Scripts.Components.Unity
     using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.WorldObjects.Core;
+    using Assets.Scripts.WorldObjects.Unity;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;
@@ -27,7 +28,7 @@ namespace Assets.Scripts.Components.Unity
             this.textMeshPro = this.transform.GetComponent<TextMeshProUGUI>();
         }
 
-        public void Display(List<WorldObjectCore> worldObjects)
+        public void Display(IEnumerable<WorldObjectCore> worldObjects)
         {
             // Nothing is here
             if (worldObjects == null)
@@ -36,16 +37,13 @@ namespace Assets.Scripts.Components.Unity
             }
 
             // Get the status data from each object
-            List<StatusDataComponentCore.StatusData> statusDataList =
-                worldObjects
-                    ?.Where(worldObject => worldObject != null)
-                    .Where(worldObject => worldObject.status != null)
-                    .Where(worldObject => worldObject.status.Data != null)
-                    .Select(worldObject => worldObject.status.Data?.Invoke())
-                    .Where(data => data != null)
-                    .ToList() ?? new List<StatusDataComponentCore.StatusData>();
+            IEnumerable<StatusDataComponentCore> statusDataList = worldObjects
+                .Where(worldObject => worldObject != null)
+                .Where(worldObject => (worldObject.backref as WorldObject) != null)
+                .Select(worldObject => worldObject.backref as WorldObject)
+                .Select(worldObject => worldObject.StatusData);
 
-            if (statusDataList.Count == 0)
+            if (statusDataList.Count() == 0)
             {
                 // If there are no statuses, clear the status
                 this.textMeshPro.SetText("");

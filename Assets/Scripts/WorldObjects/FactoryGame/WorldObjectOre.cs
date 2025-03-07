@@ -10,6 +10,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectOre : WorldObject
     {
+        public override StatusDataComponentCore StatusData =>
+            new()
+            {
+                Name = Util.HumanizedString(this.WorldObjectType),
+                Resources = this.core.resources.ResourceInfo,
+            };
+
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
@@ -31,16 +38,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     new GameControllerCore.DeletionQueueItem(this.core, this.GridPosition)
                 );
             }
-        }
-
-        protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
-        {
-            return () =>
-                new()
-                {
-                    Name = Util.HumanizedString(this.WorldObjectType),
-                    Resources = this.core.resources.ResourceInfo,
-                };
         }
     }
 }

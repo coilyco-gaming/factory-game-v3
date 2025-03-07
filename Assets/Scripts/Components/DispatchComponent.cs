@@ -108,9 +108,6 @@ namespace Assets.Scripts.Components.Core
 
             if (targetLocations.Count == 0)
             {
-                Debug.Log(
-                    $"FAIL: {this.worldObject.worldObjectType} {this.worldObject.guid} found no target locations for {this.Description}"
-                );
                 return;
             }
 
@@ -140,18 +137,8 @@ namespace Assets.Scripts.Components.Core
 
             if (receiver == null)
             {
-                Debug.Log(
-                    $"FAIL: {this.worldObject.worldObjectType} {this.worldObject.guid} found no recievers for {this.ReceiverDescription}"
-                );
                 return;
             }
-
-            Debug.Log(
-                $"PASS: {this.worldObject.worldObjectType} {this.worldObject.guid} found target location for {this.Description}: {targetLocations[0]}"
-            );
-            Debug.Log(
-                $"PASS: {this.worldObject.worldObjectType} {this.worldObject.guid} found reciever for {this.ReceiverDescription}: {receiver.worldObject.guid}"
-            );
 
             // Assign the target to the receiver
             receiver.targetPosition = targetLocations[0];
@@ -216,8 +203,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
+            ResourcesComponentCore resources = new(new(), 100, 100);
+
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
+                resources,
                 "DEPLOY",
                 "MINING_DRILL"
             );
@@ -271,8 +261,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
+            ResourcesComponentCore resources = new(new(), 100, 100);
+
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
+                resources,
                 "DEPLOY",
                 "MINING_DRILL"
             );
@@ -325,8 +318,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
+            ResourcesComponentCore resources = new(new(), 100, 100);
+
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
+                resources,
                 "RETRIEVE",
                 "MINING_DRILL"
             );
@@ -379,8 +375,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
+            ResourcesComponentCore resources = new(new(), 100, 100);
+
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
+                resources,
                 "DEPLOY",
                 "WAREHOUSE"
             );
