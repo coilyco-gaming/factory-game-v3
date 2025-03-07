@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace Assets.Scripts.Unity
         public GameObject pauseButton;
         public GameObject StatusUILeft;
         public GameObject StatusUIRight;
+        public float statusUpdateInterval = 0.1f;
         public uint HQOreBuffer = 5;
         public uint spawnAttempts = 5;
         public float oreSpawnFactor = 0.5f;
@@ -27,8 +29,6 @@ namespace Assets.Scripts.Unity
         private TextMeshProUGUI pauseTextComponent;
         private StatusUILeftComponent statusUILeftComponent;
         private StatusUIRightComponent statusUIRightComponent;
-        private BackgroundWorker statusUILeftWorker;
-        private BackgroundWorker statusUIRightWorker;
 
         public override void Start()
         {
@@ -42,13 +42,11 @@ namespace Assets.Scripts.Unity
 
             this.statusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
             this.statusUILeftComponent.Instantiate();
-            this.statusUILeftWorker = new BackgroundWorker();
-            this.statusUILeftWorker.DoWork += (sender, e) => this.WriteStatusUILeft();
+            StartCoroutine(this.WriteStatusUILeft());
 
             this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
             this.statusUIRightComponent.Instantiate();
-            this.statusUIRightWorker = new BackgroundWorker();
-            this.statusUIRightWorker.DoWork += (sender, e) => this.WriteStatusUIRight();
+            StartCoroutine(this.WriteStatusUIRight());
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -65,8 +63,6 @@ namespace Assets.Scripts.Unity
         public override void Update()
         {
             base.Update();
-            this.statusUILeftWorker.RunWorkerAsync();
-            this.statusUIRightWorker.RunWorkerAsync();
         }
 
         protected override void Reset()
@@ -74,7 +70,7 @@ namespace Assets.Scripts.Unity
             base.Reset();
             this.PlayerComponent.Reset();
             this.SpawnOres(FactoryGameContent.Resources.IronOre.ToString());
-            this.SpawnOres(FactoryGameContent.Resources.IronOre.ToString());
+            this.SpawnOres(FactoryGameContent.Resources.CopperOre.ToString());
             this.SpawnOres(FactoryGameContent.Resources.Coal.ToString());
 
             // Spawn some initial buildings
@@ -250,43 +246,45 @@ namespace Assets.Scripts.Unity
             this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
         }
 
-        private void WriteStatusUILeft()
+        private IEnumerator WriteStatusUILeft()
         {
-            // Only run every 10ms to avoid overloading the thread
-            Thread.Sleep(10);
+            while (true)
+            {
+                yield return new WaitForSeconds(this.statusUpdateInterval);
+                // Get the list of objects at the player's position
+                IEnumerable<WorldObjectCore> worldObjects = this
+                    ?.core?.worldObjects?.GetValueOrDefault(
+                        this.PlayerComponent.GetGridPosition(),
+                        null
+                    )
+                    ?.Values.ToList();
 
-            // Get the list of objects at the player's position
-            IEnumerable<WorldObjectCore> worldObjects = this
-                ?.core?.worldObjects?.GetValueOrDefault(
-                    this.PlayerComponent.GetGridPosition(),
-                    null
-                )
-                ?.Values.ToList();
-
-            // Display the status data in the UI
-            this.statusUILeftComponent.Display(worldObjects);
+                // Display the status data in the UI
+                this.statusUILeftComponent.Display(worldObjects);
+            }
         }
 
-        private void WriteStatusUIRight()
+        private IEnumerator WriteStatusUIRight()
         {
-            // Only run every 10ms to avoid overloading the thread
-            Thread.Sleep(10);
+            while (true)
+            {
+                yield return new WaitForSeconds(this.statusUpdateInterval);
+                // Get the list of all objects
+                IEnumerable<WorldObjectCore> worldObjects = this
+                    ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
+                    .Where(worldObject => worldObject != null)
+                    .Where(worldObject =>
+                        !new List<string>
+                        {
+                            FactoryGameContent.Resources.IronOre.ToString(),
+                            FactoryGameContent.Resources.CopperOre.ToString(),
+                            FactoryGameContent.Resources.Coal.ToString(),
+                        }.Contains(worldObject.worldObjectType)
+                    );
 
-            // Get the list of all objects
-            IEnumerable<WorldObjectCore> worldObjects = this
-                ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
-                .Where(worldObject => worldObject != null)
-                .Where(worldObject =>
-                    !new List<string>
-                    {
-                        FactoryGameContent.Resources.IronOre.ToString(),
-                        FactoryGameContent.Resources.CopperOre.ToString(),
-                        FactoryGameContent.Resources.Coal.ToString(),
-                    }.Contains(worldObject.worldObjectType)
-                );
-
-            // Display the status data in the UI
-            this.statusUIRightComponent.Display(worldObjects);
+                // Display the status data in the UI
+                this.statusUIRightComponent.Display(worldObjects);
+            }
         }
     }
 }

@@ -1,13 +1,14 @@
-#if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
+    using Roy_T.AStar.Primitives;
     using UnityEngine;
 
     public class SpriteMapComponent : MonoBehaviour
     {
         public UnityEngine.Vector2Int _mapSize = new(20, 20);
         public System.Numerics.Vector2 MapSize => new(this._mapSize.x, this._mapSize.y);
+        public Roy_T.AStar.Grids.Grid Grid { get; set; }
         public GameObject WorldGameObject { get; set; }
 
         private Canvas parentCanvas;
@@ -49,6 +50,13 @@ namespace Assets.Scripts.Components.Unity
                     this.tiles.Add(position, tile);
                 }
             }
+
+            GridSize gridSize = new(this._mapSize.x, this._mapSize.y);
+            this.Grid = Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
+                gridSize,
+                new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
+                Velocity.FromMetersPerSecond(1)
+            );
         }
 
         private GameObject GenerateTile(Vector2 position)
@@ -65,4 +73,3 @@ namespace Assets.Scripts.Components.Unity
         }
     }
 }
-#endif
