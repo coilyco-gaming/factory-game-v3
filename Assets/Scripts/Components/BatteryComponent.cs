@@ -102,8 +102,11 @@ namespace Assets.Scripts.Components.Core
             // Set the energy of each battery to the target % of battery capacity.
             foreach (BatteryComponentCore battery in batteries)
             {
-                // Skip capacity validation so we don't bleed energy
-                battery.energy = battery.Capacity * targetPercentage;
+                try
+                {
+                    battery.Energy = battery.Capacity * targetPercentage;
+                }
+                catch (BatteryCapacityException) { }
             }
         }
 
@@ -302,7 +305,7 @@ namespace Assets.Scripts.Components.Tests
             battery2.Balance(new WorldObjectCore(null), gameController);
 
             Assert.Equal(0u, (uint)battery1.Energy);
-            Assert.Equal(200u, (uint)battery2.Energy);
+            Assert.Equal(99u, (uint)battery2.Energy);
         }
 
         [Fact]

@@ -52,6 +52,7 @@ namespace Assets.Scripts.WorldObjects.Core
         {
             this.GridPosition = spawnQueueItem.gridPosition;
             this.targetType = spawnQueueItem.targetType;
+            this.targetSubType = spawnQueueItem.targetSubType;
             this.guid = this.CreateGuid();
         }
 
@@ -156,7 +157,11 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         protected virtual Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
-            return () => new StatusDataComponentCore.StatusData() { Name = this.WorldObjectType };
+            return () =>
+                new StatusDataComponentCore.StatusData()
+                {
+                    Name = Util.HumanizedString(this.WorldObjectType),
+                };
         }
     }
 }

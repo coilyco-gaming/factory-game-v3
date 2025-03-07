@@ -396,6 +396,7 @@ namespace Assets.Scripts.Unity
                 // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate
                 // This base Instantiate function (eg. not PostInstantiate) is responsible for setting simple values like
                 // grid position, and initializing "simple" components like the resource component.
+
                 worldObject.Instantiate(spawnQueueItem);
 
                 // PostInstantiate is a custom function on each world object, similar to Instantiate above. It is responsible

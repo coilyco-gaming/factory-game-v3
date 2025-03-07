@@ -38,7 +38,7 @@ namespace Assets.Scripts.Components.Core
                 Dictionary<string, string> info = new();
                 foreach (KeyValuePair<string, uint> resource in this.resources)
                 {
-                    info.Add(resource.Key, resource.Value.ToString());
+                    info.Add(Util.HumanizedString(resource.Key), resource.Value.ToString());
                 }
                 return info;
             }

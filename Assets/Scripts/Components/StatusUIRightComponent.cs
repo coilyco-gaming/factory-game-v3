@@ -24,6 +24,7 @@ namespace Assets.Scripts.Components.Unity
         private class StatusData
         {
             public float BatteryEnergy { get; set; } = 0;
+            public Dictionary<string, uint> Objects { get; set; } = new();
             public Dictionary<string, uint> Resources { get; set; } = new();
         }
 
@@ -46,9 +47,16 @@ namespace Assets.Scripts.Components.Unity
             });
             data.BatteryEnergy = (float)Math.Round(data.BatteryEnergy, 0);
 
-            // Total resources of every type, via Resources attribute
             worldObjects?.ForEach(worldObject =>
             {
+                // Count objects
+                if (!data.Objects.ContainsKey(worldObject.worldObjectType))
+                {
+                    data.Objects.Add(worldObject.worldObjectType, 0);
+                }
+                data.Objects[worldObject.worldObjectType] += 1;
+
+                // Count resources
                 if (worldObject.resources != null)
                 {
                     foreach (KeyValuePair<string, uint> resource in worldObject.resources.resources)

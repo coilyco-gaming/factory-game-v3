@@ -35,17 +35,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-            {
-                StatusDataComponentCore.StatusData statusData = new()
+                new()
                 {
-                    Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Name = Util.HumanizedString(this.WorldObjectType),
+                    Resources = this.core.resources.ResourceInfo,
+                    Info = new()
+                    {
+                        { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
+                        { "Storage Volume", this.core.resources.UsedVolumeString },
+                        { "Energy", this.core.battery.PercentEnergyStatus },
+                    },
                 };
-                statusData.Info["Product"] = this.core.targetType;
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
-                return statusData;
-            };
         }
     }
 }

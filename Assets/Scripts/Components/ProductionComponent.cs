@@ -26,7 +26,7 @@ namespace Assets.Scripts.Components.Core
                     (double)(this.currentCraftProgress / (double)this.ProductItem.CraftTime),
                     2
                 )
-                : 0;
+                : 1;
 
         public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
 

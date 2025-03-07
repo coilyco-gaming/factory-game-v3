@@ -10,12 +10,12 @@ namespace Assets.Scripts.Components.Core
         public DispatchComponentCore dispatcher;
         public System.Numerics.Vector2 targetPosition;
         public string receiverVerb;
-        public string receiverNoun;
+        public string receiverSubject;
 
         public DispatchReceiverComponentCore(
             WorldObjectCore worldObject,
             string receiverVerb,
-            string receiverNoun
+            string receiverSubject
         )
         {
             this.worldObject =
@@ -24,7 +24,7 @@ namespace Assets.Scripts.Components.Core
                     "Reciever component requires a parent world object"
                 );
             this.receiverVerb = receiverVerb;
-            this.receiverNoun = receiverNoun;
+            this.receiverSubject = receiverSubject;
         }
 
         public void Tick() { }

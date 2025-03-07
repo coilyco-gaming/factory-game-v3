@@ -7,25 +7,54 @@ namespace Assets.Scripts.Components.Core
 {
     public class DispatchComponentCore
     {
+        // Example descriptions:
+        //  - Retrieve power lines from me
+        //  - Deploy mining drill to iron ore
+        //  - Deliver coal to me
+        private string DescriptionToOrFrom =>
+            this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString() ? "from" : "to";
+        private string DescriptionSubject => Util.HumanizedString(this.receiverSubject);
+        private string DescriptionObject => Util.HumanizedString(this.receiverObject);
+        public string Description =>
+            $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.DescriptionObject}".ToLower();
+
+        // Example descriptions:
+        //  - Retrieve power lines from factory
+        //  - Deploy mining drill to iron ore
+        //  - Deliver coal to coal plant
+        private string ReceiverDescriptionObject =>
+            this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
+                ? Util.HumanizedString(this.worldObject.worldObjectType)
+                : Util.HumanizedString(this.receiverObject);
+        public string ReceiverDescription =>
+            $"{this.receiverVerb} {this.DescriptionSubject} ${this.DescriptionToOrFrom} ${this.ReceiverDescriptionObject}".ToLower();
+
         public int ActiveDispatches => this.dispatches.Count;
         public Dictionary<System.Numerics.Vector2, DispatchReceiverComponentCore> dispatches =
             new();
         private WorldObjectCore worldObject;
         private BatteryComponentCore battery;
-        private string receiverVerb;
-        private string receiverNoun;
-        private string receiverObject;
+        private string receiverVerb = "VERB";
+        private string receiverSubject = "SUBJECT";
+        private string receiverObject = "OBJECT";
+
+        public enum Verbs
+        {
+            Deploy,
+            Deliver,
+            Retrieve,
+        }
 
         public enum Keywords
         {
-            TargetSelf,
+            Me,
         }
 
         public DispatchComponentCore(
             WorldObjectCore worldObject,
             BatteryComponentCore battery,
             string receiverVerb,
-            string receiverNoun,
+            string receiverSubject,
             string receiverObject
         )
         {
@@ -40,7 +69,7 @@ namespace Assets.Scripts.Components.Core
                     "Dispatch component requires a parent world object"
                 );
             this.receiverVerb = receiverVerb;
-            this.receiverNoun = receiverNoun;
+            this.receiverSubject = receiverSubject;
             this.receiverObject = receiverObject;
         }
 
@@ -58,7 +87,7 @@ namespace Assets.Scripts.Components.Core
 
             // Acqiure list the target location
             List<System.Numerics.Vector2> targetLocations =
-                this.receiverObject == DispatchComponentCore.Keywords.TargetSelf.ToString()
+                this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
                     ? new List<System.Numerics.Vector2> { this.worldObject.gridPosition }
                     : gameController
                         .worldObjects
@@ -96,8 +125,8 @@ namespace Assets.Scripts.Components.Core
                     // Where the receiver is not null and is awaiting a target
                     receiver != null
                     && receiver.dispatcher == null
-                    // Where the receiver noun and verb match the dispatch
-                    && receiver.receiverNoun == this.receiverNoun
+                    // Where the receiver Subject and verb match the dispatch
+                    && receiver.receiverSubject == this.receiverSubject
                     && receiver.receiverVerb == this.receiverVerb
                 )
                 // Order by distance to the current world object
@@ -313,7 +342,7 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestDoesNotAssignTargetWhenNounMismatch()
+        public void TestDoesNotAssignTargetWhenSubjectMismatch()
         {
             GameControllerCore gameController = new();
             WorldObjectCore HQWorldObject = new(null)

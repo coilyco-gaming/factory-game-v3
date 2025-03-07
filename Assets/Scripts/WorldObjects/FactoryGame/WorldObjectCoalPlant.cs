@@ -10,7 +10,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectCoalPlant : WorldObject
     {
-        public uint totalVolumeCapacity = 5000;
+        public uint totalVolumeCapacity = 10000;
         public uint totalBatteryCapacity = 10000;
         public uint insertionRate = 5;
         public uint powerBurnRate = 5;
@@ -50,6 +50,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.powerBurnRate,
                 this.powerGainRate
             );
+
+            this.core.dispatch = new(
+                this.core,
+                this.core.battery,
+                // Deliver...
+                DispatchComponentCore.Verbs.Deliver.ToString(),
+                // ...coal...
+                FactoryGameContent.Resources.Coal.ToString(),
+                // ...to me.
+                DispatchComponentCore.Keywords.Me.ToString()
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -66,16 +77,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-            {
-                StatusDataComponentCore.StatusData statusData = new()
+                new()
                 {
-                    Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Name = Util.HumanizedString(this.WorldObjectType),
+                    Resources = this.core.resources.ResourceInfo,
+                    Info = new()
+                    {
+                        { "Dispatch", this.core.dispatch.Description },
+                        { "Storage Volume", this.core.resources.UsedVolumeString },
+                        { "Energy", this.core.battery.PercentEnergyStatus },
+                    },
                 };
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
-                return statusData;
-            };
         }
     }
 }

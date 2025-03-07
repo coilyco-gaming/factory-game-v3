@@ -177,7 +177,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: TransferWarehouse\n  Info:\n    Energy: 99%\n"
+  m_text: "- Name: Factory\n  Resources:\n    Copper Bars: 396\n    Iron Bars: 0\n   
+    Motors: 1\n  Info:\n    Outputs: motors\n    Progress: 20%\n    Dispatch: retrieve
+    motors from me\n    Storage Volume: 40%\n    Energy: 98%\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1850,7 +1852,7 @@ GameObject:
   - component: {fileID: 875974725}
   - component: {fileID: 875974726}
   m_Layer: 0
-  m_Name: Mine
+  m_Name: MiningDrill
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1957,6 +1959,9 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+  totalVolumeCapacity: 5000
+  totalBatteryCapacity: 1000
+  insertionRate: 5
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0
@@ -2842,7 +2847,7 @@ MonoBehaviour:
   tickFrequency: 0.1
   randomSeed: 0
   readyForTicks: 1
-  lastTick: 279.08945
+  lastTick: 258.07034
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
@@ -3190,8 +3195,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1540639708}
   - component: {fileID: 1540639710}
+  - component: {fileID: 1540639711}
   m_Layer: 0
-  m_Name: Power
+  m_Name: PowerLines
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3267,6 +3273,38 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1540639711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1540639707}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c1ce4cb9d50140ce990b14bbf08b9a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+    targetType: 
+    targetSubType: 
+  totalBatteryCapacity: 1000
 --- !u!1 &1589381902
 GameObject:
   m_ObjectHideFlags: 0
@@ -3277,7 +3315,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1589381903}
   - component: {fileID: 1589381905}
-  - component: {fileID: 1589381904}
+  - component: {fileID: 1589381906}
   m_Layer: 0
   m_Name: Foundry
   m_TagString: Untagged
@@ -3300,40 +3338,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 646330576}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1589381904
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1589381902}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f3773fc292827724cbe85681b4c9743f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
-    targetSubType: 
-  totalVolumeCapacity: 1000
-  totalBatteryCapacity: 1000
-  insertionRate: 5
 --- !u!212 &1589381905
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -3389,6 +3393,40 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1589381906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1589381902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19ada1c6bac9242359b58550a5296834, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  core:
+    resources:
+      reservedInputBufferMultiplier: 2
+      reservedOuputBufferMultiplier: 4
+      weightCapacity: 0
+      volumeCapacity: 0
+    battery:
+      minimumStartingCapacity: 0
+      minimumHealth: 0
+    inserters: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+    targetType: 
+    targetSubType: 
+  totalVolumeCapacity: 10000
+  totalBatteryCapacity: 1000
+  insertionRate: 5
 --- !u!1 &1611820089
 GameObject:
   m_ObjectHideFlags: 0
@@ -3453,7 +3491,6 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
-  totalVolumeCapacity: 10000
 --- !u!212 &1611820092
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4130,7 +4167,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
-  totalVolumeCapacity: 1000
+  totalVolumeCapacity: 10000
   totalBatteryCapacity: 5000
   insertionRate: 5
   powerBurnRate: 5
@@ -4147,7 +4184,7 @@ GameObject:
   - component: {fileID: 2041591265}
   - component: {fileID: 2041591266}
   m_Layer: 0
-  m_Name: TransferWarehouse
+  m_Name: TransitHub
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -10,6 +10,7 @@ namespace Assets.Scripts.ScriptableObject
         public int y;
         public System.Numerics.Vector2 gridPosition;
         public string targetType;
+        public string targetSubType;
         public Dictionary<string, uint> resources;
 
         public SpawnQueueItem(
@@ -18,11 +19,13 @@ namespace Assets.Scripts.ScriptableObject
             int y,
             bool xyCentered = false,
             string targetType = "",
+            string targetSubType = "",
             Dictionary<string, uint> resources = null
         )
         {
             this.type = type;
             this.targetType = targetType;
+            this.targetSubType = targetSubType;
             this.resources = resources;
             this.xyCentered = xyCentered;
             this.x = x;

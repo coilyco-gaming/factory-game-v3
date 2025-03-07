@@ -10,7 +10,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         public uint totalVolumeCapacity = 500;
         public uint totalWeightCapacity = 500;
-        public uint totalBatteryCapacity = 1000;
+        public uint totalBatteryCapacity = 250;
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
@@ -23,25 +23,36 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.receiver = new(
                 this.core,
-                FactoryGameContent.DispatchVerbs.Deploy.ToString(), // Deploy
+                DispatchComponentCore.Verbs.Retrieve.ToString(), // Deploy
                 FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
-            );
+            ); // TODO: rotate around possible choices
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-            {
-                StatusDataComponentCore.StatusData statusData = new()
+                new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Resources = this.core.resources.ResourceInfo,
+                    Info = new()
+                    {
+                        { "Storage Volume", this.core.resources.UsedVolumeString },
+                        { "Energy", this.core.battery.PercentEnergyStatus },
+                        {
+                            "Target Description",
+                            this.core.receiver != null && this.core.receiver.dispatcher != null
+                                ? this.core.receiver.dispatcher.ReceiverDescription
+                                : "awaiting target"
+                        },
+                        {
+                            "Target Location",
+                            this.core.receiver != null && this.core.receiver.dispatcher != null
+                                ? this.core.receiver.targetPosition.ToString()
+                                : "awaiting target"
+                        },
+                    },
                 };
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
-                statusData.Info["Target Location"] = this.core.receiver.targetPosition.ToString();
-                return statusData;
-            };
         }
     }
 }

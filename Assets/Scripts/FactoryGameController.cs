@@ -75,7 +75,7 @@ namespace Assets.Scripts.Unity
             // F = Factory
             // D = Foundry
             // T = Truck
-            // P = Power
+            // P = Power Lines
             // M = Mining Drill
             //
             //   T P F F F F T
@@ -95,25 +95,64 @@ namespace Assets.Scripts.Unity
                         x: 0,
                         y: 0,
                         xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "Coal", 5000 } }
+                        resources: new Dictionary<string, uint> { { "Coal", 10000 } }
                     ),
-                    new(type: "Power", x: 0, y: 1, xyCentered: true),
-                    new(type: "Power", x: 0, y: 2, xyCentered: true),
+                    new(type: "PowerLines", x: 0, y: 1, xyCentered: true),
+                    new(type: "PowerLines", x: 0, y: 2, xyCentered: true),
                     // Stone Mining Drill & Foundries (y=0)
-                    new(type: "MiningDrill", x: 1, y: 0, xyCentered: true),
-                    new(type: "Foundry", x: 2, y: 0, xyCentered: true),
-                    new(type: "Foundry", x: 3, y: 0, xyCentered: true),
-                    new(type: "Foundry", x: 4, y: 0, xyCentered: true),
-                    // Factory layer 1 (y=1)
-                    new(type: "Factory", x: 1, y: 1, xyCentered: true),
-                    new(type: "Factory", x: 2, y: 1, xyCentered: true),
-                    new(type: "Factory", x: 3, y: 1, xyCentered: true),
-                    new(type: "Factory", x: 4, y: 1, xyCentered: true),
-                    // Factory layer 2 (y=2)
-                    new(type: "Factory", x: 1, y: 2, xyCentered: true),
-                    new(type: "Factory", x: 2, y: 2, xyCentered: true),
-                    new(type: "Factory", x: 3, y: 2, xyCentered: true),
-                    new(type: "Factory", x: 4, y: 2, xyCentered: true),
+                    new(
+                        type: "MiningDrill",
+                        x: 1,
+                        y: 0,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "Stone", 5000 } },
+                        targetType: "Stone"
+                    ),
+                    new(
+                        type: "Foundry",
+                        x: 2,
+                        y: 0,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "IronOre", 5000 } },
+                        targetType: "IronBars",
+                        targetSubType: "IronOre"
+                    ),
+                    new(
+                        type: "Foundry",
+                        x: 3,
+                        y: 0,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "CopperOre", 5000 } },
+                        targetType: "CopperBars",
+                        targetSubType: "CopperOre"
+                    ),
+                    new(
+                        type: "Foundry",
+                        x: 4,
+                        y: 0,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "IronOre", 5000 } },
+                        targetType: "IronBars",
+                        targetSubType: "IronOre"
+                    ),
+                    // Factory layer 1 (y=1), left to right product order:
+                    // building materials, motors, circuits, frames
+                    new(
+                        type: "Factory",
+                        x: 1,
+                        y: 1,
+                        xyCentered: true,
+                        targetType: "BuildingMaterials"
+                    ),
+                    new(type: "Factory", x: 2, y: 1, xyCentered: true, targetType: "Motors"),
+                    new(type: "Factory", x: 3, y: 1, xyCentered: true, targetType: "Circuits"),
+                    new(type: "Factory", x: 4, y: 1, xyCentered: true, targetType: "Frames"),
+                    // Factory layer 2 (y=2), left to right product order:
+                    // coal plant, factory, mining drills, power lines
+                    new(type: "Factory", x: 1, y: 2, xyCentered: true, targetType: "CoalPlant"),
+                    new(type: "Factory", x: 2, y: 2, xyCentered: true, targetType: "Factory"),
+                    new(type: "Factory", x: 3, y: 2, xyCentered: true, targetType: "MiningDrill"),
+                    new(type: "Factory", x: 4, y: 2, xyCentered: true, targetType: "PowerLines"),
                     // Rightmost trucks (x=5)
                     new(type: "Truck", x: 5, y: 0, xyCentered: true),
                     new(type: "Truck", x: 5, y: 1, xyCentered: true),
@@ -123,145 +162,6 @@ namespace Assets.Scripts.Unity
             {
                 this.Spawn(spawnQueueItem);
             }
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "CoalPlant",
-                    x: 0,
-                    y: 0,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Factory", x: 2, y: 0, xyCentered: true, targetType: "Frames")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Factory", x: 3, y: 0, xyCentered: true, targetType: "Circuits")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Factory", x: 4, y: 0, xyCentered: true, targetType: "Motors")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "Factory",
-                    x: 5,
-                    y: 0,
-                    xyCentered: true,
-                    targetType: "BuildingMaterials"
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Factory", x: 2, y: 2, xyCentered: true, targetType: "Factory")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "Factory",
-                    x: 3,
-                    y: 2,
-                    xyCentered: true,
-                    targetType: "StorageWarehouse"
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Factory", x: 4, y: 2, xyCentered: true, targetType: "CoalPlant")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 1,
-                    y: -1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 1,
-                    y: 2,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 5000 } }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 2,
-                    y: -1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint>
-                    {
-                        { "Stone", 4000 },
-                        { "IronBars", 2000 },
-                        { "CopperBars", 1000 },
-                    }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 3,
-                    y: -1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint>
-                    {
-                        { "Stone", 4000 },
-                        { "IronBars", 2000 },
-                        { "CopperBars", 1000 },
-                    }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 4,
-                    y: -1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint>
-                    {
-                        { "Stone", 4000 },
-                        { "IronBars", 2000 },
-                        { "CopperBars", 1000 },
-                    }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "StorageWarehouse",
-                    x: 5,
-                    y: -1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint>
-                    {
-                        { "Stone", 4000 },
-                        { "IronBars", 2000 },
-                        { "CopperBars", 1000 },
-                    }
-                )
-            );
-
-            this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 3, y: 1, xyCentered: true));
-
-            this.Spawn(new SpawnQueueItem("TransferWarehouse", x: 4, y: 1, xyCentered: true));
-
-            this.Spawn(new SpawnQueueItem("Truck", x: 1, y: 3, xyCentered: true));
-            this.Spawn(new SpawnQueueItem("Truck", x: 2, y: 3, xyCentered: true));
-            this.Spawn(new SpawnQueueItem("Truck", x: 3, y: 3, xyCentered: true));
-            this.Spawn(new SpawnQueueItem("Truck", x: 4, y: 3, xyCentered: true));
 
             this.readyForTicks = false;
         }

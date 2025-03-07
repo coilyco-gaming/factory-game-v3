@@ -11,7 +11,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFactory : WorldObject
     {
-        public uint totalVolumeCapacity = 5000;
+        public uint totalVolumeCapacity = 10000;
         public uint totalBatteryCapacity = 1000;
         public uint insertionRate = 5;
 
@@ -50,9 +50,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.dispatch = new(
                 this.core,
                 this.core.battery,
-                FactoryGameContent.DispatchVerbs.Retrieve.ToString(), // Come and get
-                FactoryGameContent.Spawnables.MiningDrill.ToString(), // A mining drill
-                DispatchComponentCore.Keywords.TargetSelf.ToString() // From me
+                // Retrieve...
+                DispatchComponentCore.Verbs.Retrieve.ToString(),
+                // ...< whatever I am making >...
+                this.core.targetType,
+                // ...from me.
+                DispatchComponentCore.Keywords.Me.ToString()
             );
         }
 
@@ -70,21 +73,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-            {
-                StatusDataComponentCore.StatusData statusData = new()
+                new()
                 {
-                    Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Name = Util.HumanizedString(this.WorldObjectType),
+                    Resources = this.core.resources.ResourceInfo,
+                    Info = new()
+                    {
+                        { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
+                        { "Progress", this.core.production.PrecentProgressStatus },
+                        { "Dispatch", this.core.dispatch.Description },
+                        { "Storage Volume", this.core.resources.UsedVolumeString },
+                        { "Energy", this.core.battery.PercentEnergyStatus },
+                    },
                 };
-                if (this.core.production.PercentCraftProgress != 0)
-                {
-                    statusData.Info["Progress"] = this.core.production.PrecentProgressStatus;
-                }
-                statusData.Info["Product"] = this.core.targetType;
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
-                return statusData;
-            };
         }
     }
 }

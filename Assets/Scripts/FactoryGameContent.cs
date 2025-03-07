@@ -60,8 +60,8 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.IronBars.ToString(), 10 },
-                            { Resources.Stone.ToString(), 10 },
+                            { Products.IronBars.ToString(), 4 },
+                            { Resources.Stone.ToString(), 4 },
                         }
                     )
                 },
@@ -73,8 +73,8 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.IronBars.ToString(), 5 },
-                            { Products.CopperBars.ToString(), 5 },
+                            { Products.IronBars.ToString(), 2 },
+                            { Products.CopperBars.ToString(), 2 },
                         }
                     )
                 },
@@ -86,7 +86,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
-                            { Products.CopperBars.ToString(), 5 },
+                            { Products.CopperBars.ToString(), 2 },
                         }
                     )
                 },
@@ -100,7 +100,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
-                            { Products.IronBars.ToString(), 10 },
+                            { Products.IronBars.ToString(), 4 },
                         }
                     )
                 },
@@ -114,8 +114,8 @@ namespace Assets.Scripts.Unity
                         craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
+                            { Products.Frames.ToString(), 8 },
+                            { Products.BuildingMaterials.ToString(), 4 },
                         }
                     )
                 },
@@ -128,9 +128,9 @@ namespace Assets.Scripts.Unity
                         craftTime: 50,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
-                            { Products.Motors.ToString(), 5 },
+                            { Products.Frames.ToString(), 8 },
+                            { Products.BuildingMaterials.ToString(), 4 },
+                            { Products.Motors.ToString(), 1 },
                         }
                     )
                 },
@@ -140,38 +140,38 @@ namespace Assets.Scripts.Unity
                         Spawnables.Factory.ToString(),
                         weight: 400,
                         volume: 200,
-                        craftTime: 50,
+                        craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
-                            { Products.Circuits.ToString(), 5 },
-                            { Products.Motors.ToString(), 5 },
+                            { Products.Frames.ToString(), 8 },
+                            { Products.BuildingMaterials.ToString(), 4 },
+                            { Products.Circuits.ToString(), 2 },
+                            { Products.Motors.ToString(), 2 },
                         }
                     )
                 },
                 // Medium Buildings
-                {
-                    Spawnables.TransitHub.ToString(),
-                    new Item(
-                        Spawnables.TransitHub.ToString(),
-                        weight: 200,
-                        volume: 100,
-                        craftTime: 50,
-                        ingredients: new Dictionary<string, uint>
-                        {
-                            { Products.Frames.ToString(), 10 },
-                            { Products.BuildingMaterials.ToString(), 10 },
-                        }
-                    )
-                },
+                // {
+                //     Spawnables.TransitHub.ToString(),
+                //     new Item(
+                //         Spawnables.TransitHub.ToString(),
+                //         weight: 200,
+                //         volume: 100,
+                //         craftTime: 20,
+                //         ingredients: new Dictionary<string, uint>
+                //         {
+                //             { Products.Frames.ToString(), 10 },
+                //             { Products.BuildingMaterials.ToString(), 10 },
+                //         }
+                //     )
+                // },
                 // {
                 //     Spawnables.Radar.ToString(),
                 //     new Item(
                 //         Spawnables.Radar.ToString(),
                 //         weight: 200,
                 //         volume: 100,
-                //         craftTime: 50,
+                //         craftTime: 20,
                 //         ingredients: new Dictionary<string, uint>
                 //         {
                 //             { Products.Frames.ToString(), 5 },
@@ -186,12 +186,26 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Spawnables.MiningDrill.ToString(),
                         weight: 50,
-                        volume: 50,
-                        craftTime: 50,
+                        volume: 25,
+                        craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 5 },
+                            { Products.Frames.ToString(), 4 },
                             { Products.Motors.ToString(), 1 },
+                        }
+                    )
+                },
+                {
+                    Spawnables.PowerLines.ToString(),
+                    new Item(
+                        Spawnables.PowerLines.ToString(),
+                        weight: 50,
+                        volume: 25,
+                        craftTime: 5,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Products.Frames.ToString(), 4 },
+                            { Products.Circuits.ToString(), 1 },
                         }
                     )
                 },
@@ -223,12 +237,7 @@ namespace Assets.Scripts.Unity
             Factory,
             StorageWarehouse,
             TransitHub,
-        }
-
-        public enum DispatchVerbs
-        {
-            Deploy,
-            Retrieve,
+            PowerLines,
         }
     }
 }

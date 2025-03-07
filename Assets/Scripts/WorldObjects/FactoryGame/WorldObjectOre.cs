@@ -36,10 +36,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
         {
             return () =>
-                new StatusDataComponentCore.StatusData()
+                new()
                 {
-                    Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Name = Util.HumanizedString(this.WorldObjectType),
+                    Resources = this.core.resources.ResourceInfo,
                 };
         }
     }
