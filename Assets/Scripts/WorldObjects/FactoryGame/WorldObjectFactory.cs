@@ -68,6 +68,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
             this.core.battery.Balance(this.core, gameController.core);
             this.core.production.Produce();
+            this.core.dispatch.Tick(gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()

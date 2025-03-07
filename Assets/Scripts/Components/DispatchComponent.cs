@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Core;
 using Assets.Scripts.WorldObjects.Core;
+using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -27,11 +28,8 @@ namespace Assets.Scripts.Components.Core
                 ? Util.HumanizedString(this.worldObject.worldObjectType)
                 : Util.HumanizedString(this.receiverObject);
         public string ReceiverDescription =>
-            $"{this.receiverVerb} {this.DescriptionSubject} ${this.DescriptionToOrFrom} ${this.ReceiverDescriptionObject}".ToLower();
+            $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.ReceiverDescriptionObject}".ToLower();
 
-        public int ActiveDispatches => this.dispatches.Count;
-        public Dictionary<System.Numerics.Vector2, DispatchReceiverComponentCore> dispatches =
-            new();
         private WorldObjectCore worldObject;
         private BatteryComponentCore battery;
         private string receiverVerb = "VERB";
@@ -92,7 +90,6 @@ namespace Assets.Scripts.Components.Core
                     : gameController
                         .worldObjects
                         // For world object locations that do not already have a dispatch
-                        .Where(worldObjects => !this.dispatches.Keys.Contains(worldObjects.Key))
                         .SelectMany(worldObjects => worldObjects.Value)
                         // For world objects that contain the target type
                         .Where(worldObject =>
@@ -111,6 +108,9 @@ namespace Assets.Scripts.Components.Core
 
             if (targetLocations.Count == 0)
             {
+                Debug.Log(
+                    $"FAIL: {this.worldObject.worldObjectType} {this.worldObject.guid} found no target locations for {this.Description}"
+                );
                 return;
             }
 
@@ -140,13 +140,22 @@ namespace Assets.Scripts.Components.Core
 
             if (receiver == null)
             {
+                Debug.Log(
+                    $"FAIL: {this.worldObject.worldObjectType} {this.worldObject.guid} found no recievers for {this.ReceiverDescription}"
+                );
                 return;
             }
+
+            Debug.Log(
+                $"PASS: {this.worldObject.worldObjectType} {this.worldObject.guid} found target location for {this.Description}: {targetLocations[0]}"
+            );
+            Debug.Log(
+                $"PASS: {this.worldObject.worldObjectType} {this.worldObject.guid} found reciever for {this.ReceiverDescription}: {receiver.worldObject.guid}"
+            );
 
             // Assign the target to the receiver
             receiver.targetPosition = targetLocations[0];
             receiver.dispatcher = this;
-            this.dispatches[targetLocations[0]] = receiver;
         }
     }
 }
