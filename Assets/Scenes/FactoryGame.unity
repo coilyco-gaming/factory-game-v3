@@ -154,8 +154,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 310, y: -100}
-  m_SizeDelta: {x: 300, y: 400}
+  m_AnchoredPosition: {x: 400, y: -100}
+  m_SizeDelta: {x: 390, y: 400}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &47638827
 MonoBehaviour:
@@ -177,9 +177,21 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: Factory\n  Resources:\n    Copper Bars: 396\n    Iron Bars: 0\n   
-    Motors: 1\n  Info:\n    Outputs: motors\n    Progress: 20%\n    Dispatch: retrieve
-    motors from me\n    Storage Volume: 40%\n    Energy: 98%\n"
+  m_text: "- Name: Factory\n  Resources:\n    Frames: 5\n  Info:\n    Outputs: mining
+    drill\n    Progress: 0%\n    Dispatch: retrieve mining drill from me\n    Storage
+    Volume: 5%\n    Energy: 6%\n- Name: Truck\n  Resources: {}\n  Info:\n    Storage
+    Volume: 0%\n    Energy: 6%\n    Target Description: retrieve mining drill from
+    factory\n    Target Location: <13, 12>\n- Name: Truck\n  Resources: {}\n  Info:\n   
+    Storage Volume: 0%\n    Energy: 6%\n    Target Description: retrieve mining drill
+    from factory\n    Target Location: <13, 12>\n- Name: Truck\n  Resources: {}\n 
+    Info:\n    Storage Volume: 0%\n    Energy: 6%\n    Target Description: retrieve
+    mining drill from factory\n    Target Location: <13, 12>\n- Name: Truck\n  Resources:
+    {}\n  Info:\n    Storage Volume: 0%\n    Energy: 6%\n    Target Description:
+    retrieve mining drill from factory\n    Target Location: <13, 12>\n- Name: Truck\n 
+    Resources: {}\n  Info:\n    Storage Volume: 0%\n    Energy: 6%\n    Target Description:
+    retrieve mining drill from factory\n    Target Location: <13, 12>\n- Name: Truck\n 
+    Resources: {}\n  Info:\n    Storage Volume: 0%\n    Energy: 6%\n    Target Description:
+    retrieve mining drill from factory\n    Target Location: <13, 12>\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2751,25 +2763,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c6416f727608af543829ff47f492c41e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
-    targetSubType: 
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -2844,10 +2837,10 @@ MonoBehaviour:
       Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.1
+  tickFrequency: 0.5
   randomSeed: 0
-  readyForTicks: 1
-  lastTick: 258.07034
+  readyForTicks: 0
+  lastTick: 36.2419
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
@@ -2964,7 +2957,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76053213090a55042b07af822e2a4ee4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mapSize: {x: 100, y: 100}
+  _mapSize: {x: 100, y: 100}
 --- !u!1 &1376434360
 GameObject:
   m_ObjectHideFlags: 0
@@ -3472,25 +3465,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 050721dc50e5a4a9194c75a6d579961f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
-    targetSubType: 
 --- !u!212 &1611820092
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4272,26 +4246,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46bb0e0ac10758242baf009064114f0d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  core:
-    resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
-      weightCapacity: 0
-      volumeCapacity: 0
-    battery:
-      minimumStartingCapacity: 0
-      minimumHealth: 0
-    inserters: []
-    production:
-      Product: 
-      Quantity: 0
-      currentCraftProgress: 0
-      outputBufferOccupied: 0
-    guid: 
-    worldObjectType: 
-    targetType: 
-    targetSubType: 
-  totalBatteryCapacity: 10000
 --- !u!1 &2093853404
 GameObject:
   m_ObjectHideFlags: 0

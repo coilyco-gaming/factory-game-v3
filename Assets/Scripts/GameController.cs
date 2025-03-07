@@ -376,8 +376,8 @@ namespace Assets.Scripts.Unity
             {
                 spawnQueueItem.gridPosition = spawnQueueItem.xyCentered
                     ? new System.Numerics.Vector2(
-                        (this.Map.mapSize.x / 2) + spawnQueueItem.x,
-                        (this.Map.mapSize.y / 2) + spawnQueueItem.y
+                        (this.Map.MapSize.X / 2) + spawnQueueItem.x,
+                        (this.Map.MapSize.Y / 2) + spawnQueueItem.y
                     )
                     : new System.Numerics.Vector2(spawnQueueItem.x, spawnQueueItem.y);
 

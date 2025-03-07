@@ -7,11 +7,9 @@ namespace Assets.Scripts.Components.Core
     using Roy_T.AStar.Paths;
     using Roy_T.AStar.Primitives;
 
-    public class PositionComponentCore
+    public class PathfindingComponentCore
     {
-        public void Instantiate() { }
-
-        public Vector2? DiamondSpiralPattern(
+        public static Vector2? DiamondSpiralPattern(
             Vector2 origin,
             Vector2 currentTarget,
             Vector2 mapSize,
@@ -78,13 +76,18 @@ namespace Assets.Scripts.Components.Core
             )
             {
                 // If the target is out of bounds, recurse to find a new target
-                return this.DiamondSpiralPattern(origin, currentTarget, mapSize, depth + 1);
+                return PathfindingComponentCore.DiamondSpiralPattern(
+                    origin,
+                    currentTarget,
+                    mapSize,
+                    depth + 1
+                );
             }
 
             return currentTarget;
         }
 
-        public Vector2? GetPosition(
+        public static Vector2? GetPosition(
             Vector2 start,
             Vector2 end,
             Vector2 mapSize,
@@ -140,14 +143,14 @@ namespace Assets.Scripts.Components.Core
             return position;
         }
 
-        public Quaternion FacePosition(System.Numerics.Vector2 position)
+        public static Quaternion FacePosition(System.Numerics.Vector2 position)
         {
             double radians = Math.Atan2(position.X, position.Y);
             Quaternion rotation = Quaternion.CreateFromYawPitchRoll(0, 0, (float)radians);
             return rotation;
         }
 
-        public Quaternion FaceLocation(
+        public static Quaternion FaceLocation(
             System.Numerics.Vector2 origin,
             System.Numerics.Vector2 target
         )
@@ -155,69 +158,10 @@ namespace Assets.Scripts.Components.Core
             float yOffset = target.Y - origin.Y;
             float xOffset = target.X - origin.X;
             Vector2 diff = new(xOffset, yOffset);
-            return this.FacePosition(diff);
+            return PathfindingComponentCore.FacePosition(diff);
         }
     }
 }
-
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using System.Collections.Generic;
-    using Assets.Scripts.Components.Core;
-    using UnityEngine;
-
-    public class PositionComponent : MonoBehaviour
-    {
-        public readonly PositionComponentCore core = new();
-
-        public void Instantiate() => this.core.Instantiate();
-
-        public System.Numerics.Vector2? DiamondSpiralPattern(
-            System.Numerics.Vector2 origin,
-            System.Numerics.Vector2 currentTarget,
-            System.Numerics.Vector2 mapSize
-        ) => this.core.DiamondSpiralPattern(origin, currentTarget, mapSize);
-
-        public System.Numerics.Vector2? GetPosition(
-            System.Numerics.Vector2 start,
-            System.Numerics.Vector2 end,
-            System.Numerics.Vector2 mapSize,
-            List<System.Numerics.Vector2> obstacles
-        ) =>
-            this.core.GetPosition(
-                start,
-                end,
-                mapSize,
-                new List<System.Numerics.Vector2>(obstacles)
-            );
-
-        public void FacePosition(System.Numerics.Vector2 position)
-        {
-            System.Numerics.Quaternion coreRotation = this.core.FacePosition(position);
-            Quaternion rotation = new(
-                coreRotation.X,
-                coreRotation.Y,
-                coreRotation.Z,
-                coreRotation.W
-            );
-            this.transform.rotation = rotation;
-        }
-
-        public void FaceLocation(System.Numerics.Vector2 origin, System.Numerics.Vector2 target)
-        {
-            System.Numerics.Quaternion coreRotation = this.core.FaceLocation(origin, target);
-            Quaternion rotation = new(
-                coreRotation.X,
-                coreRotation.Y,
-                coreRotation.Z,
-                coreRotation.W
-            );
-            this.transform.rotation = rotation;
-        }
-    }
-}
-#endif
 
 namespace Assets.Scripts.Components.Tests
 {
@@ -226,19 +170,17 @@ namespace Assets.Scripts.Components.Tests
     using Assets.Scripts.Components.Core;
     using Xunit;
 
-    public class PositionComponentTest
+    public class PathfindingComponentTest
     {
         [Fact]
         public void TestDiamondSpiralPatternCase1a()
         {
             // case 1a: (1, 1) -> (1, 2)
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 1);
             System.Numerics.Vector2 expected = new(1, 2);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -252,13 +194,11 @@ namespace Assets.Scripts.Components.Tests
             // case 1b:
             //   if we are at the top of the map
             //   then apply case 2a style position
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 10);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 10);
             System.Numerics.Vector2 expected = new(2, 10);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -272,13 +212,11 @@ namespace Assets.Scripts.Components.Tests
             // case 1c:
             //   if we are at the top right corner
             //   then apply case 3a style position
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(10, 10);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(10, 10);
             System.Numerics.Vector2 expected = new(10, 9);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -290,13 +228,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestDiamondSpiralPatternCase2a()
         {
             // case 2a: (1, 2) -> (2, 1)
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 2);
             System.Numerics.Vector2 expected = new(2, 1);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -307,13 +243,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDiamondSpiralPatternCase2b()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 2);
             System.Numerics.Vector2 expected = new(2, 1);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -325,13 +259,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestDiamondSpiralPatternCase3a()
         {
             // case 3a: (2, 1) -> (1, 0)
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(2, 1);
             System.Numerics.Vector2 expected = new(1, 0);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -343,13 +275,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestDiamondSpiralPatternCase4a()
         {
             // case 4a: (1, 0) -> (0, 1)
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(1, 0);
             System.Numerics.Vector2 expected = new(0, 1);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -364,13 +294,11 @@ namespace Assets.Scripts.Components.Tests
             //   needs to handle an origin that is farther away
             //   than our simple (1,1) origin
             //   so we an example with a (2,2) origin instead
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(2, 2);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(0, 2);
             System.Numerics.Vector2 expected = new(1, 3);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -382,13 +310,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestDiamondSpiralPatternCase5b()
         {
             // case 5b: (0, 1) -> (1, 3)
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(0, 1);
             System.Numerics.Vector2 expected = new(1, 3);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -399,12 +325,10 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDiamondSpiralPatternCase6End()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(1, 1);
             System.Numerics.Vector2 mapSize = new(10, 10);
             System.Numerics.Vector2 currentTarget = new(10, 10);
-            System.Numerics.Vector2? actual = position.DiamondSpiralPattern(
+            System.Numerics.Vector2? actual = PathfindingComponentCore.DiamondSpiralPattern(
                 origin,
                 currentTarget,
                 mapSize
@@ -415,10 +339,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition1()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(0, 0);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
             Assert.Equal(expected, actual);
         }
@@ -426,10 +348,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition2()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(0, 1);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
             Assert.Equal(expected, actual);
         }
@@ -437,10 +357,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition3()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(1, 1);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(1 * Math.PI / 4));
             Assert.Equal(expected, actual);
         }
@@ -448,10 +366,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition4()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(1, 0);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(2 * Math.PI / 4));
             Assert.Equal(expected, actual);
         }
@@ -459,10 +375,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition5()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(1, -1);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(3 * Math.PI / 4));
             Assert.Equal(expected, actual);
         }
@@ -470,10 +384,8 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFacePosition6()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 positionVector = new(0, -1);
-            Quaternion actual = position.FacePosition(positionVector);
+            Quaternion actual = PathfindingComponentCore.FacePosition(positionVector);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(4 * Math.PI / 4));
             Assert.Equal(expected, actual);
         }
@@ -481,11 +393,9 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestFaceLocation()
         {
-            PositionComponentCore position = new();
-            position.Instantiate();
             System.Numerics.Vector2 origin = new(0, 0);
             System.Numerics.Vector2 target = new(1, 1);
-            Quaternion actual = position.FaceLocation(origin, target);
+            Quaternion actual = PathfindingComponentCore.FaceLocation(origin, target);
             Quaternion expected = Quaternion.CreateFromYawPitchRoll(0, 0, (float)(Math.PI / 4));
             Assert.Equal(expected, actual);
         }

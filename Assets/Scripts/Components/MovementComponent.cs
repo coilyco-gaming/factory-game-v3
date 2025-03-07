@@ -1,39 +1,70 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
+    using Assets.Scripts.WorldObjects.Unity;
+
     public class MovementComponentCore
     {
-        public void Instantiate() { }
-    }
-}
+        private WorldObject worldObject;
+        private DispatchReceiverComponentCore receiver;
 
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using Assets.Scripts.Components.Core;
-    using UnityEngine;
-
-    public class MovementComponent : MonoBehaviour
-    {
-        public readonly MovementComponentCore core = new();
-
-        public void Instantiate() => this.core.Instantiate();
-    }
-}
-#endif
-
-namespace Assets.Scripts.Components.Tests
-{
-    using Assets.Scripts.Components.Core;
-    using Xunit;
-
-    public class MovementComponentTest
-    {
-        [Fact]
-        public void TestTrue()
+        public MovementComponentCore(
+            WorldObject worldObject,
+            DispatchReceiverComponentCore receiver
+        )
         {
-            MovementComponentCore movement = new();
-            movement.Instantiate();
-            Assert.True(true);
+            this.worldObject = worldObject;
+            this.receiver = receiver;
+        }
+
+        public void Tick(GameController gameController)
+        {
+            System.Numerics.Vector2 start = this.worldObject.GridPosition;
+            System.Numerics.Vector2 end = this.receiver.targetPosition;
+
+            // Determine if we are already close enough
+            float xDiff = Math.Abs(start.X - end.X);
+            float yDiff = Math.Abs(start.Y - end.Y);
+            double distance = Math.Sqrt(Math.Pow(xDiff, 2) + Math.Pow(yDiff, 2));
+            if (distance < 1.5d)
+            {
+                // We are close enough
+                return;
+            }
+
+            // Get a movement vector to the next position on our path
+            System.Numerics.Vector2? movement = PathfindingComponentCore.GetPosition(
+                start: start,
+                end: end,
+                mapSize: gameController.Map.MapSize,
+                obstacles: gameController
+                    .core.worldObjects.Where(worldObjects => worldObjects.Value.Count != 0)
+                    .Select(worldObjects => worldObjects.Key)
+                    .ToList()
+            );
+
+            if (movement == null)
+            {
+                // No available path
+                return;
+            }
+
+            // Queue up movement
+            System.Numerics.Vector2 newPosition = new(
+                this.worldObject.GridPosition.X + movement.Value.X,
+                this.worldObject.GridPosition.Y + movement.Value.Y
+            );
+            gameController.QueueForMovement(
+                new GameControllerCore.MovementQueueItem(
+                    this.worldObject.GridPosition,
+                    newPosition,
+                    this.worldObject.core
+                )
+            );
         }
     }
 }

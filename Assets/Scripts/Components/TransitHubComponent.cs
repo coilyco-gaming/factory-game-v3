@@ -8,13 +8,13 @@ namespace Assets.Scripts.Components.Core
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
 
-    public class TransitHubComponent
+    public class TransitHubComponentCore
     {
         private WorldObjectCore core;
         private BatteryComponentCore battery;
         private GameContent gameContent;
 
-        public TransitHubComponent(
+        public TransitHubComponentCore(
             GameContent gameContent,
             WorldObjectCore core,
             BatteryComponentCore battery
@@ -198,7 +198,7 @@ namespace Assets.Scripts.Components.Tests
             };
     }
 
-    public class TransitHubComponentTests
+    public class TransitHubComponentCoreTests
     {
         private WorldObjectCore WorldObject(GameControllerCore gameController)
         {
@@ -223,7 +223,7 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = gridPosition,
                 production = production,
             };
-            TransitHubComponent hub = new(new TestGameContent(), core, battery);
+            TransitHubComponentCore hub = new(new TestGameContent(), core, battery);
             core.hub = hub;
             core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();

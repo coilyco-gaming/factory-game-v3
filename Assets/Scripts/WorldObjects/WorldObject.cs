@@ -19,9 +19,10 @@ namespace Assets.Scripts.WorldObjects.Core
         // TODO: add odin inspector to all of the serializable classes
         // https://odininspector.com/tutorials
 
+        public MovementComponentCore movement;
         public DispatchComponentCore dispatch;
         public DispatchReceiverComponentCore receiver;
-        public TransitHubComponent hub;
+        public TransitHubComponentCore hub;
         public ResourcesComponentCore resources;
         public BatteryComponentCore battery;
         public List<InserterComponentCore> inserters;
@@ -136,17 +137,6 @@ namespace Assets.Scripts.WorldObjects.Unity
         {
             this.core.PostInstantiate(spawnQueueItem);
             this.core.status = new() { Data = this.GetStatusData() };
-        }
-
-        public void MoveTo(GameController gameController, System.Numerics.Vector2 movement)
-        {
-            System.Numerics.Vector2 newPosition = new(
-                this.GridPosition.X + movement.X,
-                this.GridPosition.Y + movement.Y
-            );
-            gameController.QueueForMovement(
-                new GameControllerCore.MovementQueueItem(this.GridPosition, newPosition, this.core)
-            );
         }
 
         public void SetName()

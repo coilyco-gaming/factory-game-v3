@@ -26,6 +26,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 DispatchComponentCore.Verbs.Retrieve.ToString(), // Deploy
                 FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
             ); // TODO: rotate around possible choices
+            this.core.movement = new MovementComponentCore(this, this.core.receiver);
+        }
+
+        public override void Tick(GameController gameController)
+        {
+            base.Tick(gameController);
+            this.core.movement.Tick(gameController);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()

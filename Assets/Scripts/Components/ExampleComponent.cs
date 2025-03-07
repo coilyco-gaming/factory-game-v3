@@ -2,24 +2,11 @@ namespace Assets.Scripts.Components.Core
 {
     public class ExampleComponentCore
     {
-        public void Instantiate() { }
+        public ExampleComponentCore() { }
+
+        public void Tick() { }
     }
 }
-
-#if UNITY_6000
-namespace Assets.Scripts.Components.Unity
-{
-    using Assets.Scripts.Components.Core;
-    using UnityEngine;
-
-    public class ExampleComponent : MonoBehaviour
-    {
-        public readonly ExampleComponentCore core = new();
-
-        public void Instantiate() => this.core.Instantiate();
-    }
-}
-#endif
 
 // TODO: add tree shaking to remove the tests from the build
 namespace Assets.Scripts.Components.Tests
@@ -40,9 +27,10 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTrue()
         {
-            ExampleComponentCore ExampleComponent = new();
-            ExampleComponent.Instantiate();
+            ExampleComponentCore example = new();
+            example.Tick();
             Assert.True(true);
+            this.testOutput.WriteLine("tested true");
         }
     }
 }

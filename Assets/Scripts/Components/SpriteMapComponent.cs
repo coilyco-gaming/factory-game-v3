@@ -6,7 +6,8 @@ namespace Assets.Scripts.Components.Unity
 
     public class SpriteMapComponent : MonoBehaviour
     {
-        public UnityEngine.Vector2Int mapSize = new(20, 20);
+        public UnityEngine.Vector2Int _mapSize = new(20, 20);
+        public System.Numerics.Vector2 MapSize => new(this._mapSize.x, this._mapSize.y);
         public GameObject WorldGameObject { get; set; }
 
         private Canvas parentCanvas;
@@ -39,9 +40,9 @@ namespace Assets.Scripts.Components.Unity
             UnityEngine.Vector3 childPosition = new(0, 0, childZPosition);
             this.MapGameObject.transform.position = childPosition;
 
-            for (int x = 0; x < this.mapSize.x; x++)
+            for (int x = 0; x < this.MapSize.X; x++)
             {
-                for (int y = 0; y < this.mapSize.y; y++)
+                for (int y = 0; y < this.MapSize.Y; y++)
                 {
                     Vector2 position = new(x, y);
                     GameObject tile = this.GenerateTile(position);

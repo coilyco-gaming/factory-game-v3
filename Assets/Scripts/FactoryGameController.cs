@@ -34,7 +34,7 @@ namespace Assets.Scripts.Unity
             this.Map.Instantiate(this.GetComponent<Canvas>());
 
             this.PlayerComponent = this.GetComponent<PlayerComponent>();
-            this.PlayerComponent.Instantiate(this.Map.mapSize.x, this.Map.mapSize.y);
+            this.PlayerComponent.Instantiate((int)this.Map.MapSize.X, (int)this.Map.MapSize.Y);
 
             this.StatusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
             this.StatusUILeftComponent.Instantiate();
@@ -170,7 +170,7 @@ namespace Assets.Scripts.Unity
         {
             int oresToSpawn = (int)(
                 Mathf.Sqrt(
-                    (float)(Math.Pow(this.Map.mapSize.x, 2) + Math.Pow(this.Map.mapSize.y, 2))
+                    (float)(Math.Pow(this.Map.MapSize.X, 2) + Math.Pow(this.Map.MapSize.Y, 2))
                 ) * this.oreSpawnFactor
             );
             for (int i = 0; i < oresToSpawn; i++)
@@ -178,12 +178,12 @@ namespace Assets.Scripts.Unity
                 for (int attempts = 0; attempts < this.spawnAttempts; attempts++)
                 {
                     // Start by picking a random position
-                    int x = this.random.Next(0, this.Map.mapSize.x);
-                    int y = this.random.Next(0, this.Map.mapSize.y);
+                    int x = this.random.Next(0, (int)this.Map.MapSize.X);
+                    int y = this.random.Next(0, (int)this.Map.MapSize.Y);
 
                     // Draw a triangle to ensure that our ore is at least 2 blocks away
-                    uint xOffset = (uint)Math.Abs(x - (this.Map.mapSize.x / (float)2));
-                    uint yOffset = (uint)Math.Abs(y - (this.Map.mapSize.y / (float)2));
+                    uint xOffset = (uint)Math.Abs(x - (this.Map.MapSize.X / 2));
+                    uint yOffset = (uint)Math.Abs(y - (this.Map.MapSize.Y / 2));
                     double distance = Math.Sqrt(Math.Pow(xOffset, 2) + Math.Pow(yOffset, 2));
                     if (distance <= this.HQOreBuffer)
                     {
