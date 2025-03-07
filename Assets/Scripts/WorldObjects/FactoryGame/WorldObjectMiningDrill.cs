@@ -7,21 +7,29 @@ using Assets.Scripts.WorldObjects.Unity;
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     [Serializable]
-    public class WorldObjectTransferWarehouse : WorldObject
+    public class WorldObjectMiningDrill : WorldObject
     {
-        public uint totalBatteryCapacity = 10000;
+        public uint totalVolumeCapacity = 5000;
+        public uint totalBatteryCapacity = 1000;
+        public uint insertionRate = 5;
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
+
+            this.core.resources = new(
+                new FactoryGameContent(),
+                weightCapacity: uint.MaxValue,
+                volumeCapacity: this.totalVolumeCapacity
+            );
+
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.transferHub = new(new FactoryGameContent(), this.core, this.core.battery);
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.transferHub.Balance(gameController.core);
+            this.core.battery.Balance(this.core, gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -31,8 +39,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = new() { ["Energy"] = this.core.battery.PercentEnergyStatus },
+                    Info = this.core.resources.ResourceInfo,
                 };
+                statusData.Info["Product"] = this.core.targetType;
+                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
+                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
                 return statusData;
             };
         }

@@ -27,6 +27,8 @@ namespace Assets.Scripts.Components.Core
 
         // PROPERTIES //
 
+        // TODO: a setter that validates that the resources in question actually exist
+
         public Dictionary<string, uint> resources = new();
 
         public virtual Dictionary<string, string> ResourceInfo

@@ -1,3 +1,4 @@
+using Assets.Scripts.Core;
 using Assets.Scripts.WorldObjects.Core;
 
 namespace Assets.Scripts.Components.Core
@@ -6,12 +7,24 @@ namespace Assets.Scripts.Components.Core
     {
         public bool awaitingTarget = true;
         public WorldObjectCore worldObject;
-        public DispatchComponentCore dispatchHQ;
+        public DispatchComponentCore dispatcher;
         public System.Numerics.Vector2 targetPosition;
+        public string receiverVerb;
+        public string receiverNoun;
 
-        public DispatchReceiverComponentCore(WorldObjectCore worldObject)
+        public DispatchReceiverComponentCore(
+            WorldObjectCore worldObject,
+            string receiverVerb,
+            string receiverNoun
+        )
         {
-            this.worldObject = worldObject;
+            this.worldObject =
+                worldObject
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "Reciever component requires a parent world object"
+                );
+            this.receiverVerb = receiverVerb;
+            this.receiverNoun = receiverNoun;
         }
 
         public void Tick() { }
@@ -29,7 +42,7 @@ namespace Assets.Scripts.Components.Tests
         public void TestTrue()
         {
             WorldObjectCore worldObject = new(null);
-            DispatchReceiverComponentCore receiver = new(worldObject);
+            DispatchReceiverComponentCore receiver = new(worldObject, "FIGHT", "DINOSAURS");
             receiver.Tick();
             Assert.True(true);
         }

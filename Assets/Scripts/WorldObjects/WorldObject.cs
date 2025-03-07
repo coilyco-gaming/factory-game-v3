@@ -21,7 +21,7 @@ namespace Assets.Scripts.WorldObjects.Core
 
         public DispatchComponentCore dispatch;
         public DispatchReceiverComponentCore receiver;
-        public TransferHubComponent transferHub;
+        public TransitHubComponent hub;
         public ResourcesComponentCore resources;
         public BatteryComponentCore battery;
         public List<InserterComponentCore> inserters;

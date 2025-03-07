@@ -8,13 +8,13 @@ namespace Assets.Scripts.Components.Core
     using Assets.Scripts.Core;
     using Assets.Scripts.WorldObjects.Core;
 
-    public class TransferHubComponent
+    public class TransitHubComponent
     {
         private WorldObjectCore core;
         private BatteryComponentCore battery;
         private GameContent gameContent;
 
-        public TransferHubComponent(
+        public TransitHubComponent(
             GameContent gameContent,
             WorldObjectCore core,
             BatteryComponentCore battery
@@ -31,7 +31,6 @@ namespace Assets.Scripts.Components.Core
 
         public void Balance(GameControllerCore gameController)
         {
-            // Do nothing if we don't have enough energy.
             List<WorldObjectCore> worldObjects = gameController
                 .GetAdjacentWorldObjects(this.core.GridPosition)
                 .Where(worldObject => worldObject.resources != null)
@@ -61,7 +60,7 @@ namespace Assets.Scripts.Components.Core
                             .Sum(ingredient => ingredient.Value)
             );
 
-            // For each resource, distribute it evenly.
+            // TODO: simply iterate every resource in the game
             foreach (KeyValuePair<string, uint> resource in localIngredientsCounts)
             {
                 this.BalanceResource(gameController, resource);
@@ -75,14 +74,14 @@ namespace Assets.Scripts.Components.Core
         {
             // Local world objects whose factories produce this resource.
             List<WorldObjectCore> producers = gameController
-                .GetAdjacentWorldObjects(this.core.GridPosition)
+                .GetAdjacentWorldObjects(this.core.GridPosition) // TODO: iterate 2 blocks out, instead of 1
                 .Where(worldObject => worldObject?.production?.Product == resource.Key)
                 .Distinct()
                 .ToList();
 
             // Local world objects whose factories consume this resource.
             List<WorldObjectCore> consumers = gameController
-                .GetAdjacentWorldObjects(this.core.GridPosition)
+                .GetAdjacentWorldObjects(this.core.GridPosition) // TODO: iterate 2 blocks out, instead of 1
                 .Where(worldObject =>
                     worldObject?.production?.ProductItem?.Ingredients != null
                     && new List<string>(
@@ -98,6 +97,7 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
+            // Use power
             try
             {
                 this.battery.Energy -= 1;
@@ -198,7 +198,7 @@ namespace Assets.Scripts.Components.Tests
             };
     }
 
-    public class TransferHubComponentTests
+    public class TransitHubComponentTests
     {
         private WorldObjectCore WorldObject(GameControllerCore gameController)
         {
@@ -223,8 +223,8 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = gridPosition,
                 production = production,
             };
-            TransferHubComponent transfer = new(new TestGameContent(), core, battery);
-            core.transferHub = transfer;
+            TransitHubComponent hub = new(new TestGameContent(), core, battery);
+            core.hub = hub;
             core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
             if (!gameController.worldObjects.ContainsKey(core.GridPosition))

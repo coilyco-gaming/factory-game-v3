@@ -11,7 +11,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFactory : WorldObject
     {
-        public uint totalVolumeCapacity = 1000;
+        public uint totalVolumeCapacity = 5000;
         public uint totalBatteryCapacity = 1000;
         public uint insertionRate = 5;
 
@@ -45,6 +45,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.battery,
                 this.core.inserters,
                 this.core.targetType
+            );
+
+            this.core.dispatch = new(
+                this.core,
+                this.core.battery,
+                FactoryGameContent.DispatchVerbs.Retrieve.ToString(), // Come and get
+                FactoryGameContent.Spawnables.MiningDrill.ToString(), // A mining drill
+                DispatchComponentCore.Keywords.TargetSelf.ToString() // From me
             );
         }
 

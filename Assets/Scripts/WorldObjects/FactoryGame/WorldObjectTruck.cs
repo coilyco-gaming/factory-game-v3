@@ -21,7 +21,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: this.totalVolumeCapacity
             );
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.receiver = new(this.core);
+            this.core.receiver = new(
+                this.core,
+                FactoryGameContent.DispatchVerbs.Deploy.ToString(), // Deploy
+                FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
+            );
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()

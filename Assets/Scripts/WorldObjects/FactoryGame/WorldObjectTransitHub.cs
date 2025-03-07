@@ -7,18 +7,21 @@ using Assets.Scripts.WorldObjects.Unity;
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     [Serializable]
-    public class WorldObjectStorageWarehouse : WorldObject
+    public class WorldObjectTransitHub : WorldObject
     {
-        public uint totalVolumeCapacity = 50000;
+        public uint totalBatteryCapacity = 10000;
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
-            this.core.resources = new(
-                new FactoryGameContent(),
-                weightCapacity: uint.MaxValue,
-                volumeCapacity: this.totalVolumeCapacity
-            );
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.hub = new(new FactoryGameContent(), this.core, this.core.battery);
+        }
+
+        public override void Tick(GameController gameController)
+        {
+            base.Tick(gameController);
+            this.core.hub.Balance(gameController.core);
         }
 
         protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
@@ -28,9 +31,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 StatusDataComponentCore.StatusData statusData = new()
                 {
                     Name = this.WorldObjectType,
-                    Info = this.core.resources.ResourceInfo,
+                    Info = new() { ["Energy"] = this.core.battery.PercentEnergyStatus },
                 };
-                statusData.Info["Storage Volume"] = this.core.resources.UsedVolumeString;
                 return statusData;
             };
         }

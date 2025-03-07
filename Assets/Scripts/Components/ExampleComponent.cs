@@ -26,9 +26,17 @@ namespace Assets.Scripts.Components.Tests
 {
     using Assets.Scripts.Components.Core;
     using Xunit;
+    using Xunit.Abstractions;
 
     public class ExampleComponentTest
     {
+        private ITestOutputHelper testOutput;
+
+        public ExampleComponentTest(ITestOutputHelper testOutputHelper)
+        {
+            this.testOutput = testOutputHelper;
+        }
+
         [Fact]
         public void TestTrue()
         {

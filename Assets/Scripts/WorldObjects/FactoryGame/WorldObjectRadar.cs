@@ -8,35 +8,35 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectRadar : WorldObject
     {
-        public uint totalBatteryCapacity = 1000;
+        // public uint totalBatteryCapacity = 1000;
 
-        public override void Instantiate(SpawnQueueItem spawnQueueItem)
-        {
-            base.Instantiate(spawnQueueItem);
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.dispatch = new(this.core, this.core.battery);
-        }
+        // public override void Instantiate(SpawnQueueItem spawnQueueItem)
+        // {
+        //     base.Instantiate(spawnQueueItem);
+        //     this.core.battery = new(capacity: this.totalBatteryCapacity);
+        //     this.core.dispatch = new(this.core, this.core.battery);
+        // }
 
-        public override void Tick(GameController gameController)
-        {
-            base.Tick(gameController);
-            this.core.battery.Balance(this.core, gameController.core);
-            this.core.dispatch.Tick(gameController.core);
-        }
+        // public override void Tick(GameController gameController)
+        // {
+        //     base.Tick(gameController);
+        //     this.core.battery.Balance(this.core, gameController.core);
+        //     this.core.dispatch.Tick(gameController.core);
+        // }
 
-        protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
-        {
-            return () =>
-            {
-                StatusDataComponentCore.StatusData statusData = new()
-                {
-                    Name = this.WorldObjectType,
-                    Info = new(),
-                };
-                statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
-                statusData.Info["Dispatches"] = this.core.dispatch.ActiveDispatches.ToString();
-                return statusData;
-            };
-        }
+        // protected override Func<StatusDataComponentCore.StatusData> GetStatusData()
+        // {
+        //     return () =>
+        //     {
+        //         StatusDataComponentCore.StatusData statusData = new()
+        //         {
+        //             Name = this.WorldObjectType,
+        //             Info = new(),
+        //         };
+        //         statusData.Info["Energy"] = this.core.battery.PercentEnergyStatus;
+        //         statusData.Info["Dispatches"] = this.core.dispatch.ActiveDispatches.ToString();
+        //         return statusData;
+        //     };
+        // }
     }
 }

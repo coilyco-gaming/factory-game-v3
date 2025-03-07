@@ -12,22 +12,44 @@ namespace Assets.Scripts.Unity
             {
                 // Resources
                 {
-                    Resources.Iron.ToString(), //
-                    new Item(Resources.Iron.ToString(), stackSize: 200)
+                    Resources.IronOre.ToString(), //
+                    new Item(Resources.IronOre.ToString(), stackSize: 200)
+                },
+                {
+                    Resources.CopperOre.ToString(),
+                    new Item(Resources.CopperOre.ToString(), stackSize: 200)
                 },
                 {
                     Resources.Coal.ToString(), //
                     new Item(Resources.Coal.ToString(), stackSize: 200)
                 },
                 {
-                    Resources.Copper.ToString(),
-                    new Item(Resources.Copper.ToString(), stackSize: 200)
-                },
-                {
                     Resources.Stone.ToString(),
                     new Item(Resources.Stone.ToString(), stackSize: 200)
                 },
                 // Products
+                {
+                    Products.IronBars.ToString(),
+                    new Item(
+                        Products.IronBars.ToString(),
+                        stackSize: 200,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Resources.IronOre.ToString(), 1 },
+                        }
+                    )
+                },
+                {
+                    Products.CopperBars.ToString(),
+                    new Item(
+                        Products.CopperBars.ToString(),
+                        stackSize: 200,
+                        ingredients: new Dictionary<string, uint>
+                        {
+                            { Resources.IronOre.ToString(), 1 },
+                        }
+                    )
+                },
                 {
                     Products.BuildingMaterials.ToString(),
                     new Item(
@@ -38,7 +60,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Resources.Iron.ToString(), 10 },
+                            { Products.IronBars.ToString(), 10 },
                             { Resources.Stone.ToString(), 10 },
                         }
                     )
@@ -51,8 +73,8 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Resources.Iron.ToString(), 5 },
-                            { Resources.Copper.ToString(), 5 },
+                            { Products.IronBars.ToString(), 5 },
+                            { Products.CopperBars.ToString(), 5 },
                         }
                     )
                 },
@@ -64,7 +86,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
-                            { Resources.Copper.ToString(), 5 },
+                            { Products.CopperBars.ToString(), 5 },
                         }
                     )
                 },
@@ -78,7 +100,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
-                            { Resources.Iron.ToString(), 10 },
+                            { Products.IronBars.ToString(), 10 },
                         }
                     )
                 },
@@ -130,9 +152,9 @@ namespace Assets.Scripts.Unity
                 },
                 // Medium Buildings
                 {
-                    Spawnables.TransferWarehouse.ToString(),
+                    Spawnables.TransitHub.ToString(),
                     new Item(
-                        Spawnables.TransferWarehouse.ToString(),
+                        Spawnables.TransitHub.ToString(),
                         weight: 200,
                         volume: 100,
                         craftTime: 50,
@@ -160,9 +182,9 @@ namespace Assets.Scripts.Unity
                 // },
                 // Small Buildings
                 {
-                    Spawnables.Mine.ToString(),
+                    Spawnables.MiningDrill.ToString(),
                     new Item(
-                        Spawnables.Mine.ToString(),
+                        Spawnables.MiningDrill.ToString(),
                         weight: 50,
                         volume: 50,
                         craftTime: 50,
@@ -177,14 +199,16 @@ namespace Assets.Scripts.Unity
 
         public enum Resources
         {
-            Iron,
+            IronOre,
+            CopperOre,
             Coal,
-            Copper,
             Stone,
         }
 
         public enum Products
         {
+            IronBars,
+            CopperBars,
             BuildingMaterials,
             Motors,
             Circuits,
@@ -195,10 +219,16 @@ namespace Assets.Scripts.Unity
         {
             Truck,
             CoalPlant,
-            Mine,
+            MiningDrill,
             Factory,
             StorageWarehouse,
-            TransferWarehouse,
+            TransitHub,
+        }
+
+        public enum DispatchVerbs
+        {
+            Deploy,
+            Retrieve,
         }
     }
 }

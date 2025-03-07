@@ -6,7 +6,6 @@ using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.WorldObjects.Core;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace Assets.Scripts.Unity
@@ -66,75 +65,73 @@ namespace Assets.Scripts.Unity
         {
             base.Reset();
             this.PlayerComponent.Reset();
-            this.SpawnOres(FactoryGameContent.Resources.Iron.ToString());
-            this.SpawnOres(FactoryGameContent.Resources.Copper.ToString());
+            this.SpawnOres(FactoryGameContent.Resources.IronOre.ToString());
+            this.SpawnOres(FactoryGameContent.Resources.IronOre.ToString());
             this.SpawnOres(FactoryGameContent.Resources.Coal.ToString());
 
             // Spawn some initial buildings
             //
             // C = Coal Plant
             // F = Factory
-            // W = Storage Warehouse  <== simply stores things
-            // X = Transfer Warehouse <== acts as a buffer between buildings
-            // S = Radar
+            // D = Foundry
             // T = Truck
+            // P = Power
+            // M = Mining Drill
             //
-            //   T T T T
-            // R W F F F
-            // R C   X X
-            // R C F F F F <== the radar on the far left is our 0x 0y
-            //   W W W W W
-            //
-            // Both coal plants have a warehouse beside them with a stockpile of coal.
-            // There's 1 scanner for each resource: iron, copper, coal.
-            //
-            // The factories are chained like so:
-            //      W W W W
-            //      F F F F
-            //      ^ ^ ^ ^
-            //      | | | BuildingMaterials
-            //      | | Motors
-            //      | Circuits
-            //      Frames
-            //
-            // The factories adjacent to the transfer array are in this order:
-            //  - Factory
-            //  - Warehouse
-            //  - Coal Plant
-            //
-            // TODO: a proper HQ building that has enhanced capabilities
+            //   T P F F F F T
+            //   T P F F F F T
+            //   T C M D D D T <== the coal on the far left is our 0x 0y
 
+            foreach (
+                SpawnQueueItem spawnQueueItem in new List<SpawnQueueItem>
+                {
+                    // Leftmost trucks (x=-1)
+                    new(type: "Truck", x: -1, y: 0, xyCentered: true),
+                    new(type: "Truck", x: -1, y: 1, xyCentered: true),
+                    new(type: "Truck", x: -1, y: 2, xyCentered: true),
+                    // Coal and power lines (x=0)
+                    new(
+                        type: "CoalPlant",
+                        x: 0,
+                        y: 0,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "Coal", 5000 } }
+                    ),
+                    new(type: "Power", x: 0, y: 1, xyCentered: true),
+                    new(type: "Power", x: 0, y: 2, xyCentered: true),
+                    // Stone Mining Drill & Foundries (y=0)
+                    new(type: "MiningDrill", x: 1, y: 0, xyCentered: true),
+                    new(type: "Foundry", x: 2, y: 0, xyCentered: true),
+                    new(type: "Foundry", x: 3, y: 0, xyCentered: true),
+                    new(type: "Foundry", x: 4, y: 0, xyCentered: true),
+                    // Factory layer 1 (y=1)
+                    new(type: "Factory", x: 1, y: 1, xyCentered: true),
+                    new(type: "Factory", x: 2, y: 1, xyCentered: true),
+                    new(type: "Factory", x: 3, y: 1, xyCentered: true),
+                    new(type: "Factory", x: 4, y: 1, xyCentered: true),
+                    // Factory layer 2 (y=2)
+                    new(type: "Factory", x: 1, y: 2, xyCentered: true),
+                    new(type: "Factory", x: 2, y: 2, xyCentered: true),
+                    new(type: "Factory", x: 3, y: 2, xyCentered: true),
+                    new(type: "Factory", x: 4, y: 2, xyCentered: true),
+                    // Rightmost trucks (x=5)
+                    new(type: "Truck", x: 5, y: 0, xyCentered: true),
+                    new(type: "Truck", x: 5, y: 1, xyCentered: true),
+                    new(type: "Truck", x: 5, y: 2, xyCentered: true),
+                }
+            )
+            {
+                this.Spawn(spawnQueueItem);
+            }
 
             this.Spawn(
                 new SpawnQueueItem(
                     "CoalPlant",
-                    x: 1,
+                    x: 0,
                     y: 0,
                     xyCentered: true,
                     resources: new Dictionary<string, uint> { { "Coal", 100 } }
                 )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem(
-                    "CoalPlant",
-                    x: 1,
-                    y: 1,
-                    xyCentered: true,
-                    resources: new Dictionary<string, uint> { { "Coal", 100 } }
-                )
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Radar", x: 0, y: 0, xyCentered: true, targetType: "Iron")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Radar", x: 0, y: 1, xyCentered: true, targetType: "Copper")
-            );
-
-            this.Spawn(
-                new SpawnQueueItem("Radar", x: 0, y: 2, xyCentered: true, targetType: "Coal")
             );
 
             this.Spawn(
@@ -206,8 +203,8 @@ namespace Assets.Scripts.Unity
                     resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
-                        { "Iron", 2000 },
-                        { "Copper", 1000 },
+                        { "IronBars", 2000 },
+                        { "CopperBars", 1000 },
                     }
                 )
             );
@@ -221,8 +218,8 @@ namespace Assets.Scripts.Unity
                     resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
-                        { "Iron", 2000 },
-                        { "Copper", 1000 },
+                        { "IronBars", 2000 },
+                        { "CopperBars", 1000 },
                     }
                 )
             );
@@ -236,8 +233,8 @@ namespace Assets.Scripts.Unity
                     resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
-                        { "Iron", 2000 },
-                        { "Copper", 1000 },
+                        { "IronBars", 2000 },
+                        { "CopperBars", 1000 },
                     }
                 )
             );
@@ -251,8 +248,8 @@ namespace Assets.Scripts.Unity
                     resources: new Dictionary<string, uint>
                     {
                         { "Stone", 4000 },
-                        { "Iron", 2000 },
-                        { "Copper", 1000 },
+                        { "IronBars", 2000 },
+                        { "CopperBars", 1000 },
                     }
                 )
             );
@@ -300,8 +297,8 @@ namespace Assets.Scripts.Unity
                             gridPosition,
                             new List<string>
                             {
-                                FactoryGameContent.Resources.Iron.ToString(),
-                                FactoryGameContent.Resources.Copper.ToString(),
+                                FactoryGameContent.Resources.IronOre.ToString(),
+                                FactoryGameContent.Resources.CopperOre.ToString(),
                                 FactoryGameContent.Resources.Coal.ToString(),
                             }
                         ) != null;
@@ -370,8 +367,8 @@ namespace Assets.Scripts.Unity
                     .Where(worldObject =>
                         !new List<string>
                         {
-                            FactoryGameContent.Resources.Iron.ToString(),
-                            FactoryGameContent.Resources.Copper.ToString(),
+                            FactoryGameContent.Resources.IronOre.ToString(),
+                            FactoryGameContent.Resources.CopperOre.ToString(),
                             FactoryGameContent.Resources.Coal.ToString(),
                         }.Contains(worldObject.worldObjectType)
                     )
