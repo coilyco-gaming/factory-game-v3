@@ -21,11 +21,11 @@ namespace Assets.Scripts.WorldObjects.Core
 
         public MovementComponentCore movement;
         public DispatchComponentCore dispatch;
-        public DispatchReceiverComponentCore receiver;
-        public TransitHubComponentCore hub;
-        public ResourcesComponentCore resources;
+        public DispatchReceiverComponentCore dispatchReceiver;
         public BatteryComponentCore battery;
-        public List<InserterComponentCore> inserters;
+        public ResourcesComponentCore resources;
+        public List<ResourceInserterComponentCore> resourceInserters;
+        public ResourceInserterComponentCore resourceReceiver;
         public ProductionComponentCore production;
         public PowerComponentCore power;
         public string guid;

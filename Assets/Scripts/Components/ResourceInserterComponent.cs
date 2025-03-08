@@ -11,14 +11,14 @@ namespace Assets.Scripts.Components.Core
     using Assets.Scripts.WorldObjects.Core;
 
     [Serializable]
-    public class InserterComponentCore
+    public class ResourceInserterComponentCore
     {
         public string resourceType = "";
         public uint insertionRate = 0;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
 
-        public InserterComponentCore(
+        public ResourceInserterComponentCore(
             BatteryComponentCore battery,
             ResourcesComponentCore resources,
             string resourceType,
@@ -92,13 +92,13 @@ namespace Assets.Scripts.Components.Tests
         private WorldObjectCore WorldObject(
             GameControllerCore gameController,
             System.Numerics.Vector2 gridPosition,
-            List<InserterComponentCore> inserters = null,
+            List<ResourceInserterComponentCore> inserters = null,
             ResourcesComponentCore resources = null
         )
         {
             WorldObjectCore core = new(null)
             {
-                inserters = inserters,
+                resourceInserters = inserters,
                 resources = resources,
                 GridPosition = gridPosition, // TODO: why can't these all be at the same grid position?
             };
@@ -124,7 +124,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject0 = this.WorldObject(
                 gameController,
                 new System.Numerics.Vector2(0, 0),
-                new List<InserterComponentCore>()
+                new List<ResourceInserterComponentCore>()
                 {
                     new(
                         battery: battery,
@@ -146,7 +146,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.inserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -167,7 +167,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject0 = this.WorldObject(
                 gameController,
                 new System.Numerics.Vector2(0, 0),
-                new List<InserterComponentCore>()
+                new List<ResourceInserterComponentCore>()
                 {
                     new(
                         battery: battery,
@@ -190,7 +190,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.inserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
 
             // assertions
             Assert.Equal(2u, worldObject0.resources.resources["wood"]);
@@ -210,7 +210,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject0 = this.WorldObject(
                 gameController,
                 new System.Numerics.Vector2(0, 0),
-                new List<InserterComponentCore>()
+                new List<ResourceInserterComponentCore>()
                 {
                     new(
                         battery: battery,
@@ -233,7 +233,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.inserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -254,7 +254,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject0 = this.WorldObject(
                 gameController,
                 new System.Numerics.Vector2(0, 0),
-                new List<InserterComponentCore>()
+                new List<ResourceInserterComponentCore>()
                 {
                     new(
                         battery: battery,
@@ -277,7 +277,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.inserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -297,7 +297,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject0 = this.WorldObject(
                 gameController,
                 new System.Numerics.Vector2(0, 0),
-                new List<InserterComponentCore>()
+                new List<ResourceInserterComponentCore>()
                 {
                     new(
                         battery: battery,
@@ -330,7 +330,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.inserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
 
             // assertions
             Assert.Equal(3u, worldObject0.resources.resources["wood"]);

@@ -54,7 +54,7 @@ namespace Assets.Scripts.Components.Core
             GameContent gameContent,
             ResourcesComponentCore resources,
             BatteryComponentCore battery,
-            List<InserterComponentCore> inserters,
+            List<ResourceInserterComponentCore> inserters,
             string product
         )
         {
@@ -302,7 +302,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("wood", 5);
 
             BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new()
+            List<ResourceInserterComponentCore> inserters = new()
             { //
                 new(battery, resources, "wood", 1),
             };
@@ -334,7 +334,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("wood", 5);
 
             BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new() { };
+            List<ResourceInserterComponentCore> inserters = new() { };
 
             Assert.Equal(5u, resources.resources["wood"]);
             Assert.Equal(0u, resources.resources.GetValueOrDefault("nails", 0u));
@@ -363,7 +363,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("wall", 4);
 
             BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new()
+            List<ResourceInserterComponentCore> inserters = new()
             { //
                 new(battery, resources, "wall", 1),
             };
@@ -391,7 +391,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("wood", 20);
 
             BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new()
+            List<ResourceInserterComponentCore> inserters = new()
             { //
                 new(battery, resources, "wood", 1),
             };
@@ -422,7 +422,7 @@ namespace Assets.Scripts.Components.Tests
             resources.CreateResources("wood", 5);
 
             BatteryComponentCore battery = new(100, 100);
-            List<InserterComponentCore> inserters = new()
+            List<ResourceInserterComponentCore> inserters = new()
             { //
                 new(battery, resources, "wood", 1),
             };

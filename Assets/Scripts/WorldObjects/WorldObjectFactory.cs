@@ -46,10 +46,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 .Items[this.core.targetType]
                 .Ingredients.Keys.ToList();
 
-            this.core.inserters = new();
+            this.core.resourceInserters = new();
             foreach (string ingredient in ingredients)
             {
-                this.core.inserters.Add(
+                this.core.resourceInserters.Add(
                     new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
                 );
             }
@@ -58,7 +58,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 this.core.resources,
                 this.core.battery,
-                this.core.inserters,
+                this.core.resourceInserters,
                 this.core.targetType
             );
 
@@ -77,7 +77,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponentCore inserter in this.core.inserters)
+            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
                 inserter.Insert(this.core, gameController.core);
             }

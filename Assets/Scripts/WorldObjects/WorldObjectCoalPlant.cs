@@ -40,7 +40,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
-            this.core.inserters = new List<InserterComponentCore>()
+            this.core.resourceInserters = new List<ResourceInserterComponentCore>()
             {
                 new(
                     this.core.battery,
@@ -79,7 +79,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (InserterComponentCore inserter in this.core.inserters)
+            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
                 inserter.Insert(this.core, gameController.core);
             }

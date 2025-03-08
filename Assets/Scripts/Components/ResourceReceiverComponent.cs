@@ -1,8 +1,8 @@
 namespace Assets.Scripts.Components.Core
 {
-    public class ExampleComponentCore
+    public class ResourceReceiverCore
     {
-        public ExampleComponentCore() { }
+        public ResourceReceiverCore() { }
 
         public void Tick() { }
     }
@@ -14,11 +14,11 @@ namespace Assets.Scripts.Components.Tests
     using Xunit;
     using Xunit.Abstractions;
 
-    public class ExampleComponentCoreTest
+    public class ResourceReceiverCoreTest
     {
         private ITestOutputHelper testOutput;
 
-        public ExampleComponentCoreTest(ITestOutputHelper testOutputHelper)
+        public ResourceReceiverCoreTest(ITestOutputHelper testOutputHelper)
         {
             this.testOutput = testOutputHelper;
         }
@@ -26,7 +26,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTrue()
         {
-            ExampleComponentCore example = new();
+            ResourceReceiverCore example = new();
             example.Tick();
             Assert.True(true);
             this.testOutput.WriteLine("tested true");

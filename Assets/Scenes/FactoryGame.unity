@@ -177,9 +177,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <50, 50>\r\nStatus:\r\n- Name: Coal Plant\r\n  Energy: 3%\r\n 
-    Resources:\r\n    Coal: 9920\r\n  Info:\r\n    Dispatch: deliver coal to me\r\n   
-    Storage Volume: 99%\r\n"
+  m_text: "Position: <52, 52>\r\nStatus:\r\n- Name: Factory\r\n  Energy: 4%\r\n 
+    Resources: {}\r\n  Info:\r\n    Outputs: factory\r\n    Progress: 0%\r\n    Dispatch:
+    retrieve factory from me\r\n    Storage Volume: 0%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

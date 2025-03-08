@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Core;
 using Assets.Scripts.WorldObjects.Core;
-using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -117,7 +116,7 @@ namespace Assets.Scripts.Components.Core
                 // For all world objects
                 .SelectMany(worldObjects => worldObjects.Value)
                 // For all dispatch receivers
-                .Select(worldObject => worldObject.Value.receiver)
+                .Select(worldObject => worldObject.Value.dispatchReceiver)
                 .Where(receiver =>
                     // Where the receiver is not null and is awaiting a target
                     receiver != null
@@ -211,7 +210,7 @@ namespace Assets.Scripts.Components.Tests
                 "DEPLOY",
                 "MINING_DRILL"
             );
-            receiverWorldObject.receiver = receiver;
+            receiverWorldObject.dispatchReceiver = receiver;
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -269,7 +268,7 @@ namespace Assets.Scripts.Components.Tests
                 "DEPLOY",
                 "MINING_DRILL"
             );
-            receiverWorldObject.receiver = receiver;
+            receiverWorldObject.dispatchReceiver = receiver;
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -326,7 +325,7 @@ namespace Assets.Scripts.Components.Tests
                 "RETRIEVE",
                 "MINING_DRILL"
             );
-            receiverWorldObject.receiver = receiver;
+            receiverWorldObject.dispatchReceiver = receiver;
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -383,7 +382,7 @@ namespace Assets.Scripts.Components.Tests
                 "DEPLOY",
                 "WAREHOUSE"
             );
-            receiverWorldObject.receiver = receiver;
+            receiverWorldObject.dispatchReceiver = receiver;
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()

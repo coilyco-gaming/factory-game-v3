@@ -24,14 +24,16 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                     {
                         "Target Description",
-                        this.core.receiver != null && this.core.receiver.dispatcher != null
-                            ? this.core.receiver.dispatcher.ReceiverDescription
+                        this.core.dispatchReceiver != null
+                        && this.core.dispatchReceiver.dispatcher != null
+                            ? this.core.dispatchReceiver.dispatcher.Description
                             : "awaiting target"
                     },
                     {
                         "Target Location",
-                        this.core.receiver != null && this.core.receiver.dispatcher != null
-                            ? this.core.receiver.targetPosition.ToString()
+                        this.core.dispatchReceiver != null
+                        && this.core.dispatchReceiver.dispatcher != null
+                            ? this.core.dispatchReceiver.targetPosition.ToString()
                             : "awaiting target"
                     },
                 },
@@ -47,14 +49,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: this.totalVolumeCapacity
             );
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.receiver = new(
+            this.core.dispatchReceiver = new(
                 this.core,
                 this.core.resources,
                 DispatchComponentCore.Verbs.Retrieve.ToString(), // Deploy
                 FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
             ); // TODO: rotate around possible choices
-            this.core.movement = new MovementComponentCore(this, this.core.receiver);
-            this.core.inserters = new List<InserterComponentCore>
+            this.core.movement = new MovementComponentCore(this, this.core.dispatchReceiver);
+            this.core.resourceInserters = new List<ResourceInserterComponentCore>
             {
                 new(
                     this.core.battery,
