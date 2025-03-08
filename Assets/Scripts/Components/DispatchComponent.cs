@@ -22,14 +22,10 @@ namespace Assets.Scripts.Components.Core
         //  - Retrieve power lines from factory
         //  - Deploy mining drill to iron ore
         //  - Deliver coal to coal plant
-        private string ReceiverDescriptionObject =>
-            this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                ? Util.HumanizedString(this.worldObject.worldObjectType)
-                : Util.HumanizedString(this.receiverObject);
         public string ReceiverDescription =>
-            $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.ReceiverDescriptionObject}".ToLower();
+            $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.worldObject.worldObjectType}".ToLower();
 
-        private WorldObjectCore worldObject;
+        public WorldObjectCore worldObject;
         private BatteryComponentCore battery;
         private string receiverVerb = "VERB";
         private string receiverSubject = "SUBJECT";

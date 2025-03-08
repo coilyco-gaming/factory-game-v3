@@ -370,6 +370,69 @@ namespace Assets.Scripts.Components.Core
             }
             target.GiveResources(this, resourceName, amountToTake);
         }
+
+        // Get resources from a target, skipping resource reservation restrictions.
+        public void RetrieveResources(
+            ResourcesComponentCore target,
+            string resourceName,
+            uint amountToRetrieve
+        )
+        {
+            if (target == null)
+            {
+                throw new ResourceContainerException("Nowhere to retrieve resources from");
+            }
+
+            if (this == target)
+            {
+                // Don't give resources to yourself, doing so result in resouces being magically created from nothing.
+                return;
+            }
+
+            uint availableResources = target.resources.GetValueOrDefault(
+                resourceName ?? "",
+                (uint)0
+            );
+
+            GameContent.Item item =
+                this.GameContent.Items.GetValueOrDefault(
+                    resourceName ?? "",
+                    new GameContent.Item("")
+                ) ?? new GameContent.Item("");
+
+            uint originalAmountToGive = amountToRetrieve;
+            uint weightToGive = amountToRetrieve * item.Weight;
+            uint volumeToGive = amountToRetrieve * item.Volume;
+            uint currentResources = this.resources.GetValueOrDefault(resourceName, (uint)0);
+
+            if (availableResources == 0)
+            {
+                throw new ResourceQuantityException($"Does not have {resourceName} to give");
+            }
+
+            if (this.RemainingWeightCapacity < weightToGive)
+            {
+                amountToRetrieve = (uint)(this.RemainingWeightCapacity / (float)item.Weight);
+                target.resources[resourceName] -= amountToRetrieve;
+                this.resources[resourceName] = currentResources + amountToRetrieve;
+                throw new ResourceWeightCapacityException(
+                    $"Not enough weight capacity to retrieve {originalAmountToGive} {resourceName}"
+                );
+            }
+
+            if (this.RemainingVolumeCapacity < volumeToGive)
+            {
+                amountToRetrieve = (uint)(this.RemainingVolumeCapacity / (float)item.Volume);
+                target.resources[resourceName] -= amountToRetrieve;
+                this.resources[resourceName] = currentResources + amountToRetrieve;
+                throw new ResourceVolumeCapacityException(
+                    $"Not enough volume capacity to retrieve {originalAmountToGive} {resourceName}"
+                );
+            }
+
+            target.resources[resourceName] -= amountToRetrieve;
+            this.resources[resourceName] = currentResources + amountToRetrieve;
+        }
     }
 }
 

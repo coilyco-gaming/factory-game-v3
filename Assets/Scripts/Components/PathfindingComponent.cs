@@ -106,8 +106,6 @@ namespace Assets.Scripts.Components.Core
             // TODO: this only seems to find a valid path 1 ~ 2 times a tick
             List<GridPos> resultPathList = JumpPointFinder.FindPath(jpParam);
 
-            Debug.Log($"Pathfinding from {start} to {end}: {resultPathList.Count}");
-
             if (resultPathList != null && resultPathList.Count != 0)
             {
                 // Derive the position vector from the next node on the path

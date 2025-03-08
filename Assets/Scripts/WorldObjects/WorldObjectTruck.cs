@@ -56,6 +56,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
             ); // TODO: rotate around possible choices
             this.core.movement = new MovementComponentCore(this, this.core.dispatchReceiver);
+            this.core.resourceRetriever = new ResourceRetrieverCore(
+                this.core,
+                this.core.resources,
+                this.core.battery,
+                this.core.dispatchReceiver,
+                new FactoryGameContent(),
+                FactoryGameContent.Spawnables.MiningDrill.ToString(),
+                1
+            );
             this.core.resourceInserters = new List<ResourceInserterComponentCore>
             {
                 new(
@@ -71,6 +80,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Tick(gameController);
             this.core.movement.Tick(gameController);
+            this.core.resourceRetriever.Tick();
         }
     }
 }

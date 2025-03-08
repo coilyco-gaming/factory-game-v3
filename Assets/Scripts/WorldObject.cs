@@ -25,7 +25,7 @@ namespace Assets.Scripts.WorldObjects.Core
         public BatteryComponentCore battery;
         public ResourcesComponentCore resources;
         public List<ResourceInserterComponentCore> resourceInserters;
-        public ResourceInserterComponentCore resourceReceiver;
+        public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;
         public string guid;
