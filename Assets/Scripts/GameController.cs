@@ -226,7 +226,10 @@ namespace Assets.Scripts.Unity
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
                 // Generate the pathfinding grid
-                this.Map.Grid = this.Map.CreateGrid(this);
+                if (this.Map.Grid == null)
+                {
+                    this.Map.Grid = this.Map.CreateGrid(this);
+                }
 
                 // Tick all objects
                 foreach (
@@ -240,6 +243,10 @@ namespace Assets.Scripts.Unity
                         (worldObject.backref as WorldObject).Tick(this);
                     }
                 }
+
+                // Determine if we should regen the pathfinding grid
+                bool shouldRegenGrid =
+                    this.core.queuedForDeletion != null || this.core.queuedForSpawn != null;
 
                 // Delete queued objects
                 if (this.core.queuedForDeletion != null)
@@ -271,6 +278,12 @@ namespace Assets.Scripts.Unity
                         this.Spawn(spawnQueueItem);
                     }
                     this.core.queuedForSpawn.Clear();
+                }
+
+                // Regen the pathfinding grid if needed
+                if (shouldRegenGrid)
+                {
+                    this.Map.Grid = this.Map.CreateGrid(this);
                 }
 
                 // Handle ticks

@@ -177,7 +177,13 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "- Name: Truck\r\n  Energy: 8%\r\n  Resources: {}\r\n  Info:\r\n    Storage
+    Volume: 0%\r\n    Target Description: retrieve mining drill from factory\r\n   
+    Target Location: <53, 52>\r\n- Name: Truck\r\n  Energy: 8%\r\n  Resources: {}\r\n 
+    Info:\r\n    Storage Volume: 0%\r\n    Target Description: retrieve mining drill
+    from factory\r\n    Target Location: <53, 52>\r\n- Name: Truck\r\n  Energy: 8%\r\n 
+    Resources: {}\r\n  Info:\r\n    Storage Volume: 0%\r\n    Target Description:
+    retrieve mining drill from factory\r\n    Target Location: <53, 52>\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -265,7 +271,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 47638825}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8802ac2e296c4a68a05d54236aea791, type: 3}
+  m_Script: {fileID: 11500000, guid: a83b677f55b985147858c3c6a1c5c862, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &140275307
@@ -522,7 +528,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 153855361}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c4a80c9007e677e47a9fa8c8da6c4168, type: 3}
+  m_Script: {fileID: 11500000, guid: 095ce391f93e3ea47a4ef7f268dd9336, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!1 &219981170
@@ -981,6 +987,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
 --- !u!1 &412395827
 GameObject:
   m_ObjectHideFlags: 0
@@ -1295,6 +1303,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
 --- !u!1 &545687439
 GameObject:
   m_ObjectHideFlags: 0
@@ -1713,6 +1723,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
   insertionRate: 1
   totalVolumeCapacity: 500
   totalWeightCapacity: 500
@@ -1814,13 +1826,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 678344652}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f3773fc292827724cbe85681b4c9743f, type: 3}
+  m_Script: {fileID: 11500000, guid: cfad6e8abf682b24da95f17da2513711, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   core:
     resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
+      reservedInputBufferMultiplier: 0
+      reservedOuputBufferMultiplier: 0
       weightCapacity: 0
       volumeCapacity: 0
     battery:
@@ -1836,7 +1848,9 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
-  totalVolumeCapacity: 1000
+    mobile: 0
+    passThrough: 0
+  totalVolumeCapacity: 10000
   totalBatteryCapacity: 1000
   insertionRate: 5
 --- !u!1 &875974723
@@ -1936,13 +1950,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 875974723}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e0d6624064cbd04181cdd6d9c532d02, type: 3}
+  m_Script: {fileID: 11500000, guid: ffd48075a5e35504aabb19bc4930a860, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   core:
     resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
+      reservedInputBufferMultiplier: 0
+      reservedOuputBufferMultiplier: 0
       weightCapacity: 0
       volumeCapacity: 0
     battery:
@@ -1958,6 +1972,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
   totalVolumeCapacity: 5000
   totalBatteryCapacity: 1000
   insertionRate: 5
@@ -2660,7 +2676,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1306989971}
   - component: {fileID: 1306989972}
-  - component: {fileID: 1306989973}
   m_Layer: 0
   m_Name: Radar
   m_TagString: Untagged
@@ -2738,18 +2753,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &1306989973
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1306989970}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c6416f727608af543829ff47f492c41e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -2762,7 +2765,6 @@ GameObject:
   - component: {fileID: 1318506232}
   - component: {fileID: 1318506238}
   - component: {fileID: 1318506237}
-  - component: {fileID: 1318506236}
   - component: {fileID: 1318506233}
   - component: {fileID: 1318506235}
   - component: {fileID: 1318506234}
@@ -2824,15 +2826,15 @@ MonoBehaviour:
       Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 1
+  tickFrequency: 0.25
   randomSeed: 0
   readyForTicks: 1
-  lastTick: 112.68091
+  lastTick: 52.85319
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
   StatusUIRight: {fileID: 153855361}
-  statusUpdateInterval: 0.1
+  statusUpdateInterval: 0.025
   HQOreBuffer: 6
   spawnAttempts: 10
   oreSpawnFactor: 1
@@ -2907,18 +2909,6 @@ MonoBehaviour:
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
   m_DragThreshold: 10
---- !u!114 &1318506236
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1318506227}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8802ac2e296c4a68a05d54236aea791, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1318506237
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3285,6 +3275,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
   totalBatteryCapacity: 1000
 --- !u!1 &1589381902
 GameObject:
@@ -3383,13 +3375,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1589381902}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 19ada1c6bac9242359b58550a5296834, type: 3}
+  m_Script: {fileID: 11500000, guid: efe470dc0be2be8498e4daf9b1b7a7b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   core:
     resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
+      reservedInputBufferMultiplier: 0
+      reservedOuputBufferMultiplier: 0
       weightCapacity: 0
       volumeCapacity: 0
     battery:
@@ -3405,6 +3397,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
   totalVolumeCapacity: 10000
   totalBatteryCapacity: 1000
   insertionRate: 5
@@ -3418,7 +3412,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1611820090}
   - component: {fileID: 1611820092}
-  - component: {fileID: 1611820091}
   m_Layer: 0
   m_Name: StorageWarehouse
   m_TagString: Untagged
@@ -3441,18 +3434,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 646330576}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1611820091
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1611820089}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 050721dc50e5a4a9194c75a6d579961f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!212 &1611820092
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4107,13 +4088,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 2002754849}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 299d8a790b57d634e988d1744f9ecabf, type: 3}
+  m_Script: {fileID: 11500000, guid: b16323dd59f22e14d97934b5ebc0006b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   core:
     resources:
-      reservedInputBufferMultiplier: 2
-      reservedOuputBufferMultiplier: 4
+      reservedInputBufferMultiplier: 0
+      reservedOuputBufferMultiplier: 0
       weightCapacity: 0
       volumeCapacity: 0
     battery:
@@ -4129,8 +4110,10 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
   totalVolumeCapacity: 10000
-  totalBatteryCapacity: 5000
+  totalBatteryCapacity: 10000
   insertionRate: 5
   powerBurnRate: 5
   powerGainRate: 100
@@ -4144,7 +4127,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2041591264}
   - component: {fileID: 2041591265}
-  - component: {fileID: 2041591266}
   m_Layer: 0
   m_Name: TransitHub
   m_TagString: Untagged
@@ -4222,18 +4204,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &2041591266
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2041591263}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 46bb0e0ac10758242baf009064114f0d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &2093853404
 GameObject:
   m_ObjectHideFlags: 0
@@ -4440,6 +4410,8 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    mobile: 0
+    passThrough: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

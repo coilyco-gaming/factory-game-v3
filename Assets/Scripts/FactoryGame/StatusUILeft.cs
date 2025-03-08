@@ -43,7 +43,7 @@ namespace Assets.Scripts.UI
                 ?.Select(worldObject => worldObject.backref as WorldObject)
                 ?.Select(worldObject => worldObject.StatusData);
 
-            if (statusDataList.Count() == 0)
+            if (statusDataList?.Count() == 0)
             {
                 // If there are no statuses, clear the status
                 this.textMeshPro.SetText("");

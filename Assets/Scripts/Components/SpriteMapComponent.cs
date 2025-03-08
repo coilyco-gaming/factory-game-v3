@@ -57,6 +57,7 @@ namespace Assets.Scripts.Components.Unity
         public Roy_T.AStar.Grids.Grid CreateGrid(GameController gameController)
         {
             // Generate base grid
+
             Roy_T.AStar.Grids.Grid grid =
                 Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
                     new(this._mapSize.x, this._mapSize.y),
