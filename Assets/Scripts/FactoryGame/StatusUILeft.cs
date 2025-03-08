@@ -30,7 +30,10 @@ namespace Assets.Scripts.UI
             this.textMeshPro = this.transform.GetComponent<TextMeshProUGUI>();
         }
 
-        public void Display(IEnumerable<WorldObjectCore> worldObjects)
+        public void Display(
+            IEnumerable<WorldObjectCore> worldObjects,
+            System.Numerics.Vector2 position
+        )
         {
             // Nothing is here
             if (worldObjects == null)
@@ -48,7 +51,7 @@ namespace Assets.Scripts.UI
 
             StatusUILeftData data = new()
             {
-                Position = worldObjects?.FirstOrDefault()?.GridPosition.ToString(),
+                Position = position.ToString(),
                 Status = statusDataList,
             };
 

@@ -6,6 +6,7 @@ namespace Assets.Scripts.Components.Core
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Unity;
+    using EpPathFinding.cs;
 
     public class MovementComponentCore
     {
@@ -46,7 +47,7 @@ namespace Assets.Scripts.Components.Core
             System.Numerics.Vector2? movement = PathfindingComponentCore.GetPosition(
                 start: start,
                 end: end,
-                grid: gameController.Map.Grid
+                grid: gameController.Map.Grid.Clone() as StaticGrid
             );
 
             if (movement == null)

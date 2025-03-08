@@ -257,7 +257,10 @@ namespace Assets.Scripts.FactoryGame
                     ?.Values.ToList();
 
                 // Display the status data in the UI
-                this.statusUILeftComponent.Display(worldObjects);
+                this.statusUILeftComponent.Display(
+                    worldObjects,
+                    this.PlayerComponent.GetGridPosition()
+                );
             }
         }
 
