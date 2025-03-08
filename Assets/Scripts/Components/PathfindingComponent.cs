@@ -2,21 +2,19 @@ namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
-    using System.Numerics;
-    using Roy_T.AStar.Graphs;
-    using Roy_T.AStar.Paths;
-    using Roy_T.AStar.Primitives;
+    using EpPathFinding.cs;
+    using UnityEngine;
 
     public class PathfindingComponentCore
     {
-        public static Vector2? DiamondSpiralPattern(
-            Vector2 origin,
-            Vector2 currentTarget,
-            Vector2 mapSize,
+        public static System.Numerics.Vector2? DiamondSpiralPattern(
+            System.Numerics.Vector2 origin,
+            System.Numerics.Vector2 currentTarget,
+            System.Numerics.Vector2 mapSize,
             int depth = 0
         )
         {
-            Vector2 changeVector = currentTarget - origin;
+            System.Numerics.Vector2 changeVector = currentTarget - origin;
 
             // We've check all the way around the map
             if (depth > mapSize.X + mapSize.Y)
@@ -87,45 +85,59 @@ namespace Assets.Scripts.Components.Core
             return currentTarget;
         }
 
-        public static Vector2? GetPosition(Vector2 start, Vector2 end, Roy_T.AStar.Grids.Grid grid)
+        public static System.Numerics.Vector2? GetPosition(
+            System.Numerics.Vector2 start,
+            System.Numerics.Vector2 end,
+            StaticGrid grid
+        )
         {
-            Vector2? position = null;
+            System.Numerics.Vector2? position = null;
+            GridPos startGridPosition = new((int)start.X, (int)start.Y);
+            GridPos endGridPosition = new((int)end.X, (int)end.Y);
 
-            // Find the path
-            PathFinder pathFinder = new();
-            Path path = pathFinder.FindPath(
-                new GridPosition((int)start.X, (int)start.Y),
-                new GridPosition((int)end.X, (int)end.Y),
-                grid
+            JumpPointParam jpParam = new(
+                grid,
+                startGridPosition,
+                endGridPosition,
+                iAllowEndNodeUnWalkable: EndNodeUnWalkableTreatment.ALLOW,
+                iDiagonalMovement: DiagonalMovement.IfAtLeastOneWalkable
             );
+            List<GridPos> resultPathList = JumpPointFinder.FindPath(jpParam);
 
-            // No path found
-            if (path != null && path.Edges.Count != 0)
+            Debug.Log($"Pathfinding from {start} to {end}: {resultPathList.Count}");
+
+            if (resultPathList != null && resultPathList.Count != 0)
             {
                 // Derive the position vector from the next node on the path
-                IEdge edge = path.Edges[0];
-                Vector2 nextPosition = new(edge.End.Position.X, edge.End.Position.Y);
+                System.Numerics.Vector2 nextPosition = new(
+                    resultPathList[0].x,
+                    resultPathList[0].y
+                );
                 position = nextPosition - start;
             }
 
             return position;
         }
 
-        public static Quaternion FacePosition(System.Numerics.Vector2 position)
+        public static System.Numerics.Quaternion FacePosition(System.Numerics.Vector2 position)
         {
             double radians = Math.Atan2(position.X, position.Y);
-            Quaternion rotation = Quaternion.CreateFromYawPitchRoll(0, 0, (float)radians);
+            System.Numerics.Quaternion rotation = System.Numerics.Quaternion.CreateFromYawPitchRoll(
+                0,
+                0,
+                (float)radians
+            );
             return rotation;
         }
 
-        public static Quaternion FaceLocation(
+        public static System.Numerics.Quaternion FaceLocation(
             System.Numerics.Vector2 origin,
             System.Numerics.Vector2 target
         )
         {
             float yOffset = target.Y - origin.Y;
             float xOffset = target.X - origin.X;
-            Vector2 diff = new(xOffset, yOffset);
+            System.Numerics.Vector2 diff = new(xOffset, yOffset);
             return PathfindingComponentCore.FacePosition(diff);
         }
     }

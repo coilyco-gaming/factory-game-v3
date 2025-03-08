@@ -225,6 +225,8 @@ namespace Assets.Scripts.Unity
             // If we aren't ready for ticks, the main game loop won't run.
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
+                Debug.Log("Tick: " + Time.time);
+
                 // Generate the pathfinding grid
                 if (this.Map.Grid == null)
                 {

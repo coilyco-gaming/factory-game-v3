@@ -177,13 +177,8 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: Truck\r\n  Energy: 8%\r\n  Resources: {}\r\n  Info:\r\n    Storage
-    Volume: 0%\r\n    Target Description: retrieve mining drill from factory\r\n   
-    Target Location: <53, 52>\r\n- Name: Truck\r\n  Energy: 8%\r\n  Resources: {}\r\n 
-    Info:\r\n    Storage Volume: 0%\r\n    Target Description: retrieve mining drill
-    from factory\r\n    Target Location: <53, 52>\r\n- Name: Truck\r\n  Energy: 8%\r\n 
-    Resources: {}\r\n  Info:\r\n    Storage Volume: 0%\r\n    Target Description:
-    retrieve mining drill from factory\r\n    Target Location: <53, 52>\r\n"
+  m_text: "- Name: Coal Plant\r\n  Energy: 11%\r\n  Resources:\r\n    Coal: 9330\r\n 
+    Info:\r\n    Dispatch: deliver coal to me\r\n    Storage Volume: 93%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2826,7 +2821,7 @@ MonoBehaviour:
       Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.25
+  tickFrequency: 0.1
   randomSeed: 0
   readyForTicks: 1
   lastTick: 52.85319

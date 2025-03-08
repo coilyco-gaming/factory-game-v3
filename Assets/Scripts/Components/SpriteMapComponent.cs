@@ -3,14 +3,14 @@ namespace Assets.Scripts.Components.Unity
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Unity;
-    using Roy_T.AStar.Primitives;
+    using EpPathFinding.cs;
     using UnityEngine;
 
     public class SpriteMapComponent : MonoBehaviour
     {
         public UnityEngine.Vector2Int _mapSize = new(20, 20);
         public System.Numerics.Vector2 MapSize => new(this._mapSize.x, this._mapSize.y);
-        public Roy_T.AStar.Grids.Grid Grid { get; set; }
+        public StaticGrid Grid { get; set; }
         public GameObject WorldGameObject { get; set; }
 
         private Canvas parentCanvas;
@@ -54,31 +54,39 @@ namespace Assets.Scripts.Components.Unity
             }
         }
 
-        public Roy_T.AStar.Grids.Grid CreateGrid(GameController gameController)
+        public StaticGrid CreateGrid(GameController gameController)
         {
-            // Generate base grid
-
-            Roy_T.AStar.Grids.Grid grid =
-                Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
-                    new(this._mapSize.x, this._mapSize.y),
-                    new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
-                    Velocity.FromMetersPerSecond(1)
-                );
-
             // Get obstacles (buildings and rocks and such)
-            IEnumerable<System.Numerics.Vector2> obstacles = gameController
+            HashSet<System.Numerics.Vector2> obstacles = gameController
                 .core.worldObjects.SelectMany(worldObjects => worldObjects.Value)
-                // Only block pathfinding on stationary objects
+                // Don't block path for mobile objects, or pass-through objects
                 .Where(worldObject => !worldObject.Value.mobile)
-                // Only block pathfinding on objects that are not pass through
                 .Where(worldObject => !worldObject.Value.passThrough)
-                .Select(worldObject => worldObject.Value.gridPosition);
+                .Select(worldObject => worldObject.Value.gridPosition)
+                .ToHashSet();
 
-            // Disconnect obstacles from the grid
-            foreach (System.Numerics.Vector2 obstacle in obstacles)
+            // Register obstacles in the grid
+            bool[][] movableMatrix = new bool[this._mapSize.x][];
+            for (int widthTrav = 0; widthTrav < this._mapSize.x; widthTrav++)
             {
-                grid.DisconnectNode(new GridPosition((int)obstacle.X, (int)obstacle.Y));
+                movableMatrix[widthTrav] = new bool[this._mapSize.y];
+                for (int heightTrav = 0; heightTrav < this._mapSize.y; heightTrav++)
+                {
+                    // If this position has an obstacle, mark it as not walkable
+                    if (obstacles.Contains(new System.Numerics.Vector2(widthTrav, heightTrav)))
+                    {
+                        movableMatrix[widthTrav][heightTrav] = false; // not walkable
+                        continue;
+                    }
+                    else
+                    {
+                        movableMatrix[widthTrav][heightTrav] = true; // walkable
+                    }
+                }
             }
+
+            // Generate the grid
+            StaticGrid grid = new(this._mapSize.x, this._mapSize.y, movableMatrix);
 
             return grid;
         }

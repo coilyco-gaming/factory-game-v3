@@ -13,15 +13,17 @@ namespace Assets.Scripts.UI
 
     public class StatusUILeft : MonoBehaviour
     {
-        // FIELDS //
-
         private TextMeshProUGUI textMeshPro;
         private ISerializer serializer = new SerializerBuilder()
             .WithNamingConvention(PascalCaseNamingConvention.Instance)
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
             .Build();
 
-        // FUNCTIONS //
+        private class StatusUILeftData
+        {
+            public string Position { get; set; }
+            public IEnumerable<StatusDataComponentCore> Status { get; set; }
+        }
 
         public void Instantiate()
         {
@@ -41,7 +43,14 @@ namespace Assets.Scripts.UI
                 ?.Where(worldObject => worldObject != null)
                 ?.Where(worldObject => (worldObject.backref as WorldObject) != null)
                 ?.Select(worldObject => worldObject.backref as WorldObject)
-                ?.Select(worldObject => worldObject.StatusData);
+                ?.Select(worldObject => worldObject.StatusData)
+                .ToList();
+
+            StatusUILeftData data = new()
+            {
+                Position = worldObjects?.FirstOrDefault()?.GridPosition.ToString(),
+                Status = statusDataList,
+            };
 
             if (statusDataList?.Count() == 0)
             {
@@ -51,7 +60,7 @@ namespace Assets.Scripts.UI
             else
             {
                 // Serialize the status list to YAML, then update the status
-                string statusYaml = this.serializer.Serialize(statusDataList);
+                string statusYaml = this.serializer.Serialize(data);
                 this.textMeshPro.SetText(statusYaml);
             }
         }
