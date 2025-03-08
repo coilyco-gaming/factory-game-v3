@@ -102,6 +102,8 @@ namespace Assets.Scripts.Components.Core
                 iAllowEndNodeUnWalkable: EndNodeUnWalkableTreatment.ALLOW,
                 iDiagonalMovement: DiagonalMovement.IfAtLeastOneWalkable
             );
+
+            // TODO: this only seems to find a valid path 1 ~ 2 times a tick
             List<GridPos> resultPathList = JumpPointFinder.FindPath(jpParam);
 
             Debug.Log($"Pathfinding from {start} to {end}: {resultPathList.Count}");
@@ -109,10 +111,15 @@ namespace Assets.Scripts.Components.Core
             if (resultPathList != null && resultPathList.Count != 0)
             {
                 // Derive the position vector from the next node on the path
-                System.Numerics.Vector2 nextPosition = new(
-                    resultPathList[0].x,
-                    resultPathList[0].y
-                );
+                int nextX = resultPathList[1].x;
+                int nextY = resultPathList[1].y;
+
+                // The pathfinding algo is coded to "jump" when possible
+                // so we need to clip the movement if the next node is more than 1 away
+                nextX = Math.Clamp(nextX, (int)start.X - 1, (int)start.X + 1);
+                nextY = Math.Clamp(nextY, (int)start.Y - 1, (int)start.Y + 1);
+
+                System.Numerics.Vector2 nextPosition = new(nextX, nextY);
                 position = nextPosition - start;
             }
 

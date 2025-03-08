@@ -23,8 +23,14 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick(GameController gameController)
         {
+            if (this.receiver.targetPosition == null)
+            {
+                // We have no target position
+                return;
+            }
+
             System.Numerics.Vector2 start = this.worldObject.GridPosition;
-            System.Numerics.Vector2 end = this.receiver.targetPosition;
+            System.Numerics.Vector2 end = this.receiver.targetPosition.Value;
 
             // Determine if we are already close enough
             float xDiff = Math.Abs(start.X - end.X);

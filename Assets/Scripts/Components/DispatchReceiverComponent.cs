@@ -9,7 +9,7 @@ namespace Assets.Scripts.Components.Core
         public bool awaitingTarget = true;
         public WorldObjectCore worldObject;
         public DispatchComponentCore dispatcher;
-        public System.Numerics.Vector2 targetPosition;
+        public System.Numerics.Vector2? targetPosition = null;
         private ResourcesComponentCore resources;
         public string receiverVerb;
         public string receiverSubject;

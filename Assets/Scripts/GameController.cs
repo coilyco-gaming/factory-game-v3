@@ -204,6 +204,7 @@ namespace Assets.Scripts.Unity
         public SpriteMapComponent Map { get; set; }
         public PlayerComponent PlayerComponent { get; set; }
         public float lastTick = 0;
+        public uint tickCount = 0;
 
         // PROPERTIES //
 
@@ -225,7 +226,7 @@ namespace Assets.Scripts.Unity
             // If we aren't ready for ticks, the main game loop won't run.
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
-                Debug.Log("Tick: " + Time.time);
+                Debug.Log("Tick: " + this.tickCount);
 
                 // Generate the pathfinding grid
                 if (this.Map.Grid == null)
@@ -289,6 +290,7 @@ namespace Assets.Scripts.Unity
                 }
 
                 // Handle ticks
+                this.tickCount++;
                 this.lastTick = Time.time;
             }
         }
@@ -328,6 +330,7 @@ namespace Assets.Scripts.Unity
             this.Clear();
             this.random = new System.Random(this.randomSeed);
             this.lastTick = 0;
+            this.tickCount = 0;
             this.readyForTicks = false;
         }
 
