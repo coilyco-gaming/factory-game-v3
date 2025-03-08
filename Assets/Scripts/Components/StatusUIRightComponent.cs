@@ -1,4 +1,3 @@
-#if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
@@ -74,4 +73,3 @@ namespace Assets.Scripts.Components.Unity
         }
     }
 }
-#endif

@@ -40,11 +40,7 @@ namespace Assets.Scripts.Components.Core
             System.Numerics.Vector2? movement = PathfindingComponentCore.GetPosition(
                 start: start,
                 end: end,
-                mapSize: gameController.Map.MapSize,
-                obstacles: gameController
-                    .core.worldObjects.Where(worldObjects => worldObjects.Value.Count != 0)
-                    .Select(worldObjects => worldObjects.Key)
-                    .ToList()
+                grid: gameController.Map.Grid
             );
 
             if (movement == null)

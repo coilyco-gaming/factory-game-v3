@@ -62,6 +62,8 @@ namespace Assets.Scripts.Core
 
         // FUNCTIONS //
 
+
+
         public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
         {
             return new List<System.Numerics.Vector2>
@@ -148,7 +150,6 @@ namespace Assets.Scripts.Core
     }
 }
 
-#if UNITY_6000
 namespace Assets.Scripts.Unity
 {
     using System.Collections.Generic;
@@ -194,6 +195,9 @@ namespace Assets.Scripts.Unity
             // If we aren't ready for ticks, the main game loop won't run.
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
+                // Generate the pathfinding grid
+                this.Map.Grid = this.Map.CreateGrid(this);
+
                 // Tick all objects
                 foreach (
                     Dictionary<string, WorldObjectCore> worldObjects in this.core
@@ -434,4 +438,3 @@ namespace Assets.Scripts.Unity
         }
     }
 }
-#endif

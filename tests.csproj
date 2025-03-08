@@ -40,23 +40,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="Assets\Scripts\FactoryGameController.cs" />
-    <Compile Remove="Assets\Scripts\FactoryGameController.cs" />
-    <EmbeddedResource Remove="Assets\Scripts\FactoryGameController.cs" />
-    <None Remove="Assets\Scripts\FactoryGameController.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="Assets\Scripts\WorldObjects\FactoryGame\**" />
-    <Compile Remove="Assets\Scripts\WorldObjects\FactoryGame\**" />
-    <EmbeddedResource Remove="Assets\Scripts\WorldObjects\FactoryGame\**" />
-    <None Remove="Assets\Scripts\WorldObjects\FactoryGame\**" />
-  </ItemGroup>
-
-  <ItemGroup>
       <Reference Include="Assets\Plugins\*.dll" />
       <Reference Include="Assets\Plugins\**\*.dll" />
       <Reference Include="\Applications\Unity\Hub\Editor\**\UnityEngine\*.dll" />
+      <Reference Include="X:\unity-editor\**\UnityEngine\*.dll" />
   </ItemGroup>
 
 </Project>

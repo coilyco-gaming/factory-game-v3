@@ -1,4 +1,3 @@
-#if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
     using UnityEngine;
@@ -107,4 +106,3 @@ namespace Assets.Scripts.Components.Unity
         }
     }
 }
-#endif

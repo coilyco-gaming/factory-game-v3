@@ -87,39 +87,9 @@ namespace Assets.Scripts.Components.Core
             return currentTarget;
         }
 
-        public static Vector2? GetPosition(
-            Vector2 start,
-            Vector2 end,
-            Vector2 mapSize,
-            List<Vector2> obstacles
-        )
+        public static Vector2? GetPosition(Vector2 start, Vector2 end, Roy_T.AStar.Grids.Grid grid)
         {
-            Vector2 position;
-
-            // Setup plain grid
-            GridSize gridSize = new((int)mapSize.X, (int)mapSize.Y);
-            Roy_T.AStar.Grids.Grid grid =
-                Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
-                    gridSize,
-                    new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
-                    Velocity.FromMetersPerSecond(1)
-                );
-
-            foreach (Vector2 obstacle in obstacles)
-            {
-                // Dont block on yourself
-                if (obstacle.X == start.X && obstacle.Y == start.Y)
-                {
-                    continue;
-                }
-                // Dont block on the target
-                if (obstacle.X == end.X && obstacle.Y == end.Y)
-                {
-                    continue;
-                }
-                // Register obstacles
-                grid.DisconnectNode(new GridPosition((int)obstacle.X, (int)obstacle.Y));
-            }
+            Vector2? position = null;
 
             // Find the path
             PathFinder pathFinder = new();
@@ -130,15 +100,13 @@ namespace Assets.Scripts.Components.Core
             );
 
             // No path found
-            if (path == null || path.Edges.Count == 0)
+            if (path != null && path.Edges.Count != 0)
             {
-                return null;
+                // Derive the position vector from the next node on the path
+                IEdge edge = path.Edges[0];
+                Vector2 nextPosition = new(edge.End.Position.X, edge.End.Position.Y);
+                position = nextPosition - start;
             }
-
-            // Derive the position vector from the next node on the path
-            IEdge edge = path.Edges[0];
-            Vector2 nextPosition = new(edge.End.Position.X, edge.End.Position.Y);
-            position = nextPosition - start;
 
             return position;
         }

@@ -1,4 +1,3 @@
-#if UNITY_6000
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
@@ -38,10 +37,10 @@ namespace Assets.Scripts.Components.Unity
 
             // Get the status data from each object
             IEnumerable<StatusDataComponentCore> statusDataList = worldObjects
-                .Where(worldObject => worldObject != null)
-                .Where(worldObject => (worldObject.backref as WorldObject) != null)
-                .Select(worldObject => worldObject.backref as WorldObject)
-                .Select(worldObject => worldObject.StatusData);
+                ?.Where(worldObject => worldObject != null)
+                ?.Where(worldObject => (worldObject.backref as WorldObject) != null)
+                ?.Select(worldObject => worldObject.backref as WorldObject)
+                ?.Select(worldObject => worldObject.StatusData);
 
             if (statusDataList.Count() == 0)
             {
@@ -57,4 +56,3 @@ namespace Assets.Scripts.Components.Unity
         }
     }
 }
-#endif

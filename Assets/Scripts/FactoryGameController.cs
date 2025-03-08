@@ -42,11 +42,11 @@ namespace Assets.Scripts.Unity
 
             this.statusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
             this.statusUILeftComponent.Instantiate();
-            StartCoroutine(this.WriteStatusUILeft());
+            this.StartCoroutine(this.WriteStatusUILeft());
 
             this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
             this.statusUIRightComponent.Instantiate();
-            StartCoroutine(this.WriteStatusUIRight());
+            this.StartCoroutine(this.WriteStatusUIRight());
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -58,11 +58,6 @@ namespace Assets.Scripts.Unity
             this.RenderPausePlay(true); // start paused
 
             this.Reset();
-        }
-
-        public override void Update()
-        {
-            base.Update();
         }
 
         protected override void Reset()

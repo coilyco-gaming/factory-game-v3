@@ -29,13 +29,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
-
+            this.core.passThrough = true;
             this.core.resources = new(
                 new FactoryGameContent(),
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
-
             this.core.battery = new(capacity: this.totalBatteryCapacity);
         }
 

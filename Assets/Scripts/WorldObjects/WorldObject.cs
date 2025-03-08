@@ -33,6 +33,8 @@ namespace Assets.Scripts.WorldObjects.Core
         public string targetType;
         public string targetSubType;
         public object backref;
+        public bool mobile = false;
+        public bool passThrough = false;
         public System.Numerics.Vector2 gridPosition;
 
         public System.Numerics.Vector2 GridPosition
@@ -77,7 +79,6 @@ namespace Assets.Scripts.WorldObjects.Core
     }
 }
 
-#if UNITY_6000
 namespace Assets.Scripts.WorldObjects.Unity
 {
     using System;
@@ -149,4 +150,3 @@ namespace Assets.Scripts.WorldObjects.Unity
         }
     }
 }
-#endif

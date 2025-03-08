@@ -177,8 +177,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "- Name: Coal Plant\r\n  Resources:\r\n    Coal: 10000\r\n  Info:\r\n   
-    Dispatch: deliver coal to me\r\n    Storage Volume: 100%\r\n    Energy: 0%\r\n"
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2806,24 +2805,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   serializationData:
-    SerializedFormat: 0
-    SerializedBytes: 2d010400000063006f00720065002d0106000000720061006e0064006f006d002d010f00000073007000610077006e00510075006500750065004900740065006d007300
+    SerializedFormat: 2
+    SerializedBytes: 
     ReferencedUnityObjects: []
     SerializedBytesString: 
     Prefab: {fileID: 0}
     PrefabModificationsReferencedUnityObjects: []
     PrefabModifications: []
-    SerializationNodes: []
+    SerializationNodes:
+    - Name: core
+      Entry: 6
+      Data: 
+    - Name: random
+      Entry: 6
+      Data: 
+    - Name: spawnQueueItems
+      Entry: 6
+      Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.1
+  tickFrequency: 1
   randomSeed: 0
-  readyForTicks: 0
-  lastTick: 0
+  readyForTicks: 1
+  lastTick: 112.68091
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
   StatusUIRight: {fileID: 153855361}
+  statusUpdateInterval: 0.1
   HQOreBuffer: 6
   spawnAttempts: 10
   oreSpawnFactor: 1

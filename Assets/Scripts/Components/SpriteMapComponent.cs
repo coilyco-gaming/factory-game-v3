@@ -1,6 +1,8 @@
 namespace Assets.Scripts.Components.Unity
 {
     using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.Unity;
     using Roy_T.AStar.Primitives;
     using UnityEngine;
 
@@ -50,13 +52,34 @@ namespace Assets.Scripts.Components.Unity
                     this.tiles.Add(position, tile);
                 }
             }
+        }
 
-            GridSize gridSize = new(this._mapSize.x, this._mapSize.y);
-            this.Grid = Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
-                gridSize,
-                new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
-                Velocity.FromMetersPerSecond(1)
-            );
+        public Roy_T.AStar.Grids.Grid CreateGrid(GameController gameController)
+        {
+            // Generate base grid
+            Roy_T.AStar.Grids.Grid grid =
+                Roy_T.AStar.Grids.Grid.CreateGridWithLateralAndDiagonalConnections(
+                    new(this._mapSize.x, this._mapSize.y),
+                    new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
+                    Velocity.FromMetersPerSecond(1)
+                );
+
+            // Get obstacles (buildings and rocks and such)
+            IEnumerable<System.Numerics.Vector2> obstacles = gameController
+                .core.worldObjects.SelectMany(worldObjects => worldObjects.Value)
+                // Only block pathfinding on stationary objects
+                .Where(worldObject => !worldObject.Value.mobile)
+                // Only block pathfinding on objects that are not pass through
+                .Where(worldObject => !worldObject.Value.passThrough)
+                .Select(worldObject => worldObject.Value.gridPosition);
+
+            // Disconnect obstacles from the grid
+            foreach (System.Numerics.Vector2 obstacle in obstacles)
+            {
+                grid.DisconnectNode(new GridPosition((int)obstacle.X, (int)obstacle.Y));
+            }
+
+            return grid;
         }
 
         private GameObject GenerateTile(Vector2 position)

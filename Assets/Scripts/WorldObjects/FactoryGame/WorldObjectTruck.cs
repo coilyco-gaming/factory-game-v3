@@ -40,6 +40,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Instantiate(SpawnQueueItem spawnQueueItem)
         {
             base.Instantiate(spawnQueueItem);
+            this.core.mobile = true;
             this.core.resources = new(
                 new FactoryGameContent(),
                 weightCapacity: this.totalWeightCapacity,
