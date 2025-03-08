@@ -3,7 +3,7 @@ namespace Assets.Scripts.WorldObjects.Core
     using System;
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.ScriptableObject;
+    using Assets.Scripts.Core;
 
     [Serializable]
     public class WorldObjectCore
@@ -50,7 +50,7 @@ namespace Assets.Scripts.WorldObjects.Core
             this.backref = backref;
         }
 
-        public void Instantiate(SpawnQueueItem spawnQueueItem)
+        public void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
             this.GridPosition = spawnQueueItem.gridPosition;
             this.targetType = spawnQueueItem.targetType;
@@ -58,8 +58,14 @@ namespace Assets.Scripts.WorldObjects.Core
             this.guid = this.CreateGuid();
         }
 
-        public void PostInstantiate(SpawnQueueItem spawnQueueItem)
+        public void PostInstantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
+            if (this.resources == null && spawnQueueItem.resources != null)
+            {
+                throw new GameControllerCore.MisconfigurationException(
+                    $"WorldObject {this.worldObjectType} has no resources component but has resources."
+                );
+            }
             if (spawnQueueItem.resources != null)
             {
                 this.resources.resources = spawnQueueItem.resources;
@@ -83,7 +89,7 @@ namespace Assets.Scripts.WorldObjects.Unity
 {
     using System;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.ScriptableObject;
+    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Core;
     using UnityEngine;
@@ -129,18 +135,18 @@ namespace Assets.Scripts.WorldObjects.Unity
 
         public virtual void Tick(GameController gameController) { }
 
-        public virtual void Instantiate(SpawnQueueItem spawnQueueItem)
+        public virtual void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
             this.core = new WorldObjectCore(this);
-            this.core.Instantiate(spawnQueueItem);
+            this.core.Instantiate(spawnQueueItem, gameContent);
             this.GridPosition = spawnQueueItem.gridPosition; // This is a special case because it sets the transform position
             this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.SetName();
         }
 
-        public virtual void PostInstantiate(SpawnQueueItem spawnQueueItem)
+        public virtual void PostInstantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
-            this.core.PostInstantiate(spawnQueueItem);
+            this.core.PostInstantiate(spawnQueueItem, gameContent);
         }
 
         public void SetName()

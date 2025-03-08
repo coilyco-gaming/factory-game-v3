@@ -3,11 +3,73 @@ namespace Assets.Scripts.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using Assets.Scripts.ScriptableObject;
     using Assets.Scripts.WorldObjects.Core;
+
+    public class SpawnQueueItem
+    {
+        public string type;
+        public bool xyCentered;
+        public int x;
+        public int y;
+        public System.Numerics.Vector2 gridPosition;
+        public string targetType;
+        public string targetSubType;
+        public Dictionary<string, uint> resources;
+
+        public SpawnQueueItem(
+            string type,
+            int x,
+            int y,
+            bool xyCentered = false,
+            string targetType = "",
+            string targetSubType = "",
+            Dictionary<string, uint> resources = null
+        )
+        {
+            this.type = type;
+            this.targetType = targetType;
+            this.targetSubType = targetSubType;
+            this.resources = resources;
+            this.xyCentered = xyCentered;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public class DeletionQueueItem
+    {
+        public WorldObjectCore worldObject;
+        public System.Numerics.Vector2 position;
+
+        public DeletionQueueItem(WorldObjectCore worldObject, System.Numerics.Vector2 position)
+        {
+            this.worldObject = worldObject;
+            this.position = position;
+        }
+    }
+
+    public class MovementQueueItem
+    {
+        public System.Numerics.Vector2 oldPosition;
+        public System.Numerics.Vector2 newPosition;
+        public WorldObjectCore worldObject;
+
+        public MovementQueueItem(
+            System.Numerics.Vector2 oldPosition,
+            System.Numerics.Vector2 newPosition,
+            WorldObjectCore worldObject
+        )
+        {
+            this.oldPosition = oldPosition;
+            this.newPosition = newPosition;
+            this.worldObject = worldObject;
+        }
+    }
 
     public class GameControllerCore
     {
+        public GameContent gameContent;
+
         public Dictionary<
             System.Numerics.Vector2,
             Dictionary<string, WorldObjectCore>
@@ -30,39 +92,7 @@ namespace Assets.Scripts.Core
                 : base(message) { }
         }
 
-        public class DeletionQueueItem
-        {
-            public WorldObjectCore worldObject;
-            public System.Numerics.Vector2 position;
-
-            public DeletionQueueItem(WorldObjectCore worldObject, System.Numerics.Vector2 position)
-            {
-                this.worldObject = worldObject;
-                this.position = position;
-            }
-        }
-
-        public class MovementQueueItem
-        {
-            public System.Numerics.Vector2 oldPosition;
-            public System.Numerics.Vector2 newPosition;
-            public WorldObjectCore worldObject;
-
-            public MovementQueueItem(
-                System.Numerics.Vector2 oldPosition,
-                System.Numerics.Vector2 newPosition,
-                WorldObjectCore worldObject
-            )
-            {
-                this.oldPosition = oldPosition;
-                this.newPosition = newPosition;
-                this.worldObject = worldObject;
-            }
-        }
-
         // FUNCTIONS //
-
-
 
         public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
         {
@@ -155,11 +185,11 @@ namespace Assets.Scripts.Unity
     using System.Collections.Generic;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
-    using Assets.Scripts.ScriptableObject;
     using Assets.Scripts.WorldObjects.Core;
     using Assets.Scripts.WorldObjects.Unity;
     using Sirenix.OdinInspector;
     using UnityEngine;
+    using static Assets.Scripts.Core.GameControllerCore;
 
     public class GameController : SerializedMonoBehaviour
     {
@@ -214,9 +244,7 @@ namespace Assets.Scripts.Unity
                 // Delete queued objects
                 if (this.core.queuedForDeletion != null)
                 {
-                    foreach (
-                        GameControllerCore.DeletionQueueItem deletionQueueItem in this.core.queuedForDeletion
-                    )
+                    foreach (DeletionQueueItem deletionQueueItem in this.core.queuedForDeletion)
                     {
                         this.Delete(deletionQueueItem);
                     }
@@ -228,9 +256,7 @@ namespace Assets.Scripts.Unity
                 // Move queued objects
                 if (this.core.queuedForMovement != null)
                 {
-                    foreach (
-                        GameControllerCore.MovementQueueItem movementQueueItem in this.core.queuedForMovement
-                    )
+                    foreach (MovementQueueItem movementQueueItem in this.core.queuedForMovement)
                     {
                         this.Move(movementQueueItem);
                     }
@@ -263,15 +289,15 @@ namespace Assets.Scripts.Unity
             List<string> types
         ) => this.core.GetWorldObjectsByPositionAndType(position, types);
 
-        public void QueueForMovement(GameControllerCore.MovementQueueItem movementQueueItem)
+        public void QueueForMovement(MovementQueueItem movementQueueItem)
         {
-            this.core.queuedForMovement ??= new List<GameControllerCore.MovementQueueItem>();
+            this.core.queuedForMovement ??= new List<MovementQueueItem>();
             this.core.queuedForMovement.Add(movementQueueItem);
         }
 
-        public void QueueForDeletion(GameControllerCore.DeletionQueueItem deletionQueueItem)
+        public void QueueForDeletion(DeletionQueueItem deletionQueueItem)
         {
-            this.core.queuedForDeletion ??= new List<GameControllerCore.DeletionQueueItem>();
+            this.core.queuedForDeletion ??= new List<DeletionQueueItem>();
             this.core.queuedForDeletion.Add(deletionQueueItem);
         }
 
@@ -305,7 +331,7 @@ namespace Assets.Scripts.Unity
             this.core.worldObjects.Clear(); //TODO: do we need to set the worldObjects to null?
         }
 
-        protected void Move(GameControllerCore.MovementQueueItem movementQueueItem)
+        protected void Move(MovementQueueItem movementQueueItem)
         {
             // Don't try to move an object that doesn't exist or has been deleted
             if (movementQueueItem.worldObject == null)
@@ -342,7 +368,7 @@ namespace Assets.Scripts.Unity
             worldObject.SetName();
         }
 
-        protected void Delete(GameControllerCore.DeletionQueueItem deletionQueueItem)
+        protected void Delete(DeletionQueueItem deletionQueueItem)
         {
             // Get this position
             Dictionary<string, WorldObjectCore> worldObjects =
@@ -401,13 +427,13 @@ namespace Assets.Scripts.Unity
                 // This base Instantiate function (eg. not PostInstantiate) is responsible for setting simple values like
                 // grid position, and initializing "simple" components like the resource component.
 
-                worldObject.Instantiate(spawnQueueItem);
+                worldObject.Instantiate(spawnQueueItem, this.core.gameContent);
 
                 // PostInstantiate is a custom function on each world object, similar to Instantiate above. It is responsible
                 // for setting up more complex components like the status component, and calling the callback function.
                 // The exists because the children of WorldObject have their own custom components that need to be initialized,
                 // in a particular order. For example the ResourcesComponent needs to be initialized before the StatusComponent.
-                worldObject.PostInstantiate(spawnQueueItem);
+                worldObject.PostInstantiate(spawnQueueItem, this.core.gameContent);
 
                 // Initialize the dictionary if it doesn't exist, this will only happen once
                 this.core.worldObjects ??=
@@ -425,7 +451,7 @@ namespace Assets.Scripts.Unity
                 this.core.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] =
                     worldObject.core;
             }
-            catch (GameControllerCore.SpawnException ex)
+            catch (SpawnException ex)
             {
                 if (thisGameObject != null)
                 {

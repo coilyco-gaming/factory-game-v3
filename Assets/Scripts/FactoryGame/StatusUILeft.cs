@@ -1,4 +1,5 @@
-namespace Assets.Scripts.Components.Unity
+#if UNITY_6000
+namespace Assets.Scripts.UI
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -10,7 +11,7 @@ namespace Assets.Scripts.Components.Unity
     using YamlDotNet.Serialization;
     using YamlDotNet.Serialization.NamingConventions;
 
-    public class StatusUILeftComponent : MonoBehaviour
+    public class StatusUILeft : MonoBehaviour
     {
         // FIELDS //
 
@@ -56,3 +57,4 @@ namespace Assets.Scripts.Components.Unity
         }
     }
 }
+#endif

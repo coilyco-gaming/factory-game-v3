@@ -55,7 +55,7 @@ namespace Assets.Scripts.Components.Core
                 this.worldObject.GridPosition.Y + movement.Value.Y
             );
             gameController.QueueForMovement(
-                new GameControllerCore.MovementQueueItem(
+                new MovementQueueItem(
                     this.worldObject.GridPosition,
                     newPosition,
                     this.worldObject.core

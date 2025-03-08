@@ -40,6 +40,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Remove="Assets\Scripts\FactoryGame\**" />
+    <Compile Remove="Assets\Scripts\FactoryGame\**" />
+    <EmbeddedResource Remove="Assets\Scripts\FactoryGame\**" />
+    <None Remove="Assets\Scripts\FactoryGame\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Assets\Scripts\WorldObjects\**" />
+    <Compile Remove="Assets\Scripts\WorldObjects\**" />
+    <EmbeddedResource Remove="Assets\Scripts\WorldObjects\**" />
+    <None Remove="Assets\Scripts\WorldObjects\**" />
+  </ItemGroup>
+
+  <ItemGroup>
       <Reference Include="Assets\Plugins\*.dll" />
       <Reference Include="Assets\Plugins\**\*.dll" />
       <Reference Include="\Applications\Unity\Hub\Editor\**\UnityEngine\*.dll" />

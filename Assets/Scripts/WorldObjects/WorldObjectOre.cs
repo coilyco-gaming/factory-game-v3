@@ -1,7 +1,6 @@
 using System;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
-using Assets.Scripts.ScriptableObject;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -17,11 +16,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Resources = this.core.resources.ResourceInfo,
             };
 
-        public override void Instantiate(SpawnQueueItem spawnQueueItem)
+        public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
-            base.Instantiate(spawnQueueItem);
+            base.Instantiate(spawnQueueItem, gameContent);
             this.core.resources = new(
-                new FactoryGameContent(),
+                gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: uint.MaxValue
             );
@@ -35,7 +34,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             if (!this.core.resources.HasResources)
             {
                 gameController.QueueForDeletion(
-                    new GameControllerCore.DeletionQueueItem(this.core, this.GridPosition)
+                    new DeletionQueueItem(this.core, this.GridPosition)
                 );
             }
         }

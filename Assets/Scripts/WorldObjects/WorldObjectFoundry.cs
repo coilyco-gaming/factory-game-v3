@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.ScriptableObject;
+using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -29,9 +29,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 },
             };
 
-        public override void Instantiate(SpawnQueueItem spawnQueueItem)
+        public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
-            base.Instantiate(spawnQueueItem);
+            base.Instantiate(spawnQueueItem, gameContent);
 
             this.core.resources = new(
                 new FactoryGameContent(),

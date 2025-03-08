@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.Components.Core;
-using Assets.Scripts.ScriptableObject;
+using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Unity;
 
@@ -30,19 +30,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 },
             };
 
-        public override void Instantiate(SpawnQueueItem spawnQueueItem)
+        public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
         {
-            base.Instantiate(spawnQueueItem);
+            base.Instantiate(spawnQueueItem, gameContent);
 
             this.core.resources = new(
-                new FactoryGameContent(),
+                gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
-            List<string> ingredients = new FactoryGameContent()
+            List<string> ingredients = gameContent
                 .Items[this.core.targetType]
                 .Ingredients.Keys.ToList();
 
@@ -55,7 +55,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
 
             this.core.production = new ProductionComponentCore(
-                new FactoryGameContent(),
+                gameContent,
                 this.core.resources,
                 this.core.battery,
                 this.core.inserters,

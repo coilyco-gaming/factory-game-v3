@@ -1,17 +1,17 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Threading;
 using Assets.Scripts.Components.Unity;
-using Assets.Scripts.ScriptableObject;
+using Assets.Scripts.Core;
+using Assets.Scripts.UI;
+using Assets.Scripts.Unity;
 using Assets.Scripts.WorldObjects.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Assets.Scripts.Unity
+namespace Assets.Scripts.FactoryGame
 {
     public class FactoryGameController : GameController
     {
@@ -27,26 +27,20 @@ namespace Assets.Scripts.Unity
         public uint OreQuantityRange = 1000;
         public List<SpawnQueueItem> spawnQueueItems;
         private TextMeshProUGUI pauseTextComponent;
-        private StatusUILeftComponent statusUILeftComponent;
-        private StatusUIRightComponent statusUIRightComponent;
+        private StatusUILeft statusUILeftComponent;
+        private StatusUIRight statusUIRightComponent;
 
         public override void Start()
         {
             base.Start();
+
+            this.core.gameContent = new FactoryGameContent();
 
             this.Map = this.GetComponent<SpriteMapComponent>();
             this.Map.Instantiate(this.GetComponent<Canvas>());
 
             this.PlayerComponent = this.GetComponent<PlayerComponent>();
             this.PlayerComponent.Instantiate((int)this.Map.MapSize.X, (int)this.Map.MapSize.Y);
-
-            this.statusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeftComponent>();
-            this.statusUILeftComponent.Instantiate();
-            this.StartCoroutine(this.WriteStatusUILeft());
-
-            this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRightComponent>();
-            this.statusUIRightComponent.Instantiate();
-            this.StartCoroutine(this.WriteStatusUIRight());
 
             Button resetComponent = this.resetButton.GetComponent<Button>();
             resetComponent.onClick.AddListener(this.Reset);
@@ -56,6 +50,14 @@ namespace Assets.Scripts.Unity
 
             this.pauseTextComponent = this.pauseButton.GetComponentInChildren<TextMeshProUGUI>();
             this.RenderPausePlay(true); // start paused
+
+            this.statusUILeftComponent = this.StatusUILeft.GetComponent<StatusUILeft>();
+            this.statusUILeftComponent.Instantiate();
+            this.StartCoroutine(this.WriteStatusUILeft());
+
+            this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRight>();
+            this.statusUIRightComponent.Instantiate();
+            this.StartCoroutine(this.WriteStatusUIRight());
 
             this.Reset();
         }
@@ -238,7 +240,7 @@ namespace Assets.Scripts.Unity
             string playText = "Play";
             string pauseText = "Pause";
             this.pauseTextComponent.SetText(paused ? pauseText : playText);
-            this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move flow closer
+            // this.PlayerComponent.ToggleFogPosition(paused); // if paused, then move fog closer
         }
 
         private IEnumerator WriteStatusUILeft()
