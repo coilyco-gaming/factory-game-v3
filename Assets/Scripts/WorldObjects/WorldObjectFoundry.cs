@@ -20,11 +20,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
                 Energy = this.core.battery.PercentEnergyStatus,
+                Dispatchers = this
+                    .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
                     { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
-                    { "Dispatch", this.core.dispatch.Description },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
             };
@@ -58,19 +60,48 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.resources,
                 this.core.battery,
                 this.core.resourceInserters,
-                this.core.targetType // Iron bar
+                this.core.targetType // < iron bar | copper bar >
             );
 
-            this.core.dispatch = new(
-                this.core,
-                this.core.battery,
-                // Deploy...
-                DispatchComponentCore.Verbs.Deploy.ToString(),
-                // ...mining drill...
-                FactoryGameContent.Spawnables.MiningDrill.ToString(),
-                // ...to < iron ore | copper ore >.
-                this.core.targetSubType
-            );
+            this.core.dispatchers = new List<DispatchComponentCore>
+            {
+                new(
+                    this.core,
+                    this.core.battery,
+                    // Deploy...
+                    DispatchComponentCore.Verbs.Deploy.ToString(),
+                    // ...mining drill...
+                    FactoryGameContent.Spawnables.MiningDrill.ToString(),
+                    // ...to < iron ore | copper ore >.
+                    this.core.targetSubType
+                ),
+                new(
+                    this.core,
+                    this.core.battery,
+                    // Retrieve...
+                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    // ...< iron bar | copper bar >...
+                    this.core.targetType,
+                    // ...from me.
+                    DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
+
+            foreach (string ingredient in ingredients)
+            {
+                this.core.dispatchers.Add(
+                    new(
+                        this.core,
+                        this.core.battery,
+                        // Deliver...
+                        DispatchComponentCore.Verbs.Deliver.ToString(),
+                        // ...ingredient...
+                        ingredient,
+                        // ...to me.
+                        DispatchComponentCore.Keywords.Me.ToString()
+                    )
+                );
+            }
         }
 
         public override void Tick(GameController gameController)
@@ -80,9 +111,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter.Insert(this.core, gameController.core);
             }
+            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
+            {
+                dispatcher.Tick(gameController.core);
+            }
             this.core.battery.Balance(this.core, gameController.core);
             this.core.production.Produce();
-            this.core.dispatch.Tick(gameController.core);
         }
     }
 }

@@ -19,13 +19,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
-                Resources = this.core.resources.ResourceInfo,
                 Energy = this.core.battery.PercentEnergyStatus,
+                Dispatchers = this
+                    .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
+                Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
                     { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
                     { "Progress", this.core.production.PrecentProgressStatus },
-                    { "Dispatch", this.core.dispatch.Description },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
             };
@@ -62,16 +64,36 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.targetType
             );
 
-            this.core.dispatch = new(
-                this.core,
-                this.core.battery,
-                // Retrieve...
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                // ...< whatever I am making >...
-                this.core.targetType,
-                // ...from me.
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
+            this.core.dispatchers = new List<DispatchComponentCore>
+            {
+                // TODO: adjacent stone mining drill
+                new(
+                    this.core,
+                    this.core.battery,
+                    // Retrieve...
+                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    // ...< product >...
+                    this.core.targetType,
+                    // ...from me.
+                    DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
+
+            foreach (string ingredient in ingredients)
+            {
+                this.core.dispatchers.Add(
+                    new(
+                        this.core,
+                        this.core.battery,
+                        // Deliver...
+                        DispatchComponentCore.Verbs.Deliver.ToString(),
+                        // ...< ingredient >...
+                        ingredient,
+                        // ...to me.
+                        DispatchComponentCore.Keywords.Me.ToString()
+                    )
+                );
+            }
         }
 
         public override void Tick(GameController gameController)
@@ -81,9 +103,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter.Insert(this.core, gameController.core);
             }
+            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
+            {
+                dispatcher.Tick(gameController.core);
+            }
             this.core.battery.Balance(this.core, gameController.core);
             this.core.production.Produce();
-            this.core.dispatch.Tick(gameController.core);
         }
     }
 }

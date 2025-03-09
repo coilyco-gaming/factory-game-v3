@@ -103,7 +103,6 @@ namespace Assets.Scripts.Components.Core
                 iDiagonalMovement: DiagonalMovement.IfAtLeastOneWalkable
             );
 
-            // TODO: this only seems to find a valid path 1 ~ 2 times a tick
             List<GridPos> resultPathList = JumpPointFinder.FindPath(jpParam);
 
             if (resultPathList != null && resultPathList.Count != 0)

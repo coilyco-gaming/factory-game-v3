@@ -178,7 +178,7 @@ namespace Assets.Scripts.Components.Tests
                 "MINING_DRILL",
                 "IRON_ORE"
             );
-            HQWorldObject.dispatch = dispatch;
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {
@@ -236,7 +236,7 @@ namespace Assets.Scripts.Components.Tests
                 "MINING_DRILL",
                 "IRON_ORE"
             );
-            HQWorldObject.dispatch = dispatch;
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {
@@ -294,7 +294,7 @@ namespace Assets.Scripts.Components.Tests
                 "MINING_DRILL",
                 "IRON_ORE"
             );
-            HQWorldObject.dispatch = dispatch;
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {
@@ -351,7 +351,7 @@ namespace Assets.Scripts.Components.Tests
                 "MINING_DRILL",
                 "IRON_ORE"
             );
-            HQWorldObject.dispatch = dispatch;
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {

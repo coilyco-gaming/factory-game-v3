@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
@@ -21,12 +22,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
                 Energy = this.core.battery.PercentEnergyStatus,
+                Dispatchers = this
+                    .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
                 Resources = this.core.resources.ResourceInfo,
-                Info = new()
-                {
-                    { "Dispatch", this.core.dispatch.Description },
-                    { "Storage Volume", this.core.resources.UsedVolumeString },
-                },
+                Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -64,16 +64,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.powerGainRate
             );
 
-            this.core.dispatch = new(
-                this.core,
-                this.core.battery,
-                // Deliver...
-                DispatchComponentCore.Verbs.Deliver.ToString(),
-                // ...coal...
-                FactoryGameContent.Resources.Coal.ToString(),
-                // ...to me.
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
+            this.core.dispatchers = new List<DispatchComponentCore>()
+            {
+                new(
+                    this.core,
+                    this.core.battery,
+                    // Deliver...
+                    DispatchComponentCore.Verbs.Deliver.ToString(),
+                    // ...coal...
+                    FactoryGameContent.Resources.Coal.ToString(),
+                    // ...to me.
+                    DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
         }
 
         public override void Tick(GameController gameController)
@@ -82,6 +85,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
                 inserter.Insert(this.core, gameController.core);
+            }
+            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
+            {
+                dispatcher.Tick(gameController.core);
             }
             this.core.power.GeneratePower();
             this.core.battery.Balance(this.core, gameController.core);

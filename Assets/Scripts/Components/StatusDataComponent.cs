@@ -6,6 +6,7 @@ namespace Assets.Scripts.Components.Core
     {
         public string Name { get; set; } = null;
         public string Energy { get; set; } = null;
+        public List<string> Dispatchers { get; set; } = null;
         public Dictionary<string, string> Resources { get; set; } = null;
         public Dictionary<string, string> Info { get; set; } = null;
         public List<Dictionary<int, string>> Alerts { get; set; } = null;

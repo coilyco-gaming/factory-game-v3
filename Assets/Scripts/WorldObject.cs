@@ -20,11 +20,11 @@ namespace Assets.Scripts.WorldObjects.Core
         // https://odininspector.com/tutorials
 
         public MovementComponentCore movement;
-        public DispatchComponentCore dispatch;
         public DispatchReceiverComponentCore dispatchReceiver;
         public BatteryComponentCore battery;
         public ResourcesComponentCore resources;
         public List<ResourceInserterComponentCore> resourceInserters;
+        public List<DispatchComponentCore> dispatchers;
         public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;
