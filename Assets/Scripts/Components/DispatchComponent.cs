@@ -18,13 +18,6 @@ namespace Assets.Scripts.Components.Core
         public string Description =>
             $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.DescriptionObject}".ToLower();
 
-        // Example descriptions:
-        //  - Retrieve power lines from factory
-        //  - Deploy mining drill to iron ore
-        //  - Deliver coal to coal plant
-        public string ReceiverDescription =>
-            $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.worldObject.worldObjectType}".ToLower();
-
         public WorldObjectCore worldObject;
         private BatteryComponentCore battery;
         private string receiverVerb = "VERB";

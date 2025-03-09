@@ -22,20 +22,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Info = new()
                 {
                     { "Storage Volume", this.core.resources.UsedVolumeString },
-                    {
-                        "Target Description",
-                        this.core.dispatchReceiver != null
-                        && this.core.dispatchReceiver.dispatcher != null
-                            ? this.core.dispatchReceiver.dispatcher.Description
-                            : "awaiting target"
-                    },
-                    {
-                        "Target Location",
-                        this.core.dispatchReceiver != null
-                        && this.core.dispatchReceiver.dispatcher != null
-                            ? this.core.dispatchReceiver.targetPosition.ToString()
-                            : "awaiting target"
-                    },
+                    { "Target", this.core.dispatchReceiver.Description },
                 },
             };
 
@@ -80,6 +67,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Tick(gameController);
             this.core.movement.Tick(gameController);
+            this.core.dispatchReceiver.Tick();
             this.core.resourceRetriever.Tick();
         }
     }
