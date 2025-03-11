@@ -2,6 +2,7 @@ namespace Assets.Scripts.UI
 {
     using System.Collections.Generic;
     using Assets.Scripts.Core;
+    using Assets.Scripts.Unity;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;
@@ -21,6 +22,7 @@ namespace Assets.Scripts.UI
 
         private class StatusData
         {
+            public uint Tick { get; set; } = 0;
             public float Energy { get; set; } = 0;
             public Dictionary<string, uint> Objects { get; set; } = new();
             public Dictionary<string, uint> Resources { get; set; } = new();
@@ -31,9 +33,12 @@ namespace Assets.Scripts.UI
             this.textMeshPro = this.transform.GetComponent<TextMeshProUGUI>();
         }
 
-        public void Display(IEnumerable<WorldObjectCore> worldObjects)
+        public void Display(
+            GameController gameController,
+            IEnumerable<WorldObjectCore> worldObjects
+        )
         {
-            StatusData data = new();
+            StatusData data = new() { Tick = gameController.TickCount };
 
             if (worldObjects != null)
             {
@@ -70,6 +75,8 @@ namespace Assets.Scripts.UI
                     }
                 }
             }
+
+            data.Energy = Mathf.Round(data.Energy);
 
             // Serialize the status list to YAML, then update the status
             string statusYaml = this.serializer.Serialize(data);

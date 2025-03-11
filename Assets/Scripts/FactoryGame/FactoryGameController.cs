@@ -283,7 +283,7 @@ namespace Assets.Scripts.FactoryGame
                     );
 
                 // Display the status data in the UI
-                this.statusUIRightComponent.Display(worldObjects);
+                this.statusUIRightComponent.Display(this, worldObjects);
             }
         }
     }
