@@ -70,6 +70,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     this.core,
                     this.core.battery,
+                    this.core.resources,
+                    new FactoryGameContent(), // TODO: cache this on this game controller
                     // Retrieve...
                     DispatchComponentCore.Verbs.Retrieve.ToString(),
                     // ...< product >...
@@ -85,6 +87,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     new(
                         this.core,
                         this.core.battery,
+                        this.core.resources,
+                        new FactoryGameContent(), // TODO: cache this on this game controller
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...< ingredient >...

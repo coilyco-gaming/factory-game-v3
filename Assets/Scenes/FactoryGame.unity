@@ -177,10 +177,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <53, 52>\r\nStatus:\r\n- Name: Factory\r\n  Energy: 13%\r\n 
-    Resources:\r\n    Frames: 0\r\n    Mining Drill: 1\r\n  Info:\r\n    Outputs:
-    mining drill\r\n    Progress: 0%\r\n    Dispatch: retrieve mining drill from
-    me\r\n    Storage Volume: 0%\r\n"
+  m_text: 'Position: <51, 49>
+
+'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

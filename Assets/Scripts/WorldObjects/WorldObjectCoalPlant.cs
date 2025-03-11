@@ -69,6 +69,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     this.core,
                     this.core.battery,
+                    this.core.resources,
+                    new FactoryGameContent(),
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...

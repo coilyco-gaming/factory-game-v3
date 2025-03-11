@@ -65,9 +65,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
             this.core.dispatchers = new List<DispatchComponentCore>
             {
+                // TODO: only dispatch when you don't have the resource
                 new(
                     this.core,
                     this.core.battery,
+                    this.core.resources,
+                    new FactoryGameContent(),
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...
@@ -78,6 +81,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     this.core,
                     this.core.battery,
+                    this.core.resources,
+                    new FactoryGameContent(),
                     // Retrieve...
                     DispatchComponentCore.Verbs.Retrieve.ToString(),
                     // ...< iron bar | copper bar >...
@@ -93,6 +98,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     new(
                         this.core,
                         this.core.battery,
+                        this.core.resources,
+                        new FactoryGameContent(),
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...ingredient...

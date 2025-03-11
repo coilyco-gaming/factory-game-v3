@@ -57,7 +57,7 @@ namespace Assets.Scripts.Components.Core
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Receiver component requires a target resource"
                 );
-            this.quantity = quantity;
+            this.quantity = quantity; // TODO: make this stack size
         }
 
         public void Tick()
@@ -154,7 +154,7 @@ namespace Assets.Scripts.Components.Tests
     using Xunit;
     using Xunit.Abstractions;
 
-    internal class TestGameContent : GameContent
+    internal class TestResourceReceiverGameContent : GameContent
     {
         public override Dictionary<string, Item> Items { get; } =
             new()
@@ -185,7 +185,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestTrue()
         {
             // Receiver
-            ResourcesComponentCore receiverResources = new(new TestGameContent(), 100, 100);
+            ResourcesComponentCore receiverResources = new(
+                new TestResourceReceiverGameContent(),
+                100,
+                100
+            );
             WorldObjectCore receiverWorldObject = new(null) { resources = receiverResources };
             BatteryComponentCore receiverBattery = new(100, 100);
             DispatchReceiverComponentCore dispatchReceiver = new(
@@ -199,7 +203,7 @@ namespace Assets.Scripts.Components.Tests
                 receiverResources,
                 receiverBattery,
                 dispatchReceiver,
-                new TestGameContent(),
+                new TestResourceReceiverGameContent(),
                 "planks"
             );
 
@@ -213,7 +217,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestRetrieve()
         {
             // Dispatcher
-            ResourcesComponentCore dispatcherResources = new(new TestGameContent(), 100, 100);
+            ResourcesComponentCore dispatcherResources = new(
+                new TestResourceReceiverGameContent(),
+                100,
+                100
+            );
             dispatcherResources.CreateResources("planks", 1);
             WorldObjectCore dispatcherWorldObject = new(null)
             {
@@ -224,13 +232,19 @@ namespace Assets.Scripts.Components.Tests
             DispatchComponentCore dispatcher = new(
                 dispatcherWorldObject,
                 dispatchBattery,
+                new ResourcesComponentCore(new TestResourceReceiverGameContent(), 100, 100),
+                new TestResourceReceiverGameContent(),
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks",
                 DispatchComponentCore.Keywords.Me.ToString()
             );
 
             // Receiver
-            ResourcesComponentCore receiverResources = new(new TestGameContent(), 100, 100);
+            ResourcesComponentCore receiverResources = new(
+                new TestResourceReceiverGameContent(),
+                100,
+                100
+            );
             WorldObjectCore receiverWorldObject = new(null)
             {
                 resources = receiverResources,
@@ -252,7 +266,7 @@ namespace Assets.Scripts.Components.Tests
                 receiverResources,
                 receiverBattery,
                 dispatchReceiver,
-                new TestGameContent(),
+                new TestResourceReceiverGameContent(),
                 "planks"
             );
 
@@ -267,7 +281,11 @@ namespace Assets.Scripts.Components.Tests
         public void TestDoesNotDuplicate()
         {
             // Dispatcher
-            ResourcesComponentCore dispatcherResources = new(new TestGameContent(), 100, 100);
+            ResourcesComponentCore dispatcherResources = new(
+                new TestResourceReceiverGameContent(),
+                100,
+                100
+            );
             dispatcherResources.CreateResources("planks", 1);
             WorldObjectCore dispatcherWorldObject = new(null)
             {
@@ -278,13 +296,19 @@ namespace Assets.Scripts.Components.Tests
             DispatchComponentCore dispatcher = new(
                 dispatcherWorldObject,
                 dispatchBattery,
+                new ResourcesComponentCore(new TestResourceReceiverGameContent(), 100, 100),
+                new TestResourceReceiverGameContent(),
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks",
                 DispatchComponentCore.Keywords.Me.ToString()
             );
 
             // Receiver
-            ResourcesComponentCore receiverResources = new(new TestGameContent(), 100, 100);
+            ResourcesComponentCore receiverResources = new(
+                new TestResourceReceiverGameContent(),
+                100,
+                100
+            );
             WorldObjectCore receiverWorldObject = new(null)
             {
                 resources = receiverResources,
@@ -306,7 +330,7 @@ namespace Assets.Scripts.Components.Tests
                 receiverResources,
                 receiverBattery,
                 dispatchReceiver,
-                new TestGameContent(),
+                new TestResourceReceiverGameContent(),
                 "planks"
             );
 

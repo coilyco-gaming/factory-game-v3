@@ -20,6 +20,8 @@ namespace Assets.Scripts.Components.Core
 
         public WorldObjectCore worldObject;
         private BatteryComponentCore battery;
+        private ResourcesComponentCore resources;
+        private GameContent gameContent;
         private string receiverVerb = "VERB";
         private string receiverSubject = "SUBJECT";
         private string receiverObject = "OBJECT";
@@ -39,6 +41,8 @@ namespace Assets.Scripts.Components.Core
         public DispatchComponentCore(
             WorldObjectCore worldObject,
             BatteryComponentCore battery,
+            ResourcesComponentCore resources,
+            GameContent gameContent,
             string receiverVerb,
             string receiverSubject,
             string receiverObject
@@ -54,6 +58,12 @@ namespace Assets.Scripts.Components.Core
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Dispatch component requires a parent world object"
                 );
+            this.resources =
+                resources
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    "Dispatch component requires a resources component"
+                );
+            this.gameContent = gameContent;
             this.receiverVerb = receiverVerb;
             this.receiverSubject = receiverSubject;
             this.receiverObject = receiverObject;
@@ -61,6 +71,38 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick(GameControllerCore gameController)
         {
+            // If the dispatch subject is an item,
+            // then skip delivery dispatch if you have more than a stack of the item
+            if (
+                this.gameContent != null
+                && this.gameContent.Items != null
+                && this.gameContent.Items.ContainsKey(this.receiverObject)
+                && this.resources.resources != null
+                && this.resources.resources.ContainsKey(this.receiverObject)
+                && this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString()
+                && this.resources.resources[this.receiverObject]
+                    >= this.gameContent.Items[this.receiverObject].StackSize
+            )
+            {
+                return;
+            }
+
+            // If the dispatch subject is an item,
+            // then skip retrieve dispatch if you have less than a stack of the item
+            if (
+                this.gameContent != null
+                && this.gameContent.Items != null
+                && this.gameContent.Items.ContainsKey(this.receiverObject)
+                && this.resources.resources != null
+                && this.resources.resources.ContainsKey(this.receiverObject)
+                && this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
+                && this.resources.resources[this.receiverObject]
+                    < this.gameContent.Items[this.receiverObject].StackSize
+            )
+            {
+                return;
+            }
+
             // Abort early if the battery is empty
             try
             {
@@ -141,6 +183,24 @@ namespace Assets.Scripts.Components.Tests
     using Xunit;
     using Xunit.Abstractions;
 
+    internal class TestDispatchGameContent : GameContent
+    {
+        public override Dictionary<string, Item> Items { get; } =
+            new()
+            {
+                { "IRON_BARS", new Item("IRON_BARS", stackSize: 100) },
+                {
+                    "MINING_DRILL",
+                    new Item(
+                        "MINING_DRILL",
+                        stackSize: 10,
+                        craftTime: 3,
+                        ingredients: new Dictionary<string, uint> { { "IRON_BARS", 5 } }
+                    )
+                },
+            };
+    }
+
     public class DispatchComponentTest
     {
         private ITestOutputHelper testOutput;
@@ -156,7 +216,16 @@ namespace Assets.Scripts.Components.Tests
             GameControllerCore gameController = new();
             WorldObjectCore worldObject = new(null);
             BatteryComponentCore battery = new(100, 100);
-            DispatchComponentCore dispatch = new(worldObject, battery, "", "", "");
+            ResourcesComponentCore resources = new(new(), 100, 100);
+            DispatchComponentCore dispatch = new(
+                worldObject,
+                battery,
+                resources,
+                new TestDispatchGameContent(),
+                "",
+                "",
+                ""
+            );
             dispatch.Tick(gameController);
             Assert.True(true);
         }
@@ -171,9 +240,16 @@ namespace Assets.Scripts.Components.Tests
             };
 
             BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
                 battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
                 "DEPLOY",
                 "MINING_DRILL",
                 "IRON_ORE"
@@ -191,11 +267,77 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
-            ResourcesComponentCore resources = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
-                resources,
+                receiverResources,
+                "DEPLOY",
+                "MINING_DRILL"
+            );
+            receiverWorldObject.dispatchReceiver = receiver;
+            Assert.Null(receiver.dispatcher);
+
+            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
+            {
+                { "uuid-1", HQWorldObject },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
+            {
+                { "uuid-2", targetWorldObject },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
+            {
+                { "uuid-3", receiverWorldObject },
+            };
+
+            dispatch.Tick(gameController);
+            Assert.NotNull(receiver.dispatcher);
+        }
+
+        [Fact]
+        public void TestDoesNotAssignWhenResourcesAlreadyPresent()
+        {
+            GameControllerCore gameController = new();
+            WorldObjectCore HQWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+
+            BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            dispactherResources.CreateResources("MINING_DRILL", 1);
+            DispatchComponentCore dispatch = new(
+                HQWorldObject,
+                battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
+                "DEPLOY",
+                "MINING_DRILL",
+                "IRON_ORE"
+            );
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
+
+            WorldObjectCore targetWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(1, 1),
+                worldObjectType = "IRON_ORE",
+            };
+
+            WorldObjectCore receiverWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(2, 2),
+            };
+
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
+
+            DispatchReceiverComponentCore receiver = new(
+                receiverWorldObject,
+                receiverResources,
                 "DEPLOY",
                 "MINING_DRILL"
             );
@@ -229,9 +371,12 @@ namespace Assets.Scripts.Components.Tests
             };
 
             BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
                 battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
                 "DEPLOY",
                 "MINING_DRILL",
                 "IRON_ORE"
@@ -249,11 +394,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
-            ResourcesComponentCore resources = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
-                resources,
+                receiverResources,
                 "DEPLOY",
                 "MINING_DRILL"
             );
@@ -287,9 +432,12 @@ namespace Assets.Scripts.Components.Tests
             };
 
             BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
                 battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
                 "DEPLOY",
                 "MINING_DRILL",
                 "IRON_ORE"
@@ -306,11 +454,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
-            ResourcesComponentCore resources = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
-                resources,
+                receiverResources,
                 "RETRIEVE",
                 "MINING_DRILL"
             );
@@ -344,9 +492,12 @@ namespace Assets.Scripts.Components.Tests
             };
 
             BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
                 battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
                 "DEPLOY",
                 "MINING_DRILL",
                 "IRON_ORE"
@@ -363,11 +514,11 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
-            ResourcesComponentCore resources = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
-                resources,
+                receiverResources,
                 "DEPLOY",
                 "WAREHOUSE"
             );
