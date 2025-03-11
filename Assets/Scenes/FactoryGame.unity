@@ -149,7 +149,8 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 583470436}
   m_Father: {fileID: 284713082}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
@@ -177,9 +178,11 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Position: <51, 49>
-
-'
+  m_text: "Position: <52, 50>\nStatus:\n- Alerts:\n  - 1343: 'deliver iron ore to
+    me: no more required'\n  Name: Foundry\n  Energy: 99%\n  Dispatchers:\n  - deploy
+    mining drill to iron ore\n  - retrieve iron bars from me\n  - deliver iron ore
+    to me\n  Resources:\n    Iron Ore: 3282\n    Iron Bars: 200\n  Info:\n    Outputs:
+    iron bars\n    Storage Volume: 35%\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -244,7 +247,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: -44.386063, w: -83.52118}
+  m_margin: {x: 0, y: 0, z: -105.87896, w: -254.02441}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -501,7 +504,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: -102.16219, w: -83.52118}
+  m_margin: {x: 0, y: 0, z: -102.16219, w: -251.22925}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -983,6 +986,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
 --- !u!1 &412395827
@@ -1299,6 +1303,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
 --- !u!1 &545687439
@@ -1556,6 +1561,71 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 562454178}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &583470435
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 583470436}
+  - component: {fileID: 583470438}
+  - component: {fileID: 583470437}
+  m_Layer: 5
+  m_Name: 'TMP SubMeshUI [LiberationSans SDF Material]'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &583470436
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583470435}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 47638826}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 1, y: 1}
+--- !u!222 &583470437
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583470435}
+  m_CullTransparentMesh: 1
+--- !u!114 &583470438
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583470435}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_IgnoreLayout: 1
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: -1
+  m_PreferredHeight: -1
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &646330575
 GameObject:
   m_ObjectHideFlags: 0
@@ -1719,6 +1789,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   insertionRate: 1
@@ -1844,6 +1915,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   totalVolumeCapacity: 10000
@@ -1968,6 +2040,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   totalVolumeCapacity: 5000
@@ -2826,7 +2899,6 @@ MonoBehaviour:
   randomSeed: 0
   readyForTicks: 1
   lastTick: 52.85319
-  tickCount: 0
   resetButton: {fileID: 1883276799}
   pauseButton: {fileID: 1448779307}
   StatusUILeft: {fileID: 47638825}
@@ -3272,6 +3344,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   totalBatteryCapacity: 1000
@@ -3394,6 +3467,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   totalVolumeCapacity: 10000
@@ -4107,6 +4181,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
   totalVolumeCapacity: 10000
@@ -4407,6 +4482,7 @@ MonoBehaviour:
     worldObjectType: 
     targetType: 
     targetSubType: 
+    backref: {fileID: 0}
     mobile: 0
     passThrough: 0
 --- !u!1660057539 &9223372036854775807

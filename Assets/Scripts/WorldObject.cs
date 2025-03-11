@@ -1,11 +1,10 @@
-namespace Assets.Scripts.WorldObjects.Core
+namespace Assets.Scripts.Core
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Core;
-    using Assets.Scripts.WorldObjects.Unity;
+    using Assets.Scripts.Unity;
 
     [Serializable]
     public class WorldObjectCore
@@ -13,7 +12,7 @@ namespace Assets.Scripts.WorldObjects.Core
         // PROPERTIES //
 
         public float ZIndex => 1;
-        public static uint MaxAlerts = 5;
+        public static uint MaxAlerts = 10;
 
         // TODO: turn all of these into fields
 
@@ -23,11 +22,11 @@ namespace Assets.Scripts.WorldObjects.Core
         // https://odininspector.com/tutorials
 
         public MovementComponentCore movement;
-        public DispatchReceiverComponentCore dispatchReceiver;
         public BatteryComponentCore battery;
         public ResourcesComponentCore resources;
         public List<ResourceInserterComponentCore> resourceInserters;
         public List<DispatchComponentCore> dispatchers;
+        public List<DispatchReceiverComponentCore> dispatchReceivers;
         public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;
@@ -52,11 +51,45 @@ namespace Assets.Scripts.WorldObjects.Core
             get => this.alerts;
             set
             {
-                foreach (Dictionary<uint, string> alert in value)
+                // Match on the string value of the alerts dictionary
+                // Then replace the int value with the current tick.
+                // This produces the following effect:
+                //
+                //   { 1: "I'm broken and need repairs!" } =>
+                //   { 2: "I'm broken and need repairs!" }
+                //
+                // This happens without creating a new line in the alerts list.
+
+                List<Dictionary<uint, string>> newAlerts = this.alerts ??= new();
+
+                // For every input alert
+                foreach (Dictionary<uint, string> inputAlert in value)
                 {
-                    this.alerts.Add(alert);
-                    this.alerts = this.alerts.TakeLast((int)MaxAlerts).ToList();
+                    // If the alert is already in the list
+                    bool skip = false;
+
+                    foreach (Dictionary<uint, string> existingAlert in newAlerts)
+                    {
+                        // If the alert message is the same
+                        if (existingAlert.Values.First() == inputAlert.Values.First())
+                        {
+                            // Replace the alert with the new tick
+                            newAlerts.Remove(existingAlert);
+                            newAlerts.Add(
+                                new() { { inputAlert.Keys.First(), inputAlert.Values.First() } }
+                            );
+                            skip = true;
+                            break;
+                        }
+                    }
+                    if (!skip)
+                    {
+                        newAlerts.Add(inputAlert);
+                    }
                 }
+
+                // Clip the alert list
+                this.alerts = newAlerts.TakeLast((int)MaxAlerts).ToList();
             }
         }
 
@@ -102,13 +135,108 @@ namespace Assets.Scripts.WorldObjects.Core
     }
 }
 
-namespace Assets.Scripts.WorldObjects.Unity
+namespace Assets.Scripts.Tests
+{
+    using System.Collections.Generic;
+    using Assets.Scripts.Core;
+    using Xunit;
+    using Xunit.Abstractions;
+
+    public class WorldObjectCoreTest
+    {
+        private ITestOutputHelper testOutput;
+
+        public WorldObjectCoreTest(ITestOutputHelper testOutputHelper)
+        {
+            this.testOutput = testOutputHelper;
+        }
+
+        [Fact]
+        public void TestOneAlert()
+        {
+            WorldObjectCore core = new(null)
+            {
+                Alerts = new List<Dictionary<uint, string>>()
+                {
+                    new() { { 10, "I'm broken and need repairs!" } },
+                },
+            };
+            Assert.Equal(1, core.Alerts.Count);
+        }
+
+        [Fact]
+        public void TestTwoOfSameAlert()
+        {
+            WorldObjectCore core = new(null)
+            {
+                Alerts = new List<Dictionary<uint, string>>()
+                {
+                    new() { { 10, "I'm broken and need repairs!" } },
+                },
+            };
+            core.Alerts = new List<Dictionary<uint, string>>()
+            {
+                new() { { 20, "I'm broken and need repairs!" } },
+            };
+            Assert.Equal(1, core.Alerts.Count);
+        }
+
+        [Fact]
+        public void TestTwoDifferentAlert()
+        {
+            WorldObjectCore core = new(null)
+            {
+                Alerts = new List<Dictionary<uint, string>>()
+                {
+                    new() { { 10, "I'm broken and need repairs!" } },
+                },
+            };
+            core.Alerts = new List<Dictionary<uint, string>>()
+            {
+                new() { { 20, "I'm out of power!" } },
+            };
+            Assert.Equal(2, core.Alerts.Count);
+        }
+
+        [Fact]
+        public void TestTwoAtOnce()
+        {
+            WorldObjectCore core = new(null)
+            {
+                Alerts = new List<Dictionary<uint, string>>()
+                {
+                    new() { { 10, "I'm broken and need repairs!" } },
+                    new() { { 20, "I'm out of power!" } },
+                },
+            };
+            Assert.Equal(2, core.Alerts.Count);
+        }
+
+        [Fact]
+        public void TestTwoThenOneMore()
+        {
+            WorldObjectCore core = new(null)
+            {
+                Alerts = new List<Dictionary<uint, string>>()
+                {
+                    new() { { 10, "I'm broken and need repairs!" } },
+                    new() { { 20, "I'm out of power!" } },
+                },
+            };
+            core.Alerts = new List<Dictionary<uint, string>>()
+            {
+                new() { { 30, "I can't move!" } },
+            };
+            Assert.Equal(3, core.Alerts.Count);
+        }
+    }
+}
+
+namespace Assets.Scripts.Unity
 {
     using System;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
-    using Assets.Scripts.Unity;
-    using Assets.Scripts.WorldObjects.Core;
     using UnityEngine;
 
     [Serializable]

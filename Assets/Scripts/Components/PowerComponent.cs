@@ -66,7 +66,6 @@ namespace Assets.Scripts.Components.Tests
     using System;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
-    using Assets.Scripts.WorldObjects.Core;
     using Xunit;
 
     public class PowerComponentTest

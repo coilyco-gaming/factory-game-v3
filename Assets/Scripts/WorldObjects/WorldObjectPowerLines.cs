@@ -2,7 +2,6 @@ using System;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {

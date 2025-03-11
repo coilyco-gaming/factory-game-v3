@@ -4,7 +4,6 @@ using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -22,6 +21,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Energy = this.core.battery.PercentEnergyStatus,
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
+                Receivers = this
+                    .core.dispatchReceivers.Select(receiver => receiver.Description)
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
@@ -82,6 +84,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
 
+            this.core.dispatchReceivers ??= new();
             foreach (string ingredient in ingredients)
             {
                 this.core.dispatchers.Add(
@@ -98,22 +101,32 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         DispatchComponentCore.Keywords.Me.ToString()
                     )
                 );
+                this.core.dispatchReceivers.Add(
+                    new(
+                        this.core,
+                        this.core.resources,
+                        // Stockpile...
+                        DispatchComponentCore.Verbs.Stockpile.ToString(),
+                        // ...< ingredient >
+                        ingredient
+                    )
+                );
             }
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
-            {
-                inserter.Insert(this.core, gameController.core);
-            }
+            this.core.battery.Balance(this.core, gameController.core);
+            this.core.production.Produce();
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
                 this.core.Alerts = dispatcher.Tick(gameController.core);
             }
-            this.core.battery.Balance(this.core, gameController.core);
-            this.core.production.Produce();
+            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
+            {
+                inserter.Insert(this.core, gameController.core);
+            }
         }
     }
 }

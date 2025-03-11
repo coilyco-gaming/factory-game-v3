@@ -4,7 +4,6 @@ using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -22,6 +21,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Energy = this.core.battery.PercentEnergyStatus,
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
+                Receivers = this
+                    .core.dispatchReceivers.Select(receiver => receiver.Description)
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
@@ -56,6 +58,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.targetType,
                     // ...from me.
                     DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
+            this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
+            {
+                new(
+                    this.core,
+                    this.core.resources,
+                    DispatchComponentCore.Verbs.Stockpile.ToString(),
+                    FactoryGameContent.Resources.Stone.ToString()
                 ),
             };
         }

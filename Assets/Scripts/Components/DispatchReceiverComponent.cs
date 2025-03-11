@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using Assets.Scripts.Core;
-using Assets.Scripts.WorldObjects.Core;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -11,11 +10,18 @@ namespace Assets.Scripts.Components.Core
         public System.Numerics.Vector2? targetPosition = null;
         private ResourcesComponentCore resources;
         private string DescriptionToOrFrom =>
-            this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString() ? "from" : "to";
+            this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString() ? " from"
+            : this.receiverVerb == DispatchComponentCore.Verbs.Stockpile.ToString() ? ""
+            : " to";
         public string Description =>
             this.dispatcher != null
-                ? $"{this.receiverVerb} {this.receiverSubject} {this.DescriptionToOrFrom} {this.targetPosition}".ToLower()
+                ? $"{this.receiverVerb} {this.DescriptionSubject}{this.DescriptionToOrFrom}{this.TargetDescription}".ToLower()
                 : "awaiting target";
+        private string DescriptionSubject => Util.HumanizedString(this.receiverSubject);
+        private string TargetDescription =>
+            this.receiverVerb == DispatchComponentCore.Verbs.Stockpile.ToString()
+                ? ""
+                : $" {this.targetPosition}";
         public string receiverVerb;
         public string receiverSubject;
 
@@ -42,12 +48,17 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick()
         {
+            // If your job was to retrieve something and you have it, switch to deploy
             if (this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString())
             {
                 bool hasReceiverSubject =
                     this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
                 if (hasReceiverSubject)
                 {
+                    if (this.dispatcher != null)
+                    {
+                        this.dispatcher.receiver = null;
+                    }
                     this.dispatcher = null;
                     this.targetPosition = null;
                     this.receiverVerb = DispatchComponentCore.Verbs.Deploy.ToString();

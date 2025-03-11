@@ -1,10 +1,9 @@
-using System.Collections.Generic;
-using System.Linq;
-using Assets.Scripts.Core;
-using Assets.Scripts.WorldObjects.Core;
-
 namespace Assets.Scripts.Components.Core
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using Assets.Scripts.Core;
+
     public class DispatchComponentCore
     {
         // Example descriptions:
@@ -12,25 +11,53 @@ namespace Assets.Scripts.Components.Core
         //  - Deploy mining drill to iron ore
         //  - Deliver coal to me
         private string DescriptionToOrFrom =>
-            this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString() ? "from" : "to";
+            this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
+            || this.receiverVerb == DispatchComponentCore.Verbs.Stockpile.ToString()
+                ? "from"
+                : "to";
         private string DescriptionSubject => Util.HumanizedString(this.receiverSubject);
         private string DescriptionObject => Util.HumanizedString(this.receiverObject);
         public string Description =>
             $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.DescriptionObject}".ToLower();
 
         public WorldObjectCore worldObject;
+        public DispatchReceiverComponentCore receiver;
         private BatteryComponentCore battery;
         private ResourcesComponentCore resources;
         private GameContent gameContent;
         private string receiverVerb = "VERB";
         private string receiverSubject = "SUBJECT";
         private string receiverObject = "OBJECT";
+        private Dictionary<string, List<string>> VerbMappings = new()
+        {
+            {
+                // Deploy mining drill to iron ore dispatches to
+                //   - Deploy mining drill (mobile receiver)
+                Verbs.Deploy.ToString(),
+                new List<string> { Verbs.Deploy.ToString() }
+            },
+            {
+                // Deliver iron bars to me dispatches to
+                //   - Deliver iron bars
+                Verbs.Deliver.ToString(),
+                new List<string> { Verbs.Deliver.ToString(), Verbs.Stockpile.ToString() }
+            },
+            {
+                // Retrieve iron bars from me dispatches to
+                //   - Retrieve iron bars
+                //   - Stockpile iron bars
+                Verbs.Retrieve.ToString(),
+                new List<string> { Verbs.Retrieve.ToString(), Verbs.Stockpile.ToString() }
+            },
+            // Stockpile should never dispatch
+        };
 
         public enum Verbs
         {
             Deploy,
             Deliver,
-            Retrieve,
+            Retrieve, // Get something once, used for truck receivers
+            Stockpile, // Get something repeatedly, used for factory receivers
         }
 
         public enum Keywords
@@ -71,6 +98,12 @@ namespace Assets.Scripts.Components.Core
 
         public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            // If the dispatch has already been assigned, then skip
+            if (this.receiver != null)
+            {
+                return new();
+            }
+
             // If the dispatch subject is an item,
             // then skip deliver to me dispatch if I have more than a stack of the item
             // TODO: check if you can't fit any more
@@ -161,20 +194,25 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
+            // TODO: immobible recievers only match when they are adjacent
             // Get the first receiver awaiting a target
             DispatchReceiverComponentCore receiver = gameController
                 .worldObjects
                 // For all world objects
                 .SelectMany(worldObjects => worldObjects.Value)
+                .Where(worldObject =>
+                    // Where the world object has dispatch receivers
+                    worldObject.Value.dispatchReceivers != null
+                )
                 // For all dispatch receivers
-                .Select(worldObject => worldObject.Value.dispatchReceiver)
+                .SelectMany(worldObject => worldObject.Value.dispatchReceivers)
                 .Where(receiver =>
                     // Where the receiver is not null and is awaiting a target
                     receiver != null
                     && receiver.dispatcher == null
                     // Where the receiver Subject and verb match the dispatch
                     && receiver.receiverSubject == this.receiverSubject
-                    && receiver.receiverVerb == this.receiverVerb
+                    && this.VerbMappings[this.receiverVerb].Contains(receiver.receiverVerb)
                 )
                 // Order by distance to the current world object
                 .OrderBy(receiver =>
@@ -202,6 +240,7 @@ namespace Assets.Scripts.Components.Core
             // Assign the target to the receiver
             receiver.targetPosition = targetLocations[0];
             receiver.dispatcher = this;
+            this.receiver = receiver;
             return new();
         }
     }
@@ -209,7 +248,10 @@ namespace Assets.Scripts.Components.Core
 
 namespace Assets.Scripts.Components.Tests
 {
+    using System.Collections.Generic;
+    using System.Linq;
     using Assets.Scripts.Components.Core;
+    using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using Xunit;
     using Xunit.Abstractions;
@@ -324,7 +366,75 @@ namespace Assets.Scripts.Components.Tests
                 "Deploy",
                 "MiningDrill"
             );
-            receiverWorldObject.dispatchReceiver = receiver;
+            receiverWorldObject.dispatchReceivers = new() { receiver };
+            Assert.Null(receiver.dispatcher);
+
+            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
+            {
+                { "uuid-1", HQWorldObject },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
+            {
+                { "uuid-2", targetWorldObject },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
+            {
+                { "uuid-3", receiverWorldObject },
+            };
+
+            dispatch.Tick(gameController);
+            Assert.NotNull(receiver.dispatcher);
+        }
+
+        [Fact]
+        public void TestVerbMapping()
+        {
+            GameControllerCore gameController = new()
+            {
+                backref = new TestDispatchUnityGameController(),
+            };
+            WorldObjectCore HQWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+
+            BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            DispatchComponentCore dispatch = new(
+                HQWorldObject,
+                battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
+                DispatchComponentCore.Verbs.Retrieve.ToString(),
+                "MiningDrill",
+                "IronOre"
+            );
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
+
+            WorldObjectCore targetWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(1, 1),
+                worldObjectType = "IronOre",
+            };
+
+            WorldObjectCore receiverWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(2, 2),
+            };
+
+            ResourcesComponentCore receiverResources = new(new(), 100, 100);
+
+            DispatchReceiverComponentCore receiver = new(
+                receiverWorldObject,
+                receiverResources,
+                DispatchComponentCore.Verbs.Stockpile.ToString(),
+                "MiningDrill"
+            );
+            receiverWorldObject.dispatchReceivers = new() { receiver };
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -445,7 +555,7 @@ namespace Assets.Scripts.Components.Tests
                 "Deploy",
                 "MiningDrill"
             );
-            receiverWorldObject.dispatchReceiver = receiver;
+            receiverWorldObject.dispatchReceivers = new() { receiver };
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -514,7 +624,7 @@ namespace Assets.Scripts.Components.Tests
                 "Retrieve",
                 "MiningDrill"
             );
-            receiverWorldObject.dispatchReceiver = receiver;
+            receiverWorldObject.dispatchReceivers = new() { receiver };
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -583,7 +693,7 @@ namespace Assets.Scripts.Components.Tests
                 "Deploy",
                 "Warehouse"
             );
-            receiverWorldObject.dispatchReceiver = receiver;
+            receiverWorldObject.dispatchReceivers = new() { receiver };
             Assert.Null(receiver.dispatcher);
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()

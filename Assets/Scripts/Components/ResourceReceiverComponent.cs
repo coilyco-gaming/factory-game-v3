@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using Assets.Scripts.Core;
-using Assets.Scripts.WorldObjects.Core;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -150,7 +149,6 @@ namespace Assets.Scripts.Components.Tests
 {
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.WorldObjects.Core;
     using Xunit;
     using Xunit.Abstractions;
 

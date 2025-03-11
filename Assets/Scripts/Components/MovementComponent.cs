@@ -1,37 +1,35 @@
 namespace Assets.Scripts.Components.Core
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
-    using Assets.Scripts.WorldObjects.Unity;
     using EpPathFinding.cs;
 
     public class MovementComponentCore
     {
         private WorldObject worldObject;
-        private DispatchReceiverComponentCore receiver;
 
-        public MovementComponentCore(
-            WorldObject worldObject,
-            DispatchReceiverComponentCore receiver
-        )
+        public MovementComponentCore(WorldObject worldObject)
         {
             this.worldObject = worldObject;
-            this.receiver = receiver;
         }
 
         public void Tick(GameController gameController)
         {
-            if (this.receiver.targetPosition == null)
+            if (
+                this.worldObject.core.dispatchReceivers.Count != 0
+                && this.worldObject.core.dispatchReceivers.First().targetPosition == null
+            )
             {
                 // We have no target position
                 return;
             }
 
             System.Numerics.Vector2 start = this.worldObject.GridPosition;
-            System.Numerics.Vector2 end = this.receiver.targetPosition.Value;
+            System.Numerics.Vector2 end = this
+                .worldObject.core.dispatchReceivers.First()
+                .targetPosition.Value;
 
             // Determine if we are already close enough
             float xDiff = Math.Abs(start.X - end.X);

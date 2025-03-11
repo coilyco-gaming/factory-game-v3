@@ -8,7 +8,6 @@ namespace Assets.Scripts.Components.Core
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Core;
-    using Assets.Scripts.WorldObjects.Core;
 
     [Serializable]
     public class ResourceInserterComponentCore
@@ -84,7 +83,6 @@ namespace Assets.Scripts.Components.Tests
     using System.Collections.Generic;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
-    using Assets.Scripts.WorldObjects.Core;
     using Xunit;
 
     public class InserterComponentTest

@@ -1,7 +1,7 @@
 namespace Assets.Scripts.UI
 {
     using System.Collections.Generic;
-    using Assets.Scripts.WorldObjects.Core;
+    using Assets.Scripts.Core;
     using TMPro;
     using UnityEngine;
     using YamlDotNet.Serialization;
@@ -21,7 +21,7 @@ namespace Assets.Scripts.UI
 
         private class StatusData
         {
-            public float BatteryEnergy { get; set; } = 0;
+            public float Energy { get; set; } = 0;
             public Dictionary<string, uint> Objects { get; set; } = new();
             public Dictionary<string, uint> Resources { get; set; } = new();
         }
@@ -42,14 +42,17 @@ namespace Assets.Scripts.UI
                     // Total battery energy, via Energy attribute
                     if (worldObject.battery != null)
                     {
-                        data.BatteryEnergy += worldObject.battery.Energy;
+                        data.Energy += worldObject.battery.Energy;
                     }
                     // Count objects
-                    if (!data.Objects.ContainsKey(worldObject.worldObjectType))
+                    string humanizedWorldObjectType = Util.HumanizedString(
+                        worldObject.worldObjectType
+                    );
+                    if (!data.Objects.ContainsKey(humanizedWorldObjectType))
                     {
-                        data.Objects.Add(worldObject.worldObjectType, 0);
+                        data.Objects.Add(humanizedWorldObjectType, 0);
                     }
-                    data.Objects[worldObject.worldObjectType] += 1;
+                    data.Objects[humanizedWorldObjectType] += 1;
                     // Count resources
                     if (worldObject.resources != null)
                     {
@@ -57,11 +60,12 @@ namespace Assets.Scripts.UI
                             KeyValuePair<string, uint> resource in worldObject.resources.resources
                         )
                         {
-                            if (!data.Resources.ContainsKey(resource.Key))
+                            string humanizedKey = Util.HumanizedString(resource.Key);
+                            if (!data.Resources.ContainsKey(humanizedKey))
                             {
-                                data.Resources.Add(resource.Key, 0);
+                                data.Resources.Add(humanizedKey, 0);
                             }
-                            data.Resources[resource.Key] += resource.Value;
+                            data.Resources[humanizedKey] += resource.Value;
                         }
                     }
                 }

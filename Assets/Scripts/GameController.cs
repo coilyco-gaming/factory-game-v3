@@ -4,7 +4,6 @@ namespace Assets.Scripts.Core
     using System.Collections.Generic;
     using System.Linq;
     using Assets.Scripts.Unity;
-    using Assets.Scripts.WorldObjects.Core;
 
     public class SpawnQueueItem
     {
@@ -187,8 +186,6 @@ namespace Assets.Scripts.Unity
     using System.Collections.Generic;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
-    using Assets.Scripts.WorldObjects.Core;
-    using Assets.Scripts.WorldObjects.Unity;
     using Sirenix.OdinInspector;
     using UnityEngine;
     using static Assets.Scripts.Core.GameControllerCore;

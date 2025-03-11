@@ -4,7 +4,6 @@ using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -24,6 +23,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Energy = this.core.battery.PercentEnergyStatus,
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
+                    .ToList(),
+                Receivers = this
+                    .core.dispatchReceivers.Select(receiver => receiver.Description)
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
@@ -72,12 +74,34 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.battery,
                     this.core.resources,
                     new FactoryGameContent(),
+                    // Deploy...
+                    DispatchComponentCore.Verbs.Deploy.ToString(),
+                    // ...mining drill...
+                    FactoryGameContent.Spawnables.MiningDrill.ToString(),
+                    // ...to coal.
+                    this.core.targetSubType
+                ),
+                new(
+                    this.core,
+                    this.core.battery,
+                    this.core.resources,
+                    new FactoryGameContent(),
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...
                     FactoryGameContent.Resources.Coal.ToString(),
                     // ...to me.
                     DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
+
+            this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>()
+            {
+                new(
+                    this.core,
+                    this.core.resources,
+                    DispatchComponentCore.Verbs.Stockpile.ToString(),
+                    FactoryGameContent.Resources.Coal.ToString()
                 ),
             };
         }

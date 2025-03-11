@@ -6,7 +6,6 @@ using Assets.Scripts.Components.Unity;
 using Assets.Scripts.Core;
 using Assets.Scripts.UI;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;

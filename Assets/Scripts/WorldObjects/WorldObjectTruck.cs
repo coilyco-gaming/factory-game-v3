@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using Assets.Scripts.WorldObjects.Unity;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -18,11 +18,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 Name = this.WorldObjectType,
                 Energy = this.core.battery.PercentEnergyStatus,
+                Receivers = this
+                    .core.dispatchReceivers.Select(receiver => receiver.Description)
+                    .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
                     { "Storage Volume", this.core.resources.UsedVolumeString },
-                    { "Target", this.core.dispatchReceiver.Description },
+                    { "Target", this.core.dispatchReceivers.First().Description },
                 },
             };
 
@@ -36,18 +39,22 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: this.totalVolumeCapacity
             );
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-            this.core.dispatchReceiver = new(
-                this.core,
-                this.core.resources,
-                DispatchComponentCore.Verbs.Retrieve.ToString(), // Deploy
-                FactoryGameContent.Spawnables.MiningDrill.ToString() // Mining drill
-            ); // TODO: rotate around possible choices
-            this.core.movement = new MovementComponentCore(this, this.core.dispatchReceiver);
+            // Mobile objects can only ever have 1 dispatch receiver
+            this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
+            {
+                new(
+                    this.core,
+                    this.core.resources,
+                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    FactoryGameContent.Spawnables.MiningDrill.ToString()
+                ),
+            };
+            this.core.movement = new MovementComponentCore(this);
             this.core.resourceRetriever = new ResourceRetrieverCore(
                 this.core,
                 this.core.resources,
                 this.core.battery,
-                this.core.dispatchReceiver,
+                this.core.dispatchReceivers.First(),
                 new FactoryGameContent(),
                 FactoryGameContent.Spawnables.MiningDrill.ToString(),
                 1
@@ -67,7 +74,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Tick(gameController);
             this.core.movement.Tick(gameController);
-            this.core.dispatchReceiver.Tick();
+            foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
+            {
+                receiver.Tick();
+            }
             this.core.resourceRetriever.Tick();
         }
     }
