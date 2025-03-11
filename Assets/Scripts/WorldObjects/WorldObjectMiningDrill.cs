@@ -29,6 +29,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
+                Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -41,7 +42,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 volumeCapacity: this.totalVolumeCapacity
             );
             this.core.battery = new(capacity: this.totalBatteryCapacity);
-
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 // TODO: adjacent stone mining drill if necessary
@@ -64,6 +64,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Tick(gameController);
             this.core.battery.Balance(this.core, gameController.core);
+            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
+            {
+                this.core.Alerts = dispatcher.Tick(gameController.core);
+            }
         }
     }
 }

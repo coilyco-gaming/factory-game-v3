@@ -29,6 +29,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
+                Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -120,7 +121,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                dispatcher.Tick(gameController.core);
+                this.core.Alerts = dispatcher.Tick(gameController.core);
             }
             this.core.battery.Balance(this.core, gameController.core);
             this.core.production.Produce();

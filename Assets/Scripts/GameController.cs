@@ -3,6 +3,7 @@ namespace Assets.Scripts.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using Assets.Scripts.Unity;
     using Assets.Scripts.WorldObjects.Core;
 
     public class SpawnQueueItem
@@ -69,6 +70,7 @@ namespace Assets.Scripts.Core
     public class GameControllerCore
     {
         public GameContent gameContent;
+        public IGameController backref;
 
         public Dictionary<
             System.Numerics.Vector2,
@@ -191,7 +193,12 @@ namespace Assets.Scripts.Unity
     using UnityEngine;
     using static Assets.Scripts.Core.GameControllerCore;
 
-    public class GameController : SerializedMonoBehaviour
+    public interface IGameController
+    {
+        uint TickCount { get; set; }
+    }
+
+    public class GameController : SerializedMonoBehaviour, IGameController
     {
         public GameControllerCore core;
 
@@ -203,8 +210,8 @@ namespace Assets.Scripts.Unity
         public bool readyForTicks = false;
         public SpriteMapComponent Map { get; set; }
         public PlayerComponent PlayerComponent { get; set; }
+        public uint TickCount { get; set; } = 0;
         public float lastTick = 0;
-        public uint tickCount = 0;
 
         // PROPERTIES //
 
@@ -217,7 +224,7 @@ namespace Assets.Scripts.Unity
 
         public virtual void Start()
         {
-            this.core = new GameControllerCore();
+            this.core = new GameControllerCore() { backref = this };
         }
 
         public virtual void Update()
@@ -226,7 +233,7 @@ namespace Assets.Scripts.Unity
             // If we aren't ready for ticks, the main game loop won't run.
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
-                Debug.Log("Tick: " + this.tickCount);
+                Debug.Log("Tick: " + this.TickCount);
 
                 // Generate the pathfinding grid
                 if (this.Map.Grid == null)
@@ -243,7 +250,7 @@ namespace Assets.Scripts.Unity
                 {
                     foreach (WorldObjectCore worldObject in worldObjects.Values)
                     {
-                        (worldObject.backref as WorldObject).Tick(this);
+                        worldObject.backref.Tick(this);
                     }
                 }
 
@@ -290,7 +297,7 @@ namespace Assets.Scripts.Unity
                 }
 
                 // Handle ticks
-                this.tickCount++;
+                this.TickCount++;
                 this.lastTick = Time.time;
             }
         }
@@ -330,7 +337,7 @@ namespace Assets.Scripts.Unity
             this.Clear();
             this.random = new System.Random(this.randomSeed);
             this.lastTick = 0;
-            this.tickCount = 0;
+            this.TickCount = 0;
             this.readyForTicks = false;
         }
 
@@ -343,7 +350,7 @@ namespace Assets.Scripts.Unity
             {
                 foreach (WorldObjectCore worldObject in worldObjects.Values)
                 {
-                    Destroy((worldObject.backref as WorldObject).gameObject);
+                    Destroy(worldObject.backref.gameObject);
                 }
             }
             this.core.worldObjects.Clear(); //TODO: do we need to set the worldObjects to null?

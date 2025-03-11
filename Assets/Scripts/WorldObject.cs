@@ -2,8 +2,10 @@ namespace Assets.Scripts.WorldObjects.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
+    using Assets.Scripts.WorldObjects.Unity;
 
     [Serializable]
     public class WorldObjectCore
@@ -11,6 +13,7 @@ namespace Assets.Scripts.WorldObjects.Core
         // PROPERTIES //
 
         public float ZIndex => 1;
+        public static uint MaxAlerts = 5;
 
         // TODO: turn all of these into fields
 
@@ -32,9 +35,10 @@ namespace Assets.Scripts.WorldObjects.Core
         public string worldObjectType;
         public string targetType;
         public string targetSubType;
-        public object backref;
+        public WorldObject backref;
         public bool mobile = false;
         public bool passThrough = false;
+        private List<Dictionary<uint, string>> alerts = new();
         public System.Numerics.Vector2 gridPosition;
 
         public System.Numerics.Vector2 GridPosition
@@ -43,9 +47,22 @@ namespace Assets.Scripts.WorldObjects.Core
             set => this.gridPosition = value;
         }
 
+        public List<Dictionary<uint, string>> Alerts
+        {
+            get => this.alerts;
+            set
+            {
+                foreach (Dictionary<uint, string> alert in value)
+                {
+                    this.alerts.Add(alert);
+                    this.alerts = this.alerts.TakeLast((int)MaxAlerts).ToList();
+                }
+            }
+        }
+
         // FUNCTIONS //
 
-        public WorldObjectCore(object backref)
+        public WorldObjectCore(WorldObject backref)
         {
             this.backref = backref;
         }

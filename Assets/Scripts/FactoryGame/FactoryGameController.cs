@@ -34,6 +34,7 @@ namespace Assets.Scripts.FactoryGame
         {
             base.Start();
 
+            // TODO: validate that ever object has enough space for every item stack
             this.core.gameContent = new FactoryGameContent();
 
             this.Map = this.GetComponent<SpriteMapComponent>();
