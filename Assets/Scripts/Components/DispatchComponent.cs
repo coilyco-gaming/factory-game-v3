@@ -180,6 +180,8 @@ namespace Assets.Scripts.Components.Core
                         .Select(worldObject => worldObject.Value.GridPosition)
                         .ToList();
 
+            // TODO: don't assign is target is not adjacent or there is a path to the target
+
             if (targetLocations.Count == 0)
             {
                 return new List<Dictionary<uint, string>>
