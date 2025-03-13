@@ -27,6 +27,7 @@ namespace Assets.Scripts.Core
         public List<ResourceInserterComponentCore> resourceInserters;
         public List<DispatchComponentCore> dispatchers;
         public List<DispatchReceiverComponentCore> dispatchReceivers;
+        public List<DeploymentComponentCore> deployments;
         public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;

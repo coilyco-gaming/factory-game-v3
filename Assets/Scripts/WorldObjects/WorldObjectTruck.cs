@@ -49,6 +49,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     FactoryGameContent.Spawnables.MiningDrill.ToString()
                 ),
             };
+            this.core.deployments = new List<DeploymentComponentCore>();
+            foreach (DispatchReceiverComponentCore dispatchReceiver in this.core.dispatchReceivers)
+            {
+                this.core.deployments.Add(new(this.core.resources, dispatchReceiver));
+            }
             this.core.movement = new MovementComponentCore(this);
             this.core.resourceRetriever = new ResourceRetrieverCore(
                 this.core,
@@ -77,6 +82,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
             {
                 receiver.Tick();
+            }
+            foreach (DeploymentComponentCore deployment in this.core.deployments)
+            {
+                deployment.Tick(gameController.core);
             }
             this.core.resourceRetriever.Tick();
         }

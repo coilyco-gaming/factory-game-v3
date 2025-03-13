@@ -1,6 +1,7 @@
 {
   "files.exclude": {
-    "**/*.meta": true
+    "**/*.meta": true,
+    "Assets/Plugins/**": true
   },
   "dotnet.defaultSolution": "factory-game-v2.sln"
 }

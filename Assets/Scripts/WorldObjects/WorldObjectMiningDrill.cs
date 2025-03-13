@@ -13,6 +13,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public uint totalVolumeCapacity = 5000;
         public uint totalBatteryCapacity = 1000;
         public uint insertionRate = 5;
+        public override float ZIndex => 2; // TODO: make this a constant
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -66,7 +67,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.resources,
                     DispatchComponentCore.Verbs.Stockpile.ToString(),
-                    FactoryGameContent.Resources.Stone.ToString()
+                    this.core.targetType
                 ),
             };
         }

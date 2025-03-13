@@ -25,9 +25,9 @@ namespace Assets.Scripts.Components.Core
         private BatteryComponentCore battery;
         private ResourcesComponentCore resources;
         private GameContent gameContent;
-        private string receiverVerb = "VERB";
-        private string receiverSubject = "SUBJECT";
-        private string receiverObject = "OBJECT";
+        public string receiverVerb = "VERB";
+        public string receiverSubject = "SUBJECT";
+        public string receiverObject = "OBJECT";
         private Dictionary<string, List<string>> VerbMappings = new()
         {
             {
