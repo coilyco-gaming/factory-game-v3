@@ -79,7 +79,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     // ...mining drill...
                     FactoryGameContent.Spawnables.MiningDrill.ToString(),
                     // ...to coal.
-                    this.core.targetSubType
+                    this.core.targetType
                 ),
                 new(
                     this.core,

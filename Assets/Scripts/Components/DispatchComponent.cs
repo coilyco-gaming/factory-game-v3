@@ -147,6 +147,42 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
+            // Only dispatch if there's an empty adjacent tile
+            bool hasEmptyAdjacent = false;
+            foreach (
+                System.Numerics.Vector2 adjacentTile in GameControllerCore.GetAdjacentPositions(
+                    this.worldObject.gridPosition
+                )
+            )
+            {
+                if (!gameController.worldObjects.ContainsKey(adjacentTile))
+                {
+                    hasEmptyAdjacent = true;
+                    break;
+                }
+                if (
+                    gameController.worldObjects.ContainsKey(adjacentTile)
+                    && gameController.worldObjects[adjacentTile].Count == 0
+                )
+                {
+                    hasEmptyAdjacent = true;
+                    break;
+                }
+            }
+            if (!hasEmptyAdjacent)
+            {
+                return new List<Dictionary<uint, string>>
+                {
+                    new()
+                    {
+                        {
+                            gameController.backref.TickCount,
+                            $"{this.Description}: no empty adjacent tile"
+                        },
+                    },
+                };
+            }
+
             // Abort early if the battery is empty
             try
             {

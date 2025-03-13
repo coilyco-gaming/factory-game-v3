@@ -1,6 +1,7 @@
 namespace Assets.Scripts.UI
 {
     using System.Collections.Generic;
+    using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
     using Assets.Scripts.Unity;
     using TMPro;
@@ -24,6 +25,7 @@ namespace Assets.Scripts.UI
         {
             public uint Tick { get; set; } = 0;
             public float Energy { get; set; } = 0;
+            public uint Dispatches { get; set; } = 0;
             public Dictionary<string, uint> Objects { get; set; } = new();
             public Dictionary<string, uint> Resources { get; set; } = new();
         }
@@ -44,6 +46,17 @@ namespace Assets.Scripts.UI
             {
                 foreach (WorldObjectCore worldObject in worldObjects)
                 {
+                    // Filled dispatches
+                    if (worldObject.dispatchers != null && worldObject.dispatchers.Count > 0)
+                    {
+                        foreach (DispatchComponentCore dispatcher in worldObject.dispatchers)
+                        {
+                            if (dispatcher.receiver != null)
+                            {
+                                data.Dispatches += (uint)worldObject.dispatchers.Count;
+                            }
+                        }
+                    }
                     // Total battery energy, via Energy attribute
                     if (worldObject.battery != null)
                     {

@@ -3,6 +3,7 @@ namespace Assets.Scripts.Core
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Numerics;
     using Assets.Scripts.Unity;
 
     public class SpawnQueueItem
@@ -95,47 +96,55 @@ namespace Assets.Scripts.Core
 
         // FUNCTIONS //
 
-        public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
+        public static List<System.Numerics.Vector2> GetAdjacentPositions(
+            System.Numerics.Vector2 position
+        )
         {
             return new List<System.Numerics.Vector2>
-                {
-                    new( // Center
-                        position.X,
-                        position.Y
-                    ),
-                    new( // Above
-                        position.X + 0,
-                        position.Y + 1
-                    ),
-                    new( // Top Right
-                        position.X + 1,
-                        position.Y + 1
-                    ),
-                    new( // Right
-                        position.X + 1,
-                        position.Y + 0
-                    ),
-                    new( // Bottom Right
-                        position.X + 1,
-                        position.Y - 1
-                    ),
-                    new( // Below
-                        position.X + 0,
-                        position.Y - 1
-                    ),
-                    new( // Bottom Left
-                        position.X - 1,
-                        position.Y - 1
-                    ),
-                    new( // Left
-                        position.X + -1,
-                        position.Y + 0
-                    ),
-                    new( // Top Left
-                        position.X + -1,
-                        position.Y + 1
-                    ),
-                }
+            {
+                new( // Center
+                    position.X,
+                    position.Y
+                ),
+                new( // Above
+                    position.X + 0,
+                    position.Y + 1
+                ),
+                new( // Top Right
+                    position.X + 1,
+                    position.Y + 1
+                ),
+                new( // Right
+                    position.X + 1,
+                    position.Y + 0
+                ),
+                new( // Bottom Right
+                    position.X + 1,
+                    position.Y - 1
+                ),
+                new( // Below
+                    position.X + 0,
+                    position.Y - 1
+                ),
+                new( // Bottom Left
+                    position.X - 1,
+                    position.Y - 1
+                ),
+                new( // Left
+                    position.X + -1,
+                    position.Y + 0
+                ),
+                new( // Top Left
+                    position.X + -1,
+                    position.Y + 1
+                ),
+            };
+        }
+
+        public List<WorldObjectCore> GetAdjacentWorldObjects(System.Numerics.Vector2 position)
+        {
+            return GameControllerCore
+                    .GetAdjacentPositions(position)
                     .Select(adjacentTile => this.GetWorldObjectsByPosition(adjacentTile))
                     .Where(worldObjects => worldObjects != null)
                     .SelectMany(worldObjects => worldObjects)

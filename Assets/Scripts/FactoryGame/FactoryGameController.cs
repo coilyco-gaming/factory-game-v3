@@ -93,6 +93,7 @@ namespace Assets.Scripts.FactoryGame
                     // Coal and power lines (x=0)
                     new(
                         type: "CoalPlant",
+                        targetType: "Coal",
                         x: 0,
                         y: 0,
                         xyCentered: true,
