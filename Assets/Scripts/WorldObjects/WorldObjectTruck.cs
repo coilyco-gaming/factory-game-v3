@@ -46,7 +46,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.resources,
                     DispatchComponentCore.Verbs.Retrieve.ToString(),
-                    FactoryGameContent.Spawnables.MiningDrill.ToString()
+                    this.core.targetType
                 ),
             };
             this.core.deployments = new List<DeploymentComponentCore>();
@@ -61,7 +61,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.battery,
                 this.core.dispatchReceivers.First(),
                 new FactoryGameContent(),
-                FactoryGameContent.Spawnables.MiningDrill.ToString(),
+                this.core.targetType,
                 1
             );
             this.core.resourceInserters = new List<ResourceInserterComponentCore>
@@ -69,7 +69,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     this.core.battery,
                     this.core.resources,
-                    FactoryGameContent.Spawnables.MiningDrill.ToString(), // Mining drill
+                    this.core.targetType, // Mining drill
                     this.insertionRate
                 ),
             };

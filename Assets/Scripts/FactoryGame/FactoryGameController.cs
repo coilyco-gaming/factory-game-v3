@@ -87,9 +87,10 @@ namespace Assets.Scripts.FactoryGame
                 SpawnQueueItem spawnQueueItem in new List<SpawnQueueItem>
                 {
                     // Leftmost trucks (x=-1)
-                    new(type: "Truck", x: -1, y: 0, xyCentered: true),
-                    new(type: "Truck", x: -1, y: 1, xyCentered: true),
-                    new(type: "Truck", x: -1, y: 2, xyCentered: true),
+                    new(type: "Truck", x: -1, y: 0, xyCentered: true, targetType: "IronOre"),
+                    new(type: "Truck", x: -1, y: 1, xyCentered: true, targetType: "CopperOre"),
+                    new(type: "Truck", x: -1, y: 2, xyCentered: true, targetType: "IronOre"),
+                    new(type: "Truck", x: -1, y: 3, xyCentered: true, targetType: "Coal"),
                     // Coal and power lines (x=0)
                     new(
                         type: "CoalPlant",
@@ -115,7 +116,6 @@ namespace Assets.Scripts.FactoryGame
                         x: 2,
                         y: 0,
                         xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "IronOre", 5000 } },
                         targetType: "IronBars",
                         targetSubType: "IronOre"
                     ),
@@ -124,7 +124,6 @@ namespace Assets.Scripts.FactoryGame
                         x: 3,
                         y: 0,
                         xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "CopperOre", 5000 } },
                         targetType: "CopperBars",
                         targetSubType: "CopperOre"
                     ),
@@ -133,7 +132,6 @@ namespace Assets.Scripts.FactoryGame
                         x: 4,
                         y: 0,
                         xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "IronOre", 5000 } },
                         targetType: "IronBars",
                         targetSubType: "IronOre"
                     ),
@@ -153,12 +151,20 @@ namespace Assets.Scripts.FactoryGame
                     // coal plant, factory, mining drills, power lines
                     new(type: "Factory", x: 1, y: 2, xyCentered: true, targetType: "CoalPlant"),
                     new(type: "Factory", x: 2, y: 2, xyCentered: true, targetType: "Factory"),
-                    new(type: "Factory", x: 3, y: 2, xyCentered: true, targetType: "MiningDrill"),
+                    new(
+                        type: "Factory",
+                        x: 3,
+                        y: 2,
+                        xyCentered: true,
+                        targetType: "MiningDrill",
+                        resources: new Dictionary<string, uint> { { "MiningDrill", 10 } }
+                    ),
                     new(type: "Factory", x: 4, y: 2, xyCentered: true, targetType: "PowerLines"),
                     // Rightmost trucks (x=5)
-                    new(type: "Truck", x: 5, y: 0, xyCentered: true),
-                    new(type: "Truck", x: 5, y: 1, xyCentered: true),
-                    new(type: "Truck", x: 5, y: 2, xyCentered: true),
+                    new(type: "Truck", x: 5, y: 0, xyCentered: true, targetType: "MiningDrill"),
+                    new(type: "Truck", x: 5, y: 1, xyCentered: true, targetType: "MiningDrill"),
+                    new(type: "Truck", x: 5, y: 2, xyCentered: true, targetType: "MiningDrill"),
+                    new(type: "Truck", x: 5, y: 3, xyCentered: true, targetType: "MiningDrill"),
                 }
             )
             {

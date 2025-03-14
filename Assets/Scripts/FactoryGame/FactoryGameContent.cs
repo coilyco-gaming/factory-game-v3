@@ -188,15 +188,10 @@ namespace Assets.Scripts.Unity
                         weight: 50,
                         volume: 25,
                         craftTime: 5,
-                        // ingredients: new Dictionary<string, uint>
-                        // {
-                        //     { Products.Frames.ToString(), 4 },
-                        //     { Products.Motors.ToString(), 1 },
-                        // }
-                        // TODO: temporary
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 1 },
+                            { Products.Frames.ToString(), 4 },
+                            { Products.Motors.ToString(), 1 },
                         }
                     )
                 },
