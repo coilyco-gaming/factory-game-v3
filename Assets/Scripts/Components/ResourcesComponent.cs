@@ -200,6 +200,12 @@ namespace Assets.Scripts.Components.Core
                     resourceName ?? "",
                     new GameContent.Item("")
                 ) ?? new GameContent.Item("");
+            if (item == null)
+            {
+                throw new GameControllerCore.MisconfigurationException(
+                    $"No item found for {resourceName} in GameContent.Items"
+                );
+            }
 
             uint originalAmountToCreate = amountToCreate;
             uint weightToCreate = amountToCreate * item.Weight;

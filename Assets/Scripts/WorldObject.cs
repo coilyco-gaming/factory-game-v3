@@ -31,6 +31,7 @@ namespace Assets.Scripts.Core
         public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;
+        public MiningComponentCore mining;
         public string guid;
         public string worldObjectType;
         public string targetType;

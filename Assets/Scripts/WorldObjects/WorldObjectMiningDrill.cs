@@ -13,6 +13,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public uint totalVolumeCapacity = 5000;
         public uint totalBatteryCapacity = 1000;
         public uint insertionRate = 5;
+        public int miningSpeed = 5;
+        public int miningEnergyCost = 5;
         public override float ZIndex => 2; // TODO: make this a constant
 
         public override StatusDataComponentCore StatusData =>
@@ -70,6 +72,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.targetType
                 ),
             };
+            this.core.mining = new MiningComponentCore(
+                this.core,
+                this.core.targetType,
+                this.miningSpeed,
+                this.miningEnergyCost
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -80,6 +88,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 this.core.Alerts = dispatcher.Tick(gameController.core);
             }
+            this.core.Alerts = this.core.mining.Tick(gameController.core);
         }
     }
 }
