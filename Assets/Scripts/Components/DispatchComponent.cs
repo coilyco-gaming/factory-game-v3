@@ -216,6 +216,39 @@ namespace Assets.Scripts.Components.Core
                         .Select(worldObject => worldObject.Value.GridPosition)
                         .ToList();
 
+            // Don't dispatch to target if there's already another dispatch
+            // of the same type assigned to the same location
+            List<DispatchComponentCore> dispatchers = gameController
+                .worldObjects
+                // For all world objects
+                .SelectMany(worldObjects => worldObjects.Value)
+                .Where(worldObject =>
+                    // Where the world object has dispatchers
+                    worldObject.Value.dispatchers != null
+                )
+                // For all dispatchers
+                .SelectMany(worldObject => worldObject.Value.dispatchers)
+                .Where(dispatcher =>
+                    // Where the dispatcher is not null and is awaiting a target
+                    dispatcher != null
+                    && dispatcher.receiver != null
+                    // Where the dispatcher Subject and verb match the dispatch
+                    && dispatcher.receiverSubject == this.receiverSubject
+                    && this.VerbMappings[this.receiverVerb].Contains(dispatcher.receiverVerb)
+                )
+                .ToList();
+
+            // Remove targets target already at the target locations
+            // represents by the existing dispatchers
+            targetLocations = targetLocations
+                .Where(targetLocation =>
+                    !dispatchers.Any(dispatcher =>
+                        dispatcher.receiver != null
+                        && dispatcher.receiver.targetPosition == targetLocation
+                    )
+                )
+                .ToList();
+
             // TODO: don't assign is target is not adjacent or there is a path to the target
 
             if (targetLocations.Count == 0)
@@ -422,6 +455,120 @@ namespace Assets.Scripts.Components.Tests
 
             dispatch.Tick(gameController);
             Assert.NotNull(receiver.dispatcher);
+        }
+
+        [Fact]
+        public void TestNoDuplicateDispatches()
+        {
+            GameControllerCore gameController = new()
+            {
+                backref = new TestDispatchUnityGameController(),
+            };
+
+            // HQ 1
+            WorldObjectCore HQWorldObject1 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            BatteryComponentCore battery1 = new(100, 100);
+            ResourcesComponentCore dispactherResources1 = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            DispatchComponentCore dispatch1 = new(
+                HQWorldObject1,
+                battery1,
+                dispactherResources1,
+                new TestDispatchGameContent(),
+                "Deploy",
+                "MiningDrill",
+                "IronOre"
+            );
+            HQWorldObject1.dispatchers = new List<DispatchComponentCore> { dispatch1 };
+
+            // HQ 2
+            WorldObjectCore HQWorldObject2 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+            BatteryComponentCore battery2 = new(100, 100);
+            ResourcesComponentCore dispactherResources2 = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            DispatchComponentCore dispatch2 = new(
+                HQWorldObject2,
+                battery2,
+                dispactherResources2,
+                new TestDispatchGameContent(),
+                "Deploy",
+                "MiningDrill",
+                "IronOre"
+            );
+            HQWorldObject2.dispatchers = new List<DispatchComponentCore> { dispatch2 };
+
+            // target
+            WorldObjectCore targetWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(1, 1),
+                worldObjectType = "IronOre",
+            };
+
+            // receiver 1
+            WorldObjectCore receiverWorldObject1 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(2, 2),
+            };
+            ResourcesComponentCore receiverResources1 = new(new(), 100, 100);
+            DispatchReceiverComponentCore receiver1 = new(
+                receiverWorldObject1,
+                receiverResources1,
+                "Deploy",
+                "MiningDrill"
+            );
+            receiverWorldObject1.dispatchReceivers = new() { receiver1 };
+
+            // receiver 2
+            WorldObjectCore receiverWorldObject2 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(2, 2),
+            };
+            ResourcesComponentCore receiverResources2 = new(new(), 100, 100);
+            DispatchReceiverComponentCore receiver2 = new(
+                receiverWorldObject2,
+                receiverResources2,
+                "Deploy",
+                "MiningDrill"
+            );
+            receiverWorldObject2.dispatchReceivers = new() { receiver2 };
+
+            gameController.worldObjects[new System.Numerics.Vector2(-1, -1)] = new()
+            {
+                { "uuid-0", HQWorldObject1 },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
+            {
+                { "uuid-1", HQWorldObject2 },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
+            {
+                { "uuid-2", targetWorldObject },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
+            {
+                { "uuid-3", receiverWorldObject1 },
+            };
+            gameController.worldObjects[new System.Numerics.Vector2(3, 3)] = new()
+            {
+                { "uuid-4", receiverWorldObject2 },
+            };
+
+            dispatch1.Tick(gameController);
+            dispatch2.Tick(gameController);
+            Assert.NotNull(receiver1.dispatcher);
+            Assert.Null(receiver2.dispatcher);
         }
 
         [Fact]
