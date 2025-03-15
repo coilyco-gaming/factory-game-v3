@@ -178,13 +178,13 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <52, 51>\r\nStatus:\r\n- Alerts:\r\n  - 1021: 'retrieve motors
-    from me: not enough available'\r\n  - 1021: 'deliver iron bars to me: no empty
-    adjacent tile'\r\n  - 1021: 'deliver copper bars to me: no empty adjacent tile'\r\n 
-    Name: Factory\r\n  Energy: 100%\r\n  Dispatchers:\r\n  - retrieve motors from
-    me\r\n  - deliver iron bars to me\r\n  - deliver copper bars to me\r\n  Receivers:\r\n 
-    - awaiting target\r\n  - awaiting target\r\n  Resources: {}\r\n  Info:\r\n   
-    Outputs: motors\r\n    Progress: 0%\r\n    Storage Volume: 0%\r\n"
+  m_text: "Position: <52, 51>\r\nStatus:\r\n- Alerts:\r\n  - 292: 'collect motors
+    from me: no empty adjacent tile'\r\n  - 292: 'deliver iron bars to me: no empty
+    adjacent tile'\r\n  - 292: 'deliver copper bars to me: no empty adjacent tile'\r\n 
+    Name: Factory\r\n  Energy: 22%\r\n  Dispatchers:\r\n  - collect motors from me\r\n 
+    - deliver iron bars to me\r\n  - deliver copper bars to me\r\n  Resources:\r\n   
+    Copper Bars: 79\r\n  Info:\r\n    Outputs: motors\r\n    Progress: 0%\r\n   
+    Storage Volume: 1%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -808,7 +808,7 @@ Transform:
   m_GameObject: {fileID: 336651589}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 4, y: 0, z: 0}
+  m_LocalPosition: {x: 9, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -972,7 +972,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 2
       reservedOuputBufferMultiplier: 4
@@ -1289,7 +1288,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 2
       reservedOuputBufferMultiplier: 4
@@ -1699,7 +1697,7 @@ Transform:
   m_GameObject: {fileID: 665740492}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3, y: 0, z: 0}
+  m_LocalPosition: {x: 4, y: 0, z: 0}
   m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1775,7 +1773,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 2
       reservedOuputBufferMultiplier: 4
@@ -1794,10 +1791,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  insertionRate: 1
-  totalVolumeCapacity: 500
-  totalWeightCapacity: 500
-  totalBatteryCapacity: 1000
 --- !u!1 &678344652
 GameObject:
   m_ObjectHideFlags: 0
@@ -1825,7 +1818,7 @@ Transform:
   m_GameObject: {fileID: 678344652}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2, y: -2, z: 0}
+  m_LocalPosition: {x: 11, y: -2, z: 0}
   m_LocalScale: {x: 0.65, y: 0.65, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1901,7 +1894,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 0
       reservedOuputBufferMultiplier: 0
@@ -1920,9 +1912,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  totalVolumeCapacity: 10000
-  totalBatteryCapacity: 1000
-  insertionRate: 5
 --- !u!1 &875974723
 GameObject:
   m_ObjectHideFlags: 0
@@ -1950,7 +1939,7 @@ Transform:
   m_GameObject: {fileID: 875974723}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1, y: -2, z: 0}
+  m_LocalPosition: {x: 11, y: 0, z: 0}
   m_LocalScale: {x: 0.65, y: 0.65, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2026,7 +2015,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 0
       reservedOuputBufferMultiplier: 0
@@ -2045,11 +2033,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  totalVolumeCapacity: 5000
-  totalBatteryCapacity: 1000
-  insertionRate: 5
-  miningSpeed: 5
-  miningEnergyCost: 5
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0
@@ -2765,7 +2748,7 @@ Transform:
   m_GameObject: {fileID: 1306989970}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: -2, z: 0}
+  m_LocalPosition: {x: 7, y: -2, z: 0}
   m_LocalScale: {x: 0.9, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2899,8 +2882,8 @@ MonoBehaviour:
       Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.1
-  randomSeed: 0
+  tickFrequency: 0.2
+  randomSeed: 123124
   readyForTicks: 1
   lastTick: 52.85319
   resetButton: {fileID: 1883276799}
@@ -2908,7 +2891,7 @@ MonoBehaviour:
   StatusUILeft: {fileID: 47638825}
   StatusUIRight: {fileID: 153855361}
   statusUpdateInterval: 0.025
-  HQOreBuffer: 6
+  HQOreBuffer: 10
   spawnAttempts: 10
   oreSpawnFactor: 1
   OreQuantityBase: 2000
@@ -3332,7 +3315,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 2
       reservedOuputBufferMultiplier: 4
@@ -3351,7 +3333,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  totalBatteryCapacity: 1000
 --- !u!1 &1589381902
 GameObject:
   m_ObjectHideFlags: 0
@@ -3379,7 +3360,7 @@ Transform:
   m_GameObject: {fileID: 1589381902}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 6, y: -2, z: 0}
+  m_LocalPosition: {x: 5, y: -2, z: 0}
   m_LocalScale: {x: 0.65, y: 0.65, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3455,7 +3436,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 0
       reservedOuputBufferMultiplier: 0
@@ -3474,9 +3454,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  totalVolumeCapacity: 10000
-  totalBatteryCapacity: 1000
-  insertionRate: 5
 --- !u!1 &1611820089
 GameObject:
   m_ObjectHideFlags: 0
@@ -4093,7 +4070,7 @@ Transform:
   m_GameObject: {fileID: 2002754849}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -2, z: 0}
+  m_LocalPosition: {x: 7, y: 0, z: 0}
   m_LocalScale: {x: 1.25, y: 1.25, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4169,7 +4146,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 0
       reservedOuputBufferMultiplier: 0
@@ -4188,11 +4164,6 @@ MonoBehaviour:
     backref: {fileID: 0}
     mobile: 0
     passThrough: 0
-  totalVolumeCapacity: 10000
-  totalBatteryCapacity: 10000
-  insertionRate: 5
-  powerBurnRate: 5
-  powerGainRate: 100
 --- !u!1 &2041591263
 GameObject:
   m_ObjectHideFlags: 0
@@ -4219,7 +4190,7 @@ Transform:
   m_GameObject: {fileID: 2041591263}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3, y: -2, z: 0}
+  m_LocalPosition: {x: 9, y: -2, z: 0}
   m_LocalScale: {x: 0.9, y: 0.9, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4470,7 +4441,6 @@ MonoBehaviour:
   core:
     battery:
       minimumStartingCapacity: 0
-      minimumHealth: 0
     resources:
       reservedInputBufferMultiplier: 2
       reservedOuputBufferMultiplier: 4
