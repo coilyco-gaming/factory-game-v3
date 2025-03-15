@@ -183,6 +183,22 @@ namespace Assets.Scripts.Components.Core
                         .Select(worldObject => worldObject.Value.GridPosition)
                         .ToList();
 
+            // If dispatch verb is deploy, filter out target locations
+            // that are already occupied by the same dispatch subject
+
+            if (this.receiverVerb == DispatchComponentCore.Verbs.Deploy.ToString())
+            {
+                targetLocations = targetLocations
+                    .Where(targetLocation =>
+                        !gameController
+                            .worldObjects[targetLocation]
+                            .Any(worldObject =>
+                                worldObject.Value.worldObjectType == this.receiverSubject
+                            )
+                    )
+                    .ToList();
+            }
+
             // Don't dispatch to target if there's already another dispatch
             // of the same type assigned to the same location
             List<DispatchComponentCore> dispatchers = gameController
@@ -304,7 +320,7 @@ namespace Assets.Scripts.Components.Tests
                     new Item(
                         "aluminumBars",
                         stackSize: 10,
-                        ingredients: new Dictionary<string, uint> { { "aluminumOre", 5 } }
+                        ingredients: new Dictionary<string, uint> { { "fakeOre", 5 } }
                     )
                 },
                 {
@@ -381,14 +397,14 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "aluminumOre"
+                "fakeOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "aluminumOre",
+                worldObjectType = "fakeOre",
             };
 
             WorldObjectCore receiverWorldObject = new(null)
@@ -425,6 +441,118 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
+        public void TestAssignTargetToMultipleLocations()
+        {
+            GameControllerCore gameController = new()
+            {
+                backref = new TestDispatchUnityGameController(),
+            };
+            WorldObjectCore HQWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+
+            BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            DispatchComponentCore dispatch = new(
+                HQWorldObject,
+                battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
+                "Deploy",
+                "MiningDrill",
+                "fakeOre"
+            );
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
+
+            WorldObjectCore targetWorldObject1 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(10, 10),
+                worldObjectType = "fakeOre",
+            };
+
+            WorldObjectCore targetWorldObject2 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(20, 20),
+                worldObjectType = "fakeOre",
+            };
+
+            WorldObjectCore receiverWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(2, 2),
+            };
+
+            ResourcesComponentCore receiverResources = new(new TestDispatchGameContent(), 100, 100);
+
+            DispatchReceiverComponentCore receiver = new(
+                receiverWorldObject,
+                receiverResources,
+                "Deploy",
+                "MiningDrill"
+            );
+            receiverWorldObject.dispatchReceivers = new() { receiver };
+            Assert.Null(receiver.dispatcher);
+
+            gameController.worldObjects[HQWorldObject.gridPosition] = new()
+            {
+                { "uuid-1", HQWorldObject },
+            };
+            gameController.worldObjects[targetWorldObject1.gridPosition] = new()
+            {
+                { "uuid-2a", targetWorldObject1 },
+            };
+            gameController.worldObjects[targetWorldObject2.gridPosition] = new()
+            {
+                { "uuid-2b", targetWorldObject2 },
+            };
+            gameController.worldObjects[receiverWorldObject.gridPosition] = new()
+            {
+                { "uuid-3", receiverWorldObject },
+            };
+
+            receiverResources.CreateResources("MiningDrill", 1);
+            receiver.Tick();
+            dispatch.Tick(gameController);
+            Assert.NotNull(receiver.dispatcher);
+
+            // Should assign to the closest target on the first run
+            Assert.Equal(targetWorldObject1.gridPosition, receiver.targetPosition);
+
+            // Simulate the reciever deploying its mining drill
+            dispatch.Tick(gameController);
+            gameController
+                .worldObjects[targetWorldObject1.gridPosition]
+                .Add(
+                    "uuid-2aD",
+                    new WorldObjectCore(null)
+                    {
+                        gridPosition = targetWorldObject1.gridPosition,
+                        worldObjectType = "MiningDrill",
+                    }
+                );
+            receiverResources.ConsumeResources("MiningDrill", 1);
+            receiver.Tick();
+            dispatch.Tick(gameController);
+            Assert.Equal("Retrieve", receiver.receiverVerb);
+            Assert.Null(receiver.targetPosition); // Should be null after deployment
+
+            // Simulate the reciever returning to the HQ to get a new drill
+            receiverResources.CreateResources("MiningDrill", 1);
+            receiver.Tick();
+            dispatch.Tick(gameController);
+            Assert.Equal("Deploy", receiver.receiverVerb);
+
+            // Then being sent back to the next target
+            receiver.Tick();
+            dispatch.Tick(gameController);
+            Assert.Equal(targetWorldObject2.gridPosition, receiver.targetPosition);
+        }
+
+        [Fact]
         public void TestNoDuplicateDispatches()
         {
             GameControllerCore gameController = new()
@@ -450,7 +578,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "aluminumOre"
+                "fakeOre"
             );
             HQWorldObject1.dispatchers = new List<DispatchComponentCore> { dispatch1 };
 
@@ -472,7 +600,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "aluminumOre"
+                "fakeOre"
             );
             HQWorldObject2.dispatchers = new List<DispatchComponentCore> { dispatch2 };
 
@@ -480,7 +608,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "aluminumOre",
+                worldObjectType = "fakeOre",
             };
 
             // receiver 1
@@ -570,7 +698,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "aluminumOre",
+                worldObjectType = "fakeOre",
             };
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -589,80 +717,6 @@ namespace Assets.Scripts.Components.Tests
                 alerts.First().Values.First()
             );
         }
-
-        // [Fact]
-        // public void TestDoesNotAssignWhenResourcesAlreadyPresent()
-        // {
-        //     GameControllerCore gameController = new()
-        //     {
-        //         backref = new TestDispatchUnityGameController(),
-        //     };
-        //     WorldObjectCore HQWorldObject = new(null)
-        //     {
-        //         GridPosition = new System.Numerics.Vector2(0, 0),
-        //     };
-
-        //     BatteryComponentCore battery = new(100, 100);
-        //     ResourcesComponentCore dispactherResources = new(
-        //         new TestDispatchGameContent(),
-        //         100,
-        //         100
-        //     );
-        //     dispactherResources.CreateResources("MiningDrill", 100);
-        //     DispatchComponentCore dispatch = new(
-        //         HQWorldObject,
-        //         battery,
-        //         dispactherResources,
-        //         new TestDispatchGameContent(),
-        //         DispatchComponentCore.Verbs.Collect.ToString(),
-        //         "MiningDrill",
-        //         DispatchComponentCore.Keywords.Me.ToString()
-        //     );
-        //     HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-        //     WorldObjectCore targetWorldObject = new(null)
-        //     {
-        //         GridPosition = new System.Numerics.Vector2(1, 1),
-        //         worldObjectType = "aluminumOre",
-        //     };
-
-        //     WorldObjectCore receiverWorldObject = new(null)
-        //     {
-        //         GridPosition = new System.Numerics.Vector2(2, 2),
-        //     };
-
-        //     ResourcesComponentCore receiverResources = new(new(), 100, 100);
-
-        //     DispatchReceiverComponentCore receiver = new(
-        //         receiverWorldObject,
-        //         receiverResources,
-        //         "Deploy",
-        //         "MiningDrill"
-        //     );
-        //     receiverWorldObject.dispatchReceivers = new() { receiver };
-        //     Assert.Null(receiver.dispatcher);
-
-        //     gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-        //     {
-        //         { "uuid-1", HQWorldObject },
-        //     };
-        //     gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-        //     {
-        //         { "uuid-2", targetWorldObject },
-        //     };
-        //     gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-        //     {
-        //         { "uuid-3", receiverWorldObject },
-        //     };
-
-        //     List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-        //     Assert.Null(receiver.dispatcher);
-        //     Assert.Equal(alerts.Count, 1);
-        //     Assert.Equal(
-        //         $"{dispatch.Description}: no more required",
-        //         alerts.First().Values.First()
-        //     );
-        // }
 
         [Fact]
         public void TestDoesNotAssignTargetWhenVerbMismatch()
@@ -685,7 +739,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "aluminumOre"
+                "fakeOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
@@ -697,7 +751,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore receiverWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(2, 2),
-                worldObjectType = "aluminumOre",
+                worldObjectType = "fakeOre",
             };
 
             ResourcesComponentCore receiverResources = new(new(), 100, 100);
@@ -754,7 +808,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "aluminumOre"
+                "fakeOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 

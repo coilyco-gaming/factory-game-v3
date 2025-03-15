@@ -20,7 +20,7 @@ namespace Assets.Scripts.UI
         private class StatusUILeftData
         {
             public string Position { get; set; }
-            public IEnumerable<StatusDataComponentCore> Status { get; set; }
+            public List<StatusDataComponentCore> Status { get; set; }
         }
 
         public void Instantiate()
@@ -33,14 +33,8 @@ namespace Assets.Scripts.UI
             System.Numerics.Vector2 position
         )
         {
-            // Nothing is here
-            if (worldObjects == null)
-            {
-                this.textMeshPro.SetText("");
-            }
-
             // Get the status data from each object
-            IEnumerable<StatusDataComponentCore> statusDataList = worldObjects
+            List<StatusDataComponentCore> statusDataList = worldObjects
                 ?.Where(worldObject => worldObject != null)
                 ?.Where(worldObject => worldObject.backref != null)
                 ?.Select(worldObject => worldObject.backref)
@@ -50,20 +44,13 @@ namespace Assets.Scripts.UI
             StatusUILeftData data = new()
             {
                 Position = position.ToString(),
-                Status = statusDataList,
+                Status =
+                    statusDataList != null && statusDataList.Count() != 0 ? statusDataList : null,
             };
 
-            if (statusDataList?.Count() == 0)
-            {
-                // If there are no statuses, clear the status
-                this.textMeshPro.SetText("");
-            }
-            else
-            {
-                // Serialize the status list to YAML, then update the status
-                string statusYaml = this.serializer.Serialize(data);
-                this.textMeshPro.SetText(statusYaml);
-            }
+            // Serialize the status list to YAML, then update the status
+            string statusYaml = this.serializer.Serialize(data);
+            this.textMeshPro.SetText(statusYaml);
         }
     }
 }

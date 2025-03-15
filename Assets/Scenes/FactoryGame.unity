@@ -178,13 +178,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <52, 51>\r\nStatus:\r\n- Alerts:\r\n  - 292: 'collect motors
-    from me: no empty adjacent tile'\r\n  - 292: 'deliver iron bars to me: no empty
-    adjacent tile'\r\n  - 292: 'deliver copper bars to me: no empty adjacent tile'\r\n 
-    Name: Factory\r\n  Energy: 22%\r\n  Dispatchers:\r\n  - collect motors from me\r\n 
-    - deliver iron bars to me\r\n  - deliver copper bars to me\r\n  Resources:\r\n   
-    Copper Bars: 79\r\n  Info:\r\n    Outputs: motors\r\n    Progress: 0%\r\n   
-    Storage Volume: 1%\r\n"
+  m_text: 'Position: <53, 51>
+
+'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2877,12 +2873,9 @@ MonoBehaviour:
     - Name: random
       Entry: 6
       Data: 
-    - Name: spawnQueueItems
-      Entry: 6
-      Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
-  tickFrequency: 0.2
+  tickFrequency: 0.1
   randomSeed: 123124
   readyForTicks: 1
   lastTick: 52.85319
@@ -2894,8 +2887,8 @@ MonoBehaviour:
   HQOreBuffer: 10
   spawnAttempts: 10
   oreSpawnFactor: 1
-  OreQuantityBase: 2000
-  OreQuantityRange: 1000
+  OreQuantityBase: 500
+  OreQuantityRange: 250
 --- !u!223 &1318506233
 Canvas:
   m_ObjectHideFlags: 0

@@ -24,7 +24,6 @@ namespace Assets.Scripts.FactoryGame
         public float oreSpawnFactor = 0.5f;
         public uint OreQuantityBase = 2000;
         public uint OreQuantityRange = 1000;
-        public List<SpawnQueueItem> spawnQueueItems;
         private TextMeshProUGUI pauseTextComponent;
         private StatusUILeft statusUILeftComponent;
         private StatusUIRight statusUIRightComponent;
@@ -89,7 +88,7 @@ namespace Assets.Scripts.FactoryGame
                     // Leftmost trucks (x=-1)
                     new(
                         type: "Truck",
-                        x: -1,
+                        x: 1,
                         y: 0,
                         xyCentered: true,
                         targetType: "Deliver",
@@ -97,7 +96,7 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(
                         type: "Truck",
-                        x: -1,
+                        x: 1,
                         y: 1,
                         xyCentered: true,
                         targetType: "Deliver",
@@ -105,7 +104,7 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(
                         type: "Truck",
-                        x: -1,
+                        x: 1,
                         y: 2,
                         xyCentered: true,
                         targetType: "Deliver",
@@ -113,25 +112,55 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(
                         type: "Truck",
-                        x: -1,
+                        x: 1,
                         y: 3,
                         xyCentered: true,
                         targetType: "Deliver",
                         targetSubType: "Coal"
                     ),
-                    // Coal and power lines (x=0)
+                    // Coal trucks (y=3)
+                    new(
+                        type: "Truck",
+                        x: 2,
+                        y: 3,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "Coal"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 3,
+                        y: 3,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "Coal"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 4,
+                        y: 3,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "Coal"
+                    ),
+                    // Coal plant
                     new(
                         type: "CoalPlant",
                         targetType: "Coal",
-                        x: 0,
-                        y: 0,
+                        x: 2,
+                        y: 2,
                         xyCentered: true,
                         resources: new Dictionary<string, uint> { { "Coal", 1000 } }
                     ),
-                    new(type: "PowerLines", x: 0, y: 1, xyCentered: true),
-                    new(type: "PowerLines", x: 0, y: 2, xyCentered: true),
+                    new(
+                        type: "CoalPlant",
+                        targetType: "Coal",
+                        x: 4,
+                        y: 2,
+                        xyCentered: true,
+                        resources: new Dictionary<string, uint> { { "Coal", 1000 } }
+                    ),
                     // Stone Mining Drill & Foundries (y=0)
-                    new(type: "MiningDrill", x: 1, y: 0, xyCentered: true, targetType: "Stone"),
                     new(
                         type: "Foundry",
                         x: 2,
@@ -158,20 +187,10 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     // Factory layer 1 (y=1), left to right product order:
                     // building materials, motors, circuits, frames
-                    new(
-                        type: "Factory",
-                        x: 1,
-                        y: 1,
-                        xyCentered: true,
-                        targetType: "BuildingMaterials"
-                    ),
                     new(type: "Factory", x: 2, y: 1, xyCentered: true, targetType: "Motors"),
-                    new(type: "Factory", x: 3, y: 1, xyCentered: true, targetType: "Circuits"),
                     new(type: "Factory", x: 4, y: 1, xyCentered: true, targetType: "Frames"),
                     // Factory layer 2 (y=2), left to right product order:
                     // coal plant, factory, mining drills, power lines
-                    new(type: "Factory", x: 1, y: 2, xyCentered: true, targetType: "CoalPlant"),
-                    new(type: "Factory", x: 2, y: 2, xyCentered: true, targetType: "Factory"),
                     new(
                         type: "Factory",
                         x: 3,
@@ -180,14 +199,13 @@ namespace Assets.Scripts.FactoryGame
                         targetType: "MiningDrill",
                         resources: new Dictionary<string, uint> { { "MiningDrill", 10 } }
                     ),
-                    new(type: "Factory", x: 4, y: 2, xyCentered: true, targetType: "PowerLines"),
                     // Rightmost trucks (x=5)
                     new(
                         type: "Truck",
                         x: 5,
                         y: 0,
                         xyCentered: true,
-                        targetType: "Retrieve",
+                        targetType: "Deploy",
                         targetSubType: "MiningDrill"
                     ),
                     new(
@@ -195,7 +213,7 @@ namespace Assets.Scripts.FactoryGame
                         x: 5,
                         y: 1,
                         xyCentered: true,
-                        targetType: "Retrieve",
+                        targetType: "Deploy",
                         targetSubType: "MiningDrill"
                     ),
                     new(
@@ -203,7 +221,7 @@ namespace Assets.Scripts.FactoryGame
                         x: 5,
                         y: 2,
                         xyCentered: true,
-                        targetType: "Retrieve",
+                        targetType: "Deploy",
                         targetSubType: "MiningDrill"
                     ),
                     new(
@@ -211,7 +229,15 @@ namespace Assets.Scripts.FactoryGame
                         x: 5,
                         y: 3,
                         xyCentered: true,
-                        targetType: "Retrieve",
+                        targetType: "Deploy",
+                        targetSubType: "MiningDrill"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 5,
+                        y: 4,
+                        xyCentered: true,
+                        targetType: "Deploy",
                         targetSubType: "MiningDrill"
                     ),
                 }

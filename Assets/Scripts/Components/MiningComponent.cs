@@ -46,7 +46,14 @@ namespace Assets.Scripts.Components.Core
             // If the target can manifest, then just create the resource and return
             if (this.TargetItem.CreateFromNothing)
             {
-                this.worldObject.resources.CreateResources(this.targetType, (uint)this.MiningSpeed);
+                try
+                {
+                    this.worldObject.resources.CreateResources(
+                        this.targetType,
+                        (uint)this.MiningSpeed
+                    );
+                }
+                catch (ResourcesComponentCore.ResourceException) { }
                 return new();
             }
 
@@ -97,15 +104,6 @@ namespace Assets.Scripts.Components.Core
                             "no resources to mine on target object"
                         },
                     },
-                };
-            }
-
-            // Check if ore has resources
-            if (oreResources.resources.GetValueOrDefault(this.targetType) < this.MiningSpeed)
-            {
-                return new List<Dictionary<uint, string>>
-                {
-                    new() { { gameController.backref.TickCount, "not enough ore to mine" } },
                 };
             }
 

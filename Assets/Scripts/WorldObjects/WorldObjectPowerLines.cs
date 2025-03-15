@@ -8,7 +8,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectPowerLines : WorldObject
     {
-        private static uint totalBatteryCapacity = 1000;
+        private uint totalBatteryCapacity = 1000;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -21,7 +21,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(spawnQueueItem, gameContent);
             this.core.passThrough = true;
-            this.core.battery = new(capacity: WorldObjectPowerLines.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()

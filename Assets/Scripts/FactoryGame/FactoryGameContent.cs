@@ -201,6 +201,7 @@ namespace Assets.Scripts.Unity
                     Spawnables.PowerLines.ToString(),
                     new Item(
                         Spawnables.PowerLines.ToString(),
+                        stackSize: 10,
                         canSpawnGameObject: true,
                         createFromNothing: true
                     )

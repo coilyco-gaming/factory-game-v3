@@ -10,9 +10,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFoundry : WorldObject
     {
-        private static uint totalVolumeCapacity = 10000;
-        private static uint totalBatteryCapacity = 1000;
-        private static uint insertionRate = 5;
+        private uint totalVolumeCapacity = 10000;
+        private uint totalBatteryCapacity = 1000;
+        private uint insertionRate = 5;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -38,13 +38,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: WorldObjectFoundry.totalVolumeCapacity
+                volumeCapacity: this.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: WorldObjectFoundry.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             List<string> ingredients = gameContent
                 .Items[this.core.targetType]
@@ -54,12 +54,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (string ingredient in ingredients)
             {
                 this.core.resourceInserters.Add(
-                    new(
-                        this.core.battery,
-                        this.core.resources,
-                        ingredient,
-                        WorldObjectFoundry.insertionRate
-                    )
+                    new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
                 );
             }
 

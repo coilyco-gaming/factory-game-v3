@@ -194,7 +194,11 @@ namespace Assets.Scripts.Components.Core
 
         public void CreateResources(string resourceName, uint amountToCreate)
         {
-            GameContent.Item item = this.GameContent.Items[resourceName];
+            GameContent.Item item =
+                (this?.GameContent?.Items[resourceName])
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    $"No item found for {resourceName}"
+                );
 
             uint originalAmountToCreate = amountToCreate;
             uint weightToCreate = amountToCreate * item.Weight;
@@ -264,7 +268,11 @@ namespace Assets.Scripts.Components.Core
 
             uint availableResources = this.resources.GetValueOrDefault(resourceName ?? "", (uint)0);
 
-            GameContent.Item item = this.GameContent.Items[resourceName];
+            GameContent.Item item =
+                (this?.GameContent?.Items[resourceName])
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    $"No item found for {resourceName}"
+                );
 
             uint originalAmountToGive = amountToGive;
             uint weightToGive = amountToGive * item.Weight;
@@ -385,7 +393,11 @@ namespace Assets.Scripts.Components.Core
                 (uint)0
             );
 
-            GameContent.Item item = this.GameContent.Items[resourceName];
+            GameContent.Item item =
+                (this?.GameContent?.Items[resourceName])
+                ?? throw new GameControllerCore.MisconfigurationException(
+                    $"No item found for {resourceName}"
+                );
 
             uint originalAmountToGive = amountToRetrieve;
             uint weightToGive = amountToRetrieve * item.Weight;

@@ -10,10 +10,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectMiningDrill : WorldObject
     {
-        private static uint totalVolumeCapacity = 5000;
-        private static uint totalBatteryCapacity = 1000;
-        private static int miningSpeed = 5;
-        private static int miningEnergyCost = 5;
+        private uint totalVolumeCapacity = 1000;
+        private uint totalBatteryCapacity = 1000;
+        private int miningSpeed = 5;
+        private int miningEnergyCost = 5;
         public override float ZIndex => 2; // TODO: make this a constant
 
         public override StatusDataComponentCore StatusData =>
@@ -40,12 +40,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: WorldObjectMiningDrill.totalVolumeCapacity
+                volumeCapacity: this.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(capacity: WorldObjectMiningDrill.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 // TODO: adjacent stone mining drill if necessary
@@ -66,8 +66,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core,
                 gameContent,
                 this.core.targetType,
-                WorldObjectMiningDrill.miningSpeed,
-                WorldObjectMiningDrill.miningEnergyCost
+                this.miningSpeed,
+                this.miningEnergyCost
             );
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

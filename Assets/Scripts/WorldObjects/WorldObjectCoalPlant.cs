@@ -10,11 +10,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectCoalPlant : WorldObject
     {
-        private static uint totalVolumeCapacity = 10000;
-        private static uint totalBatteryCapacity = 10000;
-        private static uint powerBurnRate = 4;
-        private static uint powerGainRate = 160;
-        private static uint insertionRate = 20;
+        private uint totalVolumeCapacity = 10000;
+        private uint totalBatteryCapacity = 10000;
+        private uint powerBurnRate = 4;
+        private uint powerGainRate = 160;
+        private uint insertionRate = 20;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -35,20 +35,20 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
+                volumeCapacity: this.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             this.core.power = new PowerComponentCore(
                 this.core.battery,
                 this.core.resources,
                 this.core.targetType,
-                WorldObjectCoalPlant.powerBurnRate,
-                WorldObjectCoalPlant.powerGainRate
+                this.powerBurnRate,
+                this.powerGainRate
             );
 
             this.core.resourceInserters = new()
@@ -57,7 +57,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.battery,
                     this.core.resources,
                     this.core.targetType,
-                    WorldObjectCoalPlant.insertionRate
+                    this.insertionRate
                 ),
             };
 

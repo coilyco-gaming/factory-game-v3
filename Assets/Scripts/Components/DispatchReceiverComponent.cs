@@ -50,50 +50,51 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick()
         {
+            bool hasTargetItem =
+                this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
             // If your job is to retrieve something and you have it, switch to deploy
             if (this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString())
             {
-                bool hasReceiverSubject =
-                    this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
-                if (hasReceiverSubject)
+                if (hasTargetItem)
                 {
-                    if (this.dispatcher != null)
-                    {
-                        this.dispatcher.receiver = null;
-                    }
-                    this.dispatcher = null;
-                    this.targetPosition = null;
-                    this.receiverVerb = DispatchComponentCore.Verbs.Deploy.ToString();
+                    this.SwapTo(DispatchComponentCore.Verbs.Deploy);
                 }
             }
-            // If your job is to Deliver and you have no more of the target item, switch to collect
-            if (this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString())
+            // If your job is to deploy and you have no more of the target item, switch to retrieve
+            if (this.receiverVerb == DispatchComponentCore.Verbs.Deploy.ToString())
             {
-                if (this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) == 0)
+                if (!hasTargetItem)
                 {
-                    if (this.dispatcher != null)
-                    {
-                        this.dispatcher.receiver = null;
-                    }
-                    this.dispatcher = null;
-                    this.targetPosition = null;
-                    this.receiverVerb = DispatchComponentCore.Verbs.Collect.ToString();
+                    this.SwapTo(DispatchComponentCore.Verbs.Retrieve);
                 }
             }
             // If your job is to collect and you have the target item, switch to Deliver
             if (this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString())
             {
-                if (this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0)
+                if (hasTargetItem)
                 {
-                    if (this.dispatcher != null)
-                    {
-                        this.dispatcher.receiver = null;
-                    }
-                    this.dispatcher = null;
-                    this.targetPosition = null;
-                    this.receiverVerb = DispatchComponentCore.Verbs.Deliver.ToString();
+                    this.SwapTo(DispatchComponentCore.Verbs.Deliver);
                 }
             }
+            // If your job is to Deliver and you have no more of the target item, switch to collect
+            if (this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString())
+            {
+                if (!hasTargetItem)
+                {
+                    this.SwapTo(DispatchComponentCore.Verbs.Collect);
+                }
+            }
+        }
+
+        private void SwapTo(DispatchComponentCore.Verbs verb)
+        {
+            if (this.dispatcher != null)
+            {
+                this.dispatcher.receiver = null;
+            }
+            this.dispatcher = null;
+            this.targetPosition = null;
+            this.receiverVerb = verb.ToString();
         }
     }
 }
