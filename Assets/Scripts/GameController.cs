@@ -388,7 +388,7 @@ namespace Assets.Scripts.Unity
             // --- Movement is a special case in that is needs to act on both the
             // --- WorldObjectCore and the WorldObject. That is, `core` and `backref`.
             WorldObjectCore worldObjectCore = movementQueueItem.worldObject;
-            WorldObject worldObject = movementQueueItem.worldObject.backref as WorldObject;
+            WorldObject worldObject = movementQueueItem.worldObject.backref;
 
             // --- Put the object in the new position, position indexes on `core`.
             this.core.worldObjects[movementQueueItem.newPosition][worldObject.core.guid] =
@@ -424,7 +424,7 @@ namespace Assets.Scripts.Unity
             }
 
             // Delete the thing
-            // Destroy(worldObject.gameObject);
+            Destroy(worldObject.backref.gameObject);
             this.core.worldObjects[deletionQueueItem.position]
                 .Remove(deletionQueueItem.worldObject.guid);
             deletionQueueItem.worldObject = null;

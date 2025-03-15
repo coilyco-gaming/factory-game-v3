@@ -22,9 +22,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                Receivers = this
-                    .core.dispatchReceivers.Select(receiver => receiver.Description)
-                    .ToList(),
+                // Receivers = this
+                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
+                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {

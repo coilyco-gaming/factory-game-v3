@@ -61,6 +61,18 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick()
         {
+            // Only get resources if we are in retrieve or collect mode
+            bool weAreInRetrieveMode =
+                this.dispatchReceiver.receiverVerb
+                == DispatchComponentCore.Verbs.Retrieve.ToString();
+            bool weAreInCollectMode =
+                this.dispatchReceiver.receiverVerb
+                == DispatchComponentCore.Verbs.Collect.ToString();
+            if (!weAreInRetrieveMode && !weAreInCollectMode)
+            {
+                return;
+            }
+
             // Only retrieve resources if we are adjacent to the dispatcher
             bool dispatcherIsAdjacent =
                 this.dispatchReceiver.targetPosition != null

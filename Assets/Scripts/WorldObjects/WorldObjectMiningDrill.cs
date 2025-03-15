@@ -85,6 +85,23 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
             this.core.Alerts = this.core.mining.Tick(gameController.core);
             this.core.powerLine.Tick(gameController.core);
+
+            // If no ore world object is on our position
+            bool oreAtPosition =
+                gameController
+                    .core.worldObjects.GetValueOrDefault(this.GridPosition)
+                    ?.Any(worldObject => worldObject.Value.backref is WorldObjectOre ore) ?? false;
+
+            // If our resources are empty
+            bool resourcesEmpty = !this.core.resources.HasResources;
+
+            // Then delete the mining drill
+            if (oreAtPosition && resourcesEmpty)
+            {
+                gameController.QueueForDeletion(
+                    new DeletionQueueItem(this.core, this.GridPosition)
+                );
+            }
         }
     }
 }
