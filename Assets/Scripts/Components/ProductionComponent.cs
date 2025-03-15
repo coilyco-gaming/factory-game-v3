@@ -92,6 +92,14 @@ namespace Assets.Scripts.Components.Core
             {
                 inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
             }
+
+            if (!this.ProductItem.Manifests && this.ProductItem.Ingredients.Count == 0)
+            {
+                throw new GameControllerCore.MisconfigurationException(
+                    @$"Production component requires a product with ingredients.
+                    The product {this.Product} has no ingredients and is not a manifester."
+                );
+            }
         }
 
         public void Produce()
@@ -184,6 +192,7 @@ namespace Assets.Scripts.Components.Tests
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
+                { "air", new Item("air", stackSize: 100, manifests: true) },
                 { "wood", new Item("wood", stackSize: 100) },
                 { "nails", new Item("nails", stackSize: 100) },
                 {
@@ -324,35 +333,6 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestCraftsNailsWhenWoodAlreadyPresentAndNoIngredients()
-        {
-            ResourcesComponentCore resources = new(
-                new TestProductionGameContent(),
-                weightCapacity: 500,
-                volumeCapacity: 500
-            );
-            resources.CreateResources("wood", 5);
-
-            BatteryComponentCore battery = new(100, 100);
-            List<ResourceInserterComponentCore> inserters = new() { };
-
-            Assert.Equal(5u, resources.resources["wood"]);
-            Assert.Equal(0u, resources.resources.GetValueOrDefault("nails", 0u));
-
-            ProductionComponentCore production = new(
-                new TestProductionGameContent(),
-                resources,
-                battery,
-                inserters,
-                "nails"
-            );
-            production.Produce();
-
-            Assert.Equal(5u, resources.resources["wood"]);
-            Assert.Equal(1u, resources.resources["nails"]);
-        }
-
-        [Fact]
         public void TestOutputFilled()
         {
             ResourcesComponentCore resources = new(
@@ -453,6 +433,48 @@ namespace Assets.Scripts.Components.Tests
             Assert.Equal(70u, battery.Energy);
             Assert.Equal(0u, resources.resources["wood"]);
             Assert.Equal(1u, resources.resources["planks"]);
+        }
+
+        [Fact]
+        public void TestManifests()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+
+            ProductionComponentCore production = new(
+                new TestProductionGameContent(),
+                resources,
+                new(100, 100),
+                new(),
+                "air"
+            );
+
+            production.Produce();
+            Assert.Equal(1u, resources.resources.GetValueOrDefault("air", 0u));
+        }
+
+        [Fact]
+        public void TestOnlyManifestsNotBaseProduct()
+        {
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+
+            Assert.Throws<GameControllerCore.MisconfigurationException>(
+                () =>
+                    new ProductionComponentCore(
+                        new TestProductionGameContent(),
+                        resources,
+                        new(100, 100),
+                        new(),
+                        "wood"
+                    )
+            );
         }
     }
 }

@@ -9,12 +9,13 @@ namespace Assets.Scripts.Core
         public class Item
         {
             public string Name;
-            public uint Weight;
-            public uint Volume;
-            public uint CraftTime;
-            public uint StackSize;
+            public uint Weight = 1;
+            public uint Volume = 1;
+            public uint CraftTime = 1;
+            public uint StackSize = 1;
             public Dictionary<string, uint> Ingredients;
-            public bool Spawnable;
+            public bool Spawnable = false; // Can the item be spawned in the world?
+            public bool Manifests = false; // Can the object be created from nothing?
 
             public Item(
                 string name,
@@ -23,7 +24,8 @@ namespace Assets.Scripts.Core
                 uint craftTime = 1,
                 uint stackSize = 1,
                 Dictionary<string, uint> ingredients = null,
-                bool spawnable = false
+                bool spawnable = false,
+                bool manifests = false
             )
             {
                 this.Name = name;
@@ -33,6 +35,7 @@ namespace Assets.Scripts.Core
                 this.StackSize = stackSize;
                 this.Ingredients = ingredients ?? new();
                 this.Spawnable = spawnable;
+                this.Manifests = manifests;
             }
         }
     }

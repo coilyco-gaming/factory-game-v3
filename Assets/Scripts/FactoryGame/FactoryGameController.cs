@@ -131,14 +131,7 @@ namespace Assets.Scripts.FactoryGame
                     new(type: "PowerLines", x: 0, y: 1, xyCentered: true),
                     new(type: "PowerLines", x: 0, y: 2, xyCentered: true),
                     // Stone Mining Drill & Foundries (y=0)
-                    new(
-                        type: "MiningDrill",
-                        x: 1,
-                        y: 0,
-                        xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "Stone", 5000 } },
-                        targetType: "Stone"
-                    ),
+                    new(type: "MiningDrill", x: 1, y: 0, xyCentered: true, targetType: "Stone"),
                     new(
                         type: "Foundry",
                         x: 2,

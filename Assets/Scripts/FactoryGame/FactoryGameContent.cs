@@ -23,7 +23,7 @@ namespace Assets.Scripts.Unity
                 },
                 {
                     Resources.Stone.ToString(), //
-                    new Item(Resources.Stone.ToString(), stackSize: 200)
+                    new Item(Resources.Stone.ToString(), stackSize: 200, manifests: true)
                 },
                 // Products
                 {
@@ -199,18 +199,7 @@ namespace Assets.Scripts.Unity
                 },
                 {
                     Spawnables.PowerLines.ToString(),
-                    new Item(
-                        Spawnables.PowerLines.ToString(),
-                        weight: 50,
-                        volume: 25,
-                        craftTime: 5,
-                        ingredients: new Dictionary<string, uint>
-                        {
-                            { Products.Frames.ToString(), 4 },
-                            { Products.Circuits.ToString(), 1 },
-                        },
-                        spawnable: true
-                    )
+                    new Item(Spawnables.PowerLines.ToString(), spawnable: true, manifests: true)
                 },
             };
 
