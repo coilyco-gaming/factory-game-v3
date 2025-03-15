@@ -8,7 +8,7 @@ namespace Assets.Scripts.Components.Core
     {
         // Example descriptions:
         //  - Retrieve power lines from me
-        //  - Deploy mining drill to iron ore
+        //  - Deploy mining drill to aluminum ore
         //  - Collect coal to me
         private string DescriptionToOrFrom =>
             this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
@@ -85,28 +85,6 @@ namespace Assets.Scripts.Components.Core
             }
 
             // If the dispatch subject is an item,
-            // then skip Collect to me dispatch if I have more than a stack of the item
-            // TODO: check if you can't fit any more
-            if (
-                this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
-                && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                && this.resources.resources.GetValueOrDefault(this.receiverSubject)
-                    >= this.gameContent.Items[this.receiverSubject].StackSize
-            )
-            {
-                return new List<Dictionary<uint, string>>
-                {
-                    new()
-                    {
-                        {
-                            gameController.backref.TickCount,
-                            $"{this.Description}: no more required"
-                        },
-                    },
-                };
-            }
-
-            // If the dispatch subject is an item,
             // then skip retrieve from me dispatch if I have less than a stack of the item
             if (
                 this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
@@ -179,9 +157,9 @@ namespace Assets.Scripts.Components.Core
             //    whose world object type match the receiver object
             //
             // Examples:
-            //  - Deploy mining drill to iron ore
-            //    targetLocations = < iron ore grid positions >
-            //  - Deliver iron ore to me, Collect iron ore from me
+            //  - Deploy mining drill to aluminum ore
+            //    targetLocations = < aluminum ore grid positions >
+            //  - Deliver aluminum ore to me, Collect aluminum ore from me
             //    targetLocations = < current world object grid position >
             List<System.Numerics.Vector2> targetLocations =
                 this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
@@ -322,11 +300,11 @@ namespace Assets.Scripts.Components.Tests
             new()
             {
                 {
-                    "IronBars",
+                    "aluminumBars",
                     new Item(
-                        "IronBars",
+                        "aluminumBars",
                         stackSize: 10,
-                        ingredients: new Dictionary<string, uint> { { "IronOre", 5 } }
+                        ingredients: new Dictionary<string, uint> { { "aluminumOre", 5 } }
                     )
                 },
                 {
@@ -335,7 +313,7 @@ namespace Assets.Scripts.Components.Tests
                         "MiningDrill",
                         stackSize: 1,
                         craftTime: 3,
-                        ingredients: new Dictionary<string, uint> { { "IronBars", 5 } }
+                        ingredients: new Dictionary<string, uint> { { "aluminumBars", 5 } }
                     )
                 },
             };
@@ -403,14 +381,14 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "IronOre"
+                "aluminumOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "IronOre",
+                worldObjectType = "aluminumOre",
             };
 
             WorldObjectCore receiverWorldObject = new(null)
@@ -472,7 +450,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "IronOre"
+                "aluminumOre"
             );
             HQWorldObject1.dispatchers = new List<DispatchComponentCore> { dispatch1 };
 
@@ -494,7 +472,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "IronOre"
+                "aluminumOre"
             );
             HQWorldObject2.dispatchers = new List<DispatchComponentCore> { dispatch2 };
 
@@ -502,7 +480,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "IronOre",
+                worldObjectType = "aluminumOre",
             };
 
             // receiver 1
@@ -592,7 +570,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore targetWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "IronOre",
+                worldObjectType = "aluminumOre",
             };
 
             gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
@@ -612,79 +590,79 @@ namespace Assets.Scripts.Components.Tests
             );
         }
 
-        [Fact]
-        public void TestDoesNotAssignWhenResourcesAlreadyPresent()
-        {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
+        // [Fact]
+        // public void TestDoesNotAssignWhenResourcesAlreadyPresent()
+        // {
+        //     GameControllerCore gameController = new()
+        //     {
+        //         backref = new TestDispatchUnityGameController(),
+        //     };
+        //     WorldObjectCore HQWorldObject = new(null)
+        //     {
+        //         GridPosition = new System.Numerics.Vector2(0, 0),
+        //     };
 
-            BatteryComponentCore battery = new(100, 100);
-            ResourcesComponentCore dispactherResources = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            dispactherResources.CreateResources("MiningDrill", 100);
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                DispatchComponentCore.Verbs.Collect.ToString(),
-                "MiningDrill",
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
+        //     BatteryComponentCore battery = new(100, 100);
+        //     ResourcesComponentCore dispactherResources = new(
+        //         new TestDispatchGameContent(),
+        //         100,
+        //         100
+        //     );
+        //     dispactherResources.CreateResources("MiningDrill", 100);
+        //     DispatchComponentCore dispatch = new(
+        //         HQWorldObject,
+        //         battery,
+        //         dispactherResources,
+        //         new TestDispatchGameContent(),
+        //         DispatchComponentCore.Verbs.Collect.ToString(),
+        //         "MiningDrill",
+        //         DispatchComponentCore.Keywords.Me.ToString()
+        //     );
+        //     HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "IronOre",
-            };
+        //     WorldObjectCore targetWorldObject = new(null)
+        //     {
+        //         GridPosition = new System.Numerics.Vector2(1, 1),
+        //         worldObjectType = "aluminumOre",
+        //     };
 
-            WorldObjectCore receiverWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
+        //     WorldObjectCore receiverWorldObject = new(null)
+        //     {
+        //         GridPosition = new System.Numerics.Vector2(2, 2),
+        //     };
 
-            ResourcesComponentCore receiverResources = new(new(), 100, 100);
+        //     ResourcesComponentCore receiverResources = new(new(), 100, 100);
 
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                receiverResources,
-                "Deploy",
-                "MiningDrill"
-            );
-            receiverWorldObject.dispatchReceivers = new() { receiver };
-            Assert.Null(receiver.dispatcher);
+        //     DispatchReceiverComponentCore receiver = new(
+        //         receiverWorldObject,
+        //         receiverResources,
+        //         "Deploy",
+        //         "MiningDrill"
+        //     );
+        //     receiverWorldObject.dispatchReceivers = new() { receiver };
+        //     Assert.Null(receiver.dispatcher);
 
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-            {
-                { "uuid-3", receiverWorldObject },
-            };
+        //     gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
+        //     {
+        //         { "uuid-1", HQWorldObject },
+        //     };
+        //     gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
+        //     {
+        //         { "uuid-2", targetWorldObject },
+        //     };
+        //     gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
+        //     {
+        //         { "uuid-3", receiverWorldObject },
+        //     };
 
-            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-            Assert.Null(receiver.dispatcher);
-            Assert.Equal(alerts.Count, 1);
-            Assert.Equal(
-                $"{dispatch.Description}: no more required",
-                alerts.First().Values.First()
-            );
-        }
+        //     List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
+        //     Assert.Null(receiver.dispatcher);
+        //     Assert.Equal(alerts.Count, 1);
+        //     Assert.Equal(
+        //         $"{dispatch.Description}: no more required",
+        //         alerts.First().Values.First()
+        //     );
+        // }
 
         [Fact]
         public void TestDoesNotAssignTargetWhenVerbMismatch()
@@ -707,7 +685,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "IronOre"
+                "aluminumOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 
@@ -719,7 +697,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore receiverWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(2, 2),
-                worldObjectType = "IronOre",
+                worldObjectType = "aluminumOre",
             };
 
             ResourcesComponentCore receiverResources = new(new(), 100, 100);
@@ -776,7 +754,7 @@ namespace Assets.Scripts.Components.Tests
                 new TestDispatchGameContent(),
                 "Deploy",
                 "MiningDrill",
-                "IronOre"
+                "aluminumOre"
             );
             HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
 

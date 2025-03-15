@@ -4,6 +4,7 @@ using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
+using UnityEngine;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
@@ -101,6 +102,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             // Then delete the mining drill
             if (oreAtPosition && resourcesEmpty)
             {
+                Debug.Log(
+                    $"Deleting mining drill at {this.GridPosition} because no ore is present and resources are empty."
+                );
                 gameController.QueueForDeletion(
                     new DeletionQueueItem(this.core, this.GridPosition)
                 );

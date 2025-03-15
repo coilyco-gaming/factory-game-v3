@@ -51,13 +51,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     this.core.battery,
                     this.core.resources,
-                    FactoryGameContent.Resources.Coal.ToString(),
+                    this.core.targetType,
                     this.insertionRate
                 ),
                 new(
                     this.core.battery,
                     this.core.resources,
-                    FactoryGameContent.Resources.Coal.ToString(),
+                    this.core.targetType,
                     this.insertionRate
                 ),
             };
@@ -65,7 +65,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.power = new PowerComponentCore(
                 this.core.battery,
                 this.core.resources,
-                FactoryGameContent.Resources.Coal.ToString(),
+                this.core.targetType,
                 this.powerBurnRate,
                 this.powerGainRate
             );
@@ -82,7 +82,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     // ...mining drill...
                     FactoryGameContent.Spawnables.MiningDrill.ToString(),
                     // ...to coal.
-                    FactoryGameContent.Resources.Coal.ToString()
+                    this.core.targetType
                 ),
                 new(
                     this.core,
@@ -92,21 +92,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...
-                    FactoryGameContent.Resources.Coal.ToString(),
+                    this.core.targetType,
                     // ...to me.
                     DispatchComponentCore.Keywords.Me.ToString()
                 ),
             };
-
-            // this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>()
-            // {
-            //     new(
-            //         this.core,
-            //         this.core.resources,
-            //         DispatchComponentCore.Verbs.Stockpile.ToString(),
-            //         FactoryGameContent.Resources.Coal.ToString()
-            //     ),
-            // };
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()

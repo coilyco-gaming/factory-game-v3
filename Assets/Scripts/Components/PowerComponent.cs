@@ -186,7 +186,7 @@ namespace Assets.Scripts.Components.Tests
                 200
             );
             power.GeneratePower();
-            Assert.Equal(99.9f, battery.Energy);
+            Assert.Equal(100, battery.Energy);
         }
 
         [Fact]

@@ -9,7 +9,6 @@ namespace Assets.Scripts.Components.Core
     public class BatteryComponentCore
     {
         public uint minimumStartingCapacity = 5; // The electrical capacity of empty air... or something. This is really here to prevent infinite charging and NaNs.
-        public double minimumHealth = 0.10f;
         private float energy = 0;
 
         public float Energy
@@ -17,7 +16,6 @@ namespace Assets.Scripts.Components.Core
             get => this.energy >= 0 ? this.energy : 0;
             set
             {
-                this.Degrade();
                 bool isNegativeAndDecreasing = value < 0 && value < this.energy;
                 bool isOverCapacityAndIncreasing = value > this.Capacity && value > this.energy;
                 if (isNegativeAndDecreasing)
@@ -35,7 +33,6 @@ namespace Assets.Scripts.Components.Core
         }
 
         public float Capacity { get; set; } = 0;
-        public float StartingCapaity { get; set; } = 0;
 
         public double PercentEnergy =>
             this.Capacity != 0 //
@@ -43,15 +40,6 @@ namespace Assets.Scripts.Components.Core
                 : 0;
 
         public string PercentEnergyStatus => $"{this.PercentEnergy * 100}%";
-
-        public double Health =>
-            this.StartingCapaity != 0 //
-                ? Math.Round((double)(this.Capacity / (double)this.StartingCapaity), 2)
-                : 0;
-
-        public bool Healthy => this.Health > this.minimumHealth * 2;
-
-        public string HealthStatus => this.Healthy ? "Healthy" : "Unhealthy";
 
         public class BatteryCapacityException : Exception
         {
@@ -68,7 +56,6 @@ namespace Assets.Scripts.Components.Core
                 this.Capacity < this.minimumStartingCapacity
                     ? this.minimumStartingCapacity
                     : this.Capacity;
-            this.StartingCapaity = this.Capacity;
             this.energy = startingEnergy;
         }
 
@@ -106,15 +93,6 @@ namespace Assets.Scripts.Components.Core
                     battery.Energy = battery.Capacity * targetPercentage;
                 }
                 catch (BatteryCapacityException) { }
-            }
-        }
-
-        private void Degrade()
-        {
-            // Batteries degrade over time, reducing their charging capacity.
-            if (this.Health > this.minimumHealth)
-            {
-                this.Capacity -= 0.1f;
             }
         }
     }
@@ -303,7 +281,7 @@ namespace Assets.Scripts.Components.Tests
             battery2.Balance(new WorldObjectCore(null), gameController);
 
             Assert.Equal(0u, (uint)battery1.Energy);
-            Assert.Equal(99u, (uint)battery2.Energy);
+            Assert.Equal(100u, (uint)battery2.Energy);
         }
 
         [Fact]
@@ -348,31 +326,6 @@ namespace Assets.Scripts.Components.Tests
             BatteryComponentCore battery = new(0, 0);
             Assert.Equal(5u, battery.Capacity);
             Assert.Equal(0, battery.Energy);
-        }
-
-        [Fact]
-        public void TestManyChargesDegradeHealth()
-        {
-            BatteryComponentCore battery = new(0, 100);
-            for (int i = 0; i < 100; i++)
-            {
-                battery.Energy = 10;
-            }
-            Assert.Equal(90f, Math.Round(battery.Capacity, 2));
-            Assert.Equal(Math.Round(0.90, 2), Math.Round(battery.Health, 2));
-        }
-
-        [Fact]
-        public void TestHealthDegradeHasAFloor()
-        {
-            BatteryComponentCore battery = new(0, 100);
-            for (int i = 0; i < 10000; i++)
-            {
-                battery.Energy = 10;
-            }
-            Assert.Equal(Math.Round(10.4f, 2), Math.Round(battery.Capacity, 2));
-            Assert.Equal(Math.Round(0.1f, 2), Math.Round(battery.Health, 2));
-            Assert.False(battery.Healthy);
         }
     }
 }
