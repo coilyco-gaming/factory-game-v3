@@ -4,18 +4,16 @@ using System.Linq;
 using Assets.Scripts.Components.Core;
 using Assets.Scripts.Core;
 using Assets.Scripts.Unity;
-using UnityEngine;
 
 namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     [Serializable]
     public class WorldObjectMiningDrill : WorldObject
     {
-        public uint totalVolumeCapacity = 5000;
-        public uint totalBatteryCapacity = 1000;
-        public uint insertionRate = 5;
-        public int miningSpeed = 5;
-        public int miningEnergyCost = 5;
+        private static uint totalVolumeCapacity = 5000;
+        private static uint totalBatteryCapacity = 1000;
+        private static int miningSpeed = 5;
+        private static int miningEnergyCost = 5;
         public override float ZIndex => 2; // TODO: make this a constant
 
         public override StatusDataComponentCore StatusData =>
@@ -26,9 +24,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                // Receivers = this
-                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
-                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
@@ -45,12 +40,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: this.totalVolumeCapacity
+                volumeCapacity: WorldObjectMiningDrill.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: WorldObjectMiningDrill.totalBatteryCapacity);
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 // TODO: adjacent stone mining drill if necessary
@@ -70,8 +65,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.mining = new MiningComponentCore(
                 this.core,
                 this.core.targetType,
-                this.miningSpeed,
-                this.miningEnergyCost
+                WorldObjectMiningDrill.miningSpeed,
+                WorldObjectMiningDrill.miningEnergyCost
             );
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

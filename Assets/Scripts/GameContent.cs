@@ -17,6 +17,7 @@ namespace Assets.Scripts.Core
             public uint CraftTime;
             public uint StackSize;
             public Dictionary<string, uint> Ingredients;
+            public bool spawnable;
 
             public Item(
                 string name,
@@ -24,7 +25,8 @@ namespace Assets.Scripts.Core
                 uint volume = 1,
                 uint craftTime = 1,
                 uint stackSize = 1,
-                Dictionary<string, uint> ingredients = null
+                Dictionary<string, uint> ingredients = null,
+                bool spawnable = false
             )
             {
                 this.Name = name;
@@ -33,6 +35,7 @@ namespace Assets.Scripts.Core
                 this.CraftTime = craftTime;
                 this.StackSize = stackSize;
                 this.Ingredients = ingredients ?? new();
+                this.spawnable = spawnable;
             }
         }
     }

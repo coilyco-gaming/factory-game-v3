@@ -116,7 +116,8 @@ namespace Assets.Scripts.Unity
                         {
                             { Products.Frames.ToString(), 8 },
                             { Products.BuildingMaterials.ToString(), 4 },
-                        }
+                        },
+                        spawnable: true
                     )
                 },
                 {
@@ -131,7 +132,8 @@ namespace Assets.Scripts.Unity
                             { Products.Frames.ToString(), 8 },
                             { Products.BuildingMaterials.ToString(), 4 },
                             { Products.Motors.ToString(), 1 },
-                        }
+                        },
+                        spawnable: true
                     )
                 },
                 {
@@ -147,7 +149,8 @@ namespace Assets.Scripts.Unity
                             { Products.BuildingMaterials.ToString(), 4 },
                             { Products.Circuits.ToString(), 2 },
                             { Products.Motors.ToString(), 2 },
-                        }
+                        },
+                        spawnable: true
                     )
                 },
                 // Medium Buildings
@@ -192,7 +195,8 @@ namespace Assets.Scripts.Unity
                         {
                             { Products.Frames.ToString(), 4 },
                             { Products.Motors.ToString(), 1 },
-                        }
+                        },
+                        spawnable: true
                     )
                 },
                 {
@@ -206,7 +210,8 @@ namespace Assets.Scripts.Unity
                         {
                             { Products.Frames.ToString(), 4 },
                             { Products.Circuits.ToString(), 1 },
-                        }
+                        },
+                        spawnable: true
                     )
                 },
             };

@@ -93,50 +93,6 @@ namespace Assets.Scripts.Components.Core
                 return;
             }
 
-            // Check if the dispatcher has some of the target resource
-            bool dispatcherHasTargetResource =
-                this.dispatchReceiver.dispatcher != null
-                && this.dispatchReceiver.dispatcher.worldObject != null
-                && this.dispatchReceiver.dispatcher.worldObject.resources != null
-                && this.dispatchReceiver.dispatcher.worldObject.resources.resources.GetValueOrDefault(
-                    this.targetResource
-                ) >= this.quantity;
-            if (!dispatcherHasTargetResource)
-            {
-                return;
-            }
-
-            // Check if we have voulume capacity to receive the resource
-            bool weHaveVolumeCapacity =
-                this.resources.volumeCapacity > this.gameContent.Items[this.targetResource].Volume;
-            if (!weHaveVolumeCapacity)
-            {
-                return;
-            }
-
-            // Check if we have weight capacity to receive the resource
-            bool weHaveWeightCapacity =
-                this.resources.weightCapacity > this.gameContent.Items[this.targetResource].Weight;
-            if (!weHaveWeightCapacity)
-            {
-                return;
-            }
-
-            // Check if you have the energy to retrieve the resource
-            bool weHaveEnergy = this.battery.Energy > 1;
-            if (!weHaveEnergy)
-            {
-                return;
-            }
-            try
-            {
-                this.battery.Energy -= 1;
-            }
-            catch (BatteryComponentCore.BatteryCapacityException)
-            {
-                return;
-            }
-
             // Retrieve the resource from the dispatcher
             try
             {

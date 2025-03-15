@@ -10,9 +10,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFoundry : WorldObject
     {
-        public uint totalVolumeCapacity = 10000;
-        public uint totalBatteryCapacity = 1000;
-        public uint insertionRate = 5;
+        private static uint totalVolumeCapacity = 10000;
+        private static uint totalBatteryCapacity = 1000;
+        private static uint insertionRate = 5;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -38,13 +38,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: this.totalVolumeCapacity
+                volumeCapacity: WorldObjectFoundry.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: WorldObjectFoundry.totalBatteryCapacity);
 
             List<string> ingredients = gameContent
                 .Items[this.core.targetType]
@@ -54,7 +54,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (string ingredient in ingredients)
             {
                 this.core.resourceInserters.Add(
-                    new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
+                    new(
+                        this.core.battery,
+                        this.core.resources,
+                        ingredient,
+                        WorldObjectFoundry.insertionRate
+                    )
                 );
             }
 
@@ -85,8 +90,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.battery,
                     this.core.resources,
                     gameContent,
-                    // Retrieve...
-                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    // Collect...
+                    DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< iron bar | copper bar >...
                     this.core.targetType,
                     // ...from me.
@@ -94,7 +99,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
 
-            this.core.dispatchReceivers ??= new();
             foreach (string ingredient in ingredients)
             {
                 this.core.dispatchers.Add(

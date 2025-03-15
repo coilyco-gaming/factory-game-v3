@@ -194,18 +194,7 @@ namespace Assets.Scripts.Components.Core
 
         public void CreateResources(string resourceName, uint amountToCreate)
         {
-            // So many null checks... @_@
-            GameContent.Item item =
-                this.GameContent.Items.GetValueOrDefault(
-                    resourceName ?? "",
-                    new GameContent.Item("")
-                ) ?? new GameContent.Item("");
-            if (item == null)
-            {
-                throw new GameControllerCore.MisconfigurationException(
-                    $"No item found for {resourceName} in GameContent.Items"
-                );
-            }
+            GameContent.Item item = this.GameContent.Items[resourceName];
 
             uint originalAmountToCreate = amountToCreate;
             uint weightToCreate = amountToCreate * item.Weight;
@@ -275,11 +264,7 @@ namespace Assets.Scripts.Components.Core
 
             uint availableResources = this.resources.GetValueOrDefault(resourceName ?? "", (uint)0);
 
-            GameContent.Item item =
-                this.GameContent.Items.GetValueOrDefault(
-                    resourceName ?? "",
-                    new GameContent.Item("")
-                ) ?? new GameContent.Item("");
+            GameContent.Item item = this.GameContent.Items[resourceName];
 
             uint originalAmountToGive = amountToGive;
             uint weightToGive = amountToGive * item.Weight;
@@ -400,11 +385,7 @@ namespace Assets.Scripts.Components.Core
                 (uint)0
             );
 
-            GameContent.Item item =
-                this.GameContent.Items.GetValueOrDefault(
-                    resourceName ?? "",
-                    new GameContent.Item("")
-                ) ?? new GameContent.Item("");
+            GameContent.Item item = this.GameContent.Items[resourceName];
 
             uint originalAmountToGive = amountToRetrieve;
             uint weightToGive = amountToRetrieve * item.Weight;
@@ -414,6 +395,16 @@ namespace Assets.Scripts.Components.Core
             if (availableResources == 0)
             {
                 throw new ResourceQuantityException($"Does not have {resourceName} to give");
+            }
+
+            if (availableResources < amountToRetrieve)
+            {
+                amountToRetrieve = availableResources;
+                target.resources[resourceName] -= amountToRetrieve;
+                this.resources[resourceName] = currentResources + amountToRetrieve;
+                throw new ResourceQuantityException(
+                    $"Does not have {amountToRetrieve} {resourceName} to give"
+                );
             }
 
             if (this.RemainingWeightCapacity < weightToGive)

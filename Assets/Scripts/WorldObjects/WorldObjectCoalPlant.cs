@@ -10,11 +10,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectCoalPlant : WorldObject
     {
-        public uint totalVolumeCapacity = 10000;
-        public uint totalBatteryCapacity = 10000;
-        public uint insertionRate = 5;
-        public uint powerBurnRate = 5;
-        public uint powerGainRate = 100;
+        private static uint totalVolumeCapacity = 10000;
+        private static uint totalBatteryCapacity = 10000;
+        private static uint powerBurnRate = 4;
+        private static uint powerGainRate = 160;
+        private static uint insertionRate = 20;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -24,9 +24,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                // Receivers = this
-                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
-                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
                 Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
@@ -38,37 +35,31 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: this.totalVolumeCapacity
+                volumeCapacity: WorldObjectCoalPlant.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
-
-            this.core.resourceInserters = new List<ResourceInserterComponentCore>()
-            {
-                new(
-                    this.core.battery,
-                    this.core.resources,
-                    this.core.targetType,
-                    this.insertionRate
-                ),
-                new(
-                    this.core.battery,
-                    this.core.resources,
-                    this.core.targetType,
-                    this.insertionRate
-                ),
-            };
+            this.core.battery = new(capacity: WorldObjectCoalPlant.totalBatteryCapacity);
 
             this.core.power = new PowerComponentCore(
                 this.core.battery,
                 this.core.resources,
                 this.core.targetType,
-                this.powerBurnRate,
-                this.powerGainRate
+                WorldObjectCoalPlant.powerBurnRate,
+                WorldObjectCoalPlant.powerGainRate
             );
+
+            this.core.resourceInserters = new()
+            {
+                new(
+                    this.core.battery,
+                    this.core.resources,
+                    this.core.targetType,
+                    WorldObjectCoalPlant.insertionRate
+                ),
+            };
 
             this.core.dispatchers = new List<DispatchComponentCore>()
             {
@@ -106,13 +97,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
-            {
-                inserter.Insert(this.core, gameController.core);
-            }
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
                 this.core.Alerts = dispatcher.Tick(gameController.core);
+            }
+            foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
+            {
+                inserter.Insert(this.core, gameController.core);
             }
             this.core.power.GeneratePower();
             this.core.battery.Balance(this.core, gameController.core);

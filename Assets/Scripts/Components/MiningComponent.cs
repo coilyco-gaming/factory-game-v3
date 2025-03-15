@@ -110,11 +110,15 @@ namespace Assets.Scripts.Components.Core
             this.worldObject.battery.Energy -= this.MiningEnergyCost;
 
             // Take "mining speed" worth of resources
-            this.worldObject.resources.TakeResources(
-                oreResources,
-                this.targetType,
-                (uint)this.MiningSpeed
-            );
+            try
+            {
+                this.worldObject.resources.TakeResources(
+                    oreResources,
+                    this.targetType,
+                    (uint)this.MiningSpeed
+                );
+            }
+            catch (ResourcesComponentCore.ResourceException) { }
 
             return new();
         }

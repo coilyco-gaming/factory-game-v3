@@ -10,9 +10,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     [Serializable]
     public class WorldObjectFactory : WorldObject
     {
-        public uint totalVolumeCapacity = 10000;
-        public uint totalBatteryCapacity = 1000;
-        public uint insertionRate = 5;
+        private static uint totalVolumeCapacity = 10000;
+        private static uint totalBatteryCapacity = 1000;
+        private static uint insertionRate = 5;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -22,9 +22,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                // Receivers = this
-                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
-                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
@@ -42,13 +39,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resources = new(
                 gameContent,
                 weightCapacity: uint.MaxValue,
-                volumeCapacity: this.totalVolumeCapacity
+                volumeCapacity: WorldObjectFactory.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: WorldObjectFactory.totalBatteryCapacity);
 
             List<string> ingredients = gameContent
                 .Items[this.core.targetType]
@@ -58,7 +55,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (string ingredient in ingredients)
             {
                 this.core.resourceInserters.Add(
-                    new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
+                    new(
+                        this.core.battery,
+                        this.core.resources,
+                        ingredient,
+                        WorldObjectFactory.insertionRate
+                    )
                 );
             }
 
@@ -70,24 +72,46 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.targetType
             );
 
-            this.core.dispatchers = new List<DispatchComponentCore>
-            {
-                // TODO: adjacent stone mining drill
-                new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
-                    gameContent,
-                    // Retrieve...
-                    DispatchComponentCore.Verbs.Retrieve.ToString(),
-                    // ...< product >...
-                    this.core.targetType,
-                    // ...from me.
-                    DispatchComponentCore.Keywords.Me.ToString()
-                ),
-            };
+            this.core.dispatchers = new();
 
-            this.core.dispatchReceivers ??= new();
+            bool spawnable = gameContent.Items[this.core.targetType].spawnable;
+            if (spawnable)
+            {
+                // Retrieve is for items that can be deployed
+                this.core.dispatchers.Add(
+                    new(
+                        this.core,
+                        this.core.battery,
+                        this.core.resources,
+                        gameContent,
+                        // Retrieve...
+                        DispatchComponentCore.Verbs.Retrieve.ToString(),
+                        // ...< product >...
+                        this.core.targetType,
+                        // ...from me.
+                        DispatchComponentCore.Keywords.Me.ToString()
+                    )
+                );
+            }
+            else
+            {
+                // Collect is for stockpiling
+                this.core.dispatchers.Add(
+                    new(
+                        this.core,
+                        this.core.battery,
+                        this.core.resources,
+                        gameContent,
+                        // Collect...
+                        DispatchComponentCore.Verbs.Collect.ToString(),
+                        // ...< product >...
+                        this.core.targetType,
+                        // ...from me.
+                        DispatchComponentCore.Keywords.Me.ToString()
+                    )
+                );
+            }
+
             foreach (string ingredient in ingredients)
             {
                 this.core.dispatchers.Add(

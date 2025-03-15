@@ -8,10 +8,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 {
     public class WorldObjectTruck : WorldObject
     {
-        public uint insertionRate = 1;
-        public uint totalVolumeCapacity = 500;
-        public uint totalWeightCapacity = 500;
-        public uint totalBatteryCapacity = 250;
+        private static uint totalVolumeCapacity = 500;
+        private static uint totalWeightCapacity = 500;
+        private static uint totalBatteryCapacity = 250;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -31,13 +30,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.mobile = true;
             this.core.resources = new(
                 gameContent,
-                weightCapacity: this.totalWeightCapacity,
-                volumeCapacity: this.totalVolumeCapacity
+                weightCapacity: WorldObjectTruck.totalWeightCapacity,
+                volumeCapacity: WorldObjectTruck.totalVolumeCapacity
             )
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: WorldObjectTruck.totalBatteryCapacity);
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
             {
