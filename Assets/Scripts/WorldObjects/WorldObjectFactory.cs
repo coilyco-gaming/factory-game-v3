@@ -112,6 +112,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     )
                 );
             }
+            this.core.powerLine = new PowerLineComponentCore(
+                this.core,
+                FactoryGameContent.Spawnables.PowerLines.ToString()
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -127,6 +131,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 inserter.Insert(this.core, gameController.core);
             }
+            this.core.powerLine.Tick(gameController.core);
         }
     }
 }

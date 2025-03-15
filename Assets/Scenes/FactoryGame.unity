@@ -178,11 +178,13 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <52, 53>\r\nStatus:\r\n- Name: Truck\r\n  Energy: 99%\r\n  Receivers:\r\n 
-    - awaiting target\r\n  Resources:\r\n    Mining Drill: 1\r\n  Info:\r\n    Storage
-    Volume: 5%\r\n    Target: awaiting target\r\n- Name: Truck\r\n  Energy: 99%\r\n 
-    Receivers:\r\n  - awaiting target\r\n  Resources:\r\n    Mining Drill: 1\r\n 
-    Info:\r\n    Storage Volume: 5%\r\n    Target: awaiting target\r\n"
+  m_text: "Position: <52, 51>\r\nStatus:\r\n- Alerts:\r\n  - 1021: 'retrieve motors
+    from me: not enough available'\r\n  - 1021: 'deliver iron bars to me: no empty
+    adjacent tile'\r\n  - 1021: 'deliver copper bars to me: no empty adjacent tile'\r\n 
+    Name: Factory\r\n  Energy: 100%\r\n  Dispatchers:\r\n  - retrieve motors from
+    me\r\n  - deliver iron bars to me\r\n  - deliver copper bars to me\r\n  Receivers:\r\n 
+    - awaiting target\r\n  - awaiting target\r\n  Resources: {}\r\n  Info:\r\n   
+    Outputs: motors\r\n    Progress: 0%\r\n    Storage Volume: 0%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2046,6 +2048,8 @@ MonoBehaviour:
   totalVolumeCapacity: 5000
   totalBatteryCapacity: 1000
   insertionRate: 5
+  miningSpeed: 5
+  miningEnergyCost: 5
 --- !u!1 &923896636
 GameObject:
   m_ObjectHideFlags: 0

@@ -104,6 +104,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     FactoryGameContent.Resources.Coal.ToString()
                 ),
             };
+            this.core.powerLine = new PowerLineComponentCore(
+                this.core,
+                FactoryGameContent.Spawnables.PowerLines.ToString()
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -119,6 +123,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
             this.core.power.GeneratePower();
             this.core.battery.Balance(this.core, gameController.core);
+            this.core.powerLine.Tick(gameController.core);
         }
     }
 }

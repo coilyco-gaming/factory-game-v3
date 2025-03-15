@@ -78,6 +78,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.miningSpeed,
                 this.miningEnergyCost
             );
+            this.core.powerLine = new PowerLineComponentCore(
+                this.core,
+                FactoryGameContent.Spawnables.PowerLines.ToString()
+            );
         }
 
         public override void Tick(GameController gameController)
@@ -89,6 +93,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.Alerts = dispatcher.Tick(gameController.core);
             }
             this.core.Alerts = this.core.mining.Tick(gameController.core);
+            this.core.powerLine.Tick(gameController.core);
         }
     }
 }

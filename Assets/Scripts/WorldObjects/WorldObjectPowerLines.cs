@@ -21,12 +21,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(spawnQueueItem, gameContent);
             this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.powerLine = new PowerLineComponentCore(
+                this.core,
+                FactoryGameContent.Spawnables.PowerLines.ToString()
+            );
         }
 
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
             this.core.battery.Balance(this.core, gameController.core);
+            this.core.powerLine.Tick(gameController.core);
         }
     }
 }
