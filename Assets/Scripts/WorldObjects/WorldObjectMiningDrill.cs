@@ -100,11 +100,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             bool resourcesEmpty = !this.core.resources.HasResources;
 
             // Then delete the mining drill
-            if (oreAtPosition && resourcesEmpty)
+            if (!oreAtPosition && resourcesEmpty)
             {
-                Debug.Log(
-                    $"Deleting mining drill at {this.GridPosition} because no ore is present and resources are empty."
-                );
                 gameController.QueueForDeletion(
                     new DeletionQueueItem(this.core, this.GridPosition)
                 );
