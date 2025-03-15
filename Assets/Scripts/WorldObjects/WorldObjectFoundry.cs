@@ -22,9 +22,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                // Receivers = this
-                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
-                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
@@ -42,7 +39,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
-            );
+            )
+            {
+                resources = spawnQueueItem.resources,
+            };
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
@@ -111,16 +111,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         DispatchComponentCore.Keywords.Me.ToString()
                     )
                 );
-                // this.core.dispatchReceivers.Add(
-                //     new(
-                //         this.core,
-                //         this.core.resources,
-                //         // Stockpile...
-                //         DispatchComponentCore.Verbs.Stockpile.ToString(),
-                //         // ...< ingredient >
-                //         ingredient
-                //     )
-                // );
             }
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

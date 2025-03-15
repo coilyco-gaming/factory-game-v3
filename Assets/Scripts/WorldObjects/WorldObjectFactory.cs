@@ -43,7 +43,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
-            );
+            )
+            {
+                resources = spawnQueueItem.resources,
+            };
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
@@ -101,16 +104,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         DispatchComponentCore.Keywords.Me.ToString()
                     )
                 );
-                // this.core.dispatchReceivers.Add(
-                //     new(
-                //         this.core,
-                //         this.core.resources,
-                //         // Stockpile...
-                //         DispatchComponentCore.Verbs.Stockpile.ToString(),
-                //         // ...< ingredient >
-                //         ingredient
-                //     )
-                // );
             }
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

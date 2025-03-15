@@ -111,20 +111,6 @@ namespace Assets.Scripts.Core
             this.guid = this.CreateGuid();
         }
 
-        public void PostInstantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
-        {
-            if (this.resources == null && spawnQueueItem.resources != null)
-            {
-                throw new GameControllerCore.MisconfigurationException(
-                    $"WorldObject {this.worldObjectType} has no resources component but has resources."
-                );
-            }
-            if (spawnQueueItem.resources != null)
-            {
-                this.resources.resources = spawnQueueItem.resources;
-            }
-        }
-
         public string CreateGuid()
         {
             long time = DateTime.UtcNow.Ticks;
@@ -290,11 +276,6 @@ namespace Assets.Scripts.Unity
             this.GridPosition = spawnQueueItem.gridPosition; // This is a special case because it sets the transform position
             this.WorldObjectType = this.transform.name.Replace("(Clone)", "");
             this.SetName();
-        }
-
-        public virtual void PostInstantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
-        {
-            this.core.PostInstantiate(spawnQueueItem, gameContent);
         }
 
         public void SetName()

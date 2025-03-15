@@ -33,7 +33,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 weightCapacity: this.totalWeightCapacity,
                 volumeCapacity: this.totalVolumeCapacity
-            );
+            )
+            {
+                resources = spawnQueueItem.resources,
+            };
             this.core.battery = new(capacity: this.totalBatteryCapacity);
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>

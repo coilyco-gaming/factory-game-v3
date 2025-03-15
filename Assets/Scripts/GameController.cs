@@ -30,7 +30,7 @@ namespace Assets.Scripts.Core
             this.type = type;
             this.targetType = targetType;
             this.targetSubType = targetSubType;
-            this.resources = resources;
+            this.resources = resources ?? new();
             this.xyCentered = xyCentered;
             this.x = x;
             this.y = y;
@@ -454,17 +454,8 @@ namespace Assets.Scripts.Unity
                 WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
                 thisGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
 
-                // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate
-                // This base Instantiate function (eg. not PostInstantiate) is responsible for setting simple values like
-                // grid position, and initializing "simple" components like the resource component.
-
+                // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate.
                 worldObject.Instantiate(spawnQueueItem, this.core.gameContent);
-
-                // PostInstantiate is a custom function on each world object, similar to Instantiate above. It is responsible
-                // for setting up more complex components like the status component, and calling the callback function.
-                // The exists because the children of WorldObject have their own custom components that need to be initialized,
-                // in a particular order. For example the ResourcesComponent needs to be initialized before the StatusComponent.
-                worldObject.PostInstantiate(spawnQueueItem, this.core.gameContent);
 
                 // Initialize the dictionary if it doesn't exist, this will only happen once
                 this.core.worldObjects ??=

@@ -22,7 +22,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: uint.MaxValue
-            );
+            )
+            {
+                resources = spawnQueueItem.resources,
+            };
         }
 
         public override void Tick(GameController gameController)

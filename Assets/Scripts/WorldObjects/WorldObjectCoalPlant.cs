@@ -39,7 +39,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
-            );
+            )
+            {
+                resources = spawnQueueItem.resources,
+            };
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
