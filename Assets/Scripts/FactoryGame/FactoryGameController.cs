@@ -87,10 +87,38 @@ namespace Assets.Scripts.FactoryGame
                 SpawnQueueItem spawnQueueItem in new List<SpawnQueueItem>
                 {
                     // Leftmost trucks (x=-1)
-                    new(type: "Truck", x: -1, y: 0, xyCentered: true, targetType: "IronOre"),
-                    new(type: "Truck", x: -1, y: 1, xyCentered: true, targetType: "CopperOre"),
-                    new(type: "Truck", x: -1, y: 2, xyCentered: true, targetType: "IronOre"),
-                    new(type: "Truck", x: -1, y: 3, xyCentered: true, targetType: "Coal"),
+                    new(
+                        type: "Truck",
+                        x: -1,
+                        y: 0,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "IronOre"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: -1,
+                        y: 1,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "IronOre"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: -1,
+                        y: 2,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "IronOre"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: -1,
+                        y: 3,
+                        xyCentered: true,
+                        targetType: "Deliver",
+                        targetSubType: "IronOre"
+                    ),
                     // Coal and power lines (x=0)
                     new(
                         type: "CoalPlant",
@@ -161,10 +189,38 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(type: "Factory", x: 4, y: 2, xyCentered: true, targetType: "PowerLines"),
                     // Rightmost trucks (x=5)
-                    new(type: "Truck", x: 5, y: 0, xyCentered: true, targetType: "MiningDrill"),
-                    new(type: "Truck", x: 5, y: 1, xyCentered: true, targetType: "MiningDrill"),
-                    new(type: "Truck", x: 5, y: 2, xyCentered: true, targetType: "MiningDrill"),
-                    new(type: "Truck", x: 5, y: 3, xyCentered: true, targetType: "MiningDrill"),
+                    new(
+                        type: "Truck",
+                        x: 5,
+                        y: 0,
+                        xyCentered: true,
+                        targetType: "Retrieve",
+                        targetSubType: "MiningDrill"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 5,
+                        y: 1,
+                        xyCentered: true,
+                        targetType: "Retrieve",
+                        targetSubType: "MiningDrill"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 5,
+                        y: 2,
+                        xyCentered: true,
+                        targetType: "Retrieve",
+                        targetSubType: "MiningDrill"
+                    ),
+                    new(
+                        type: "Truck",
+                        x: 5,
+                        y: 3,
+                        xyCentered: true,
+                        targetType: "Retrieve",
+                        targetSubType: "MiningDrill"
+                    ),
                 }
             )
             {

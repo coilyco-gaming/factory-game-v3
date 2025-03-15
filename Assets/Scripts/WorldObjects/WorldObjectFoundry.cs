@@ -39,14 +39,14 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Instantiate(spawnQueueItem, gameContent);
 
             this.core.resources = new(
-                new FactoryGameContent(),
+                gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
 
             this.core.battery = new(capacity: this.totalBatteryCapacity);
 
-            List<string> ingredients = new FactoryGameContent()
+            List<string> ingredients = gameContent
                 .Items[this.core.targetType]
                 .Ingredients.Keys.ToList();
 
@@ -59,7 +59,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
 
             this.core.production = new ProductionComponentCore(
-                new FactoryGameContent(),
+                gameContent,
                 this.core.resources,
                 this.core.battery,
                 this.core.resourceInserters,
@@ -72,7 +72,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(),
+                    gameContent,
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...
@@ -84,7 +84,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(),
+                    gameContent,
                     // Retrieve...
                     DispatchComponentCore.Verbs.Retrieve.ToString(),
                     // ...< iron bar | copper bar >...
@@ -102,7 +102,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         this.core,
                         this.core.battery,
                         this.core.resources,
-                        new FactoryGameContent(),
+                        gameContent,
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...< ingredient >...
@@ -111,16 +111,16 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         DispatchComponentCore.Keywords.Me.ToString()
                     )
                 );
-                this.core.dispatchReceivers.Add(
-                    new(
-                        this.core,
-                        this.core.resources,
-                        // Stockpile...
-                        DispatchComponentCore.Verbs.Stockpile.ToString(),
-                        // ...< ingredient >
-                        ingredient
-                    )
-                );
+                // this.core.dispatchReceivers.Add(
+                //     new(
+                //         this.core,
+                //         this.core.resources,
+                //         // Stockpile...
+                //         DispatchComponentCore.Verbs.Stockpile.ToString(),
+                //         // ...< ingredient >
+                //         ingredient
+                //     )
+                // );
             }
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

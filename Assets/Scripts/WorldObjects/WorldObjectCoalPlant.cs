@@ -24,9 +24,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                Receivers = this
-                    .core.dispatchReceivers.Select(receiver => receiver.Description)
-                    .ToList(),
+                // Receivers = this
+                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
+                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
                 Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
@@ -36,7 +36,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(spawnQueueItem, gameContent);
             this.core.resources = new(
-                new FactoryGameContent(),
+                gameContent,
                 weightCapacity: uint.MaxValue,
                 volumeCapacity: this.totalVolumeCapacity
             );
@@ -73,7 +73,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(),
+                    gameContent,
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...
@@ -85,7 +85,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(),
+                    gameContent,
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...
@@ -95,15 +95,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
 
-            this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>()
-            {
-                new(
-                    this.core,
-                    this.core.resources,
-                    DispatchComponentCore.Verbs.Stockpile.ToString(),
-                    FactoryGameContent.Resources.Coal.ToString()
-                ),
-            };
+            // this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>()
+            // {
+            //     new(
+            //         this.core,
+            //         this.core.resources,
+            //         DispatchComponentCore.Verbs.Stockpile.ToString(),
+            //         FactoryGameContent.Resources.Coal.ToString()
+            //     ),
+            // };
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()

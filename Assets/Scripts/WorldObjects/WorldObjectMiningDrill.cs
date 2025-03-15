@@ -25,9 +25,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                Receivers = this
-                    .core.dispatchReceivers.Select(receiver => receiver.Description)
-                    .ToList(),
+                // Receivers = this
+                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
+                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
@@ -54,22 +54,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(),
-                    // Retrieve...
-                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    gameContent,
+                    // Collect...
+                    DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< product >...
                     this.core.targetType,
                     // ...from me.
                     DispatchComponentCore.Keywords.Me.ToString()
-                ),
-            };
-            this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
-            {
-                new(
-                    this.core,
-                    this.core.resources,
-                    DispatchComponentCore.Verbs.Stockpile.ToString(),
-                    this.core.targetType
                 ),
             };
             this.core.mining = new MiningComponentCore(

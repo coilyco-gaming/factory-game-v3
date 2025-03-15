@@ -9,10 +9,10 @@ namespace Assets.Scripts.Components.Core
         // Example descriptions:
         //  - Retrieve power lines from me
         //  - Deploy mining drill to iron ore
-        //  - Deliver coal to me
+        //  - Collect coal to me
         private string DescriptionToOrFrom =>
             this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
-            || this.receiverVerb == DispatchComponentCore.Verbs.Stockpile.ToString()
+            || this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
                 ? "from"
                 : "to";
         private string DescriptionSubject => Util.HumanizedString(this.receiverSubject);
@@ -28,36 +28,16 @@ namespace Assets.Scripts.Components.Core
         public string receiverVerb = "VERB";
         public string receiverSubject = "SUBJECT";
         public string receiverObject = "OBJECT";
-        private Dictionary<string, List<string>> VerbMappings = new()
-        {
-            {
-                // Deploy mining drill to iron ore dispatches to
-                //   - Deploy mining drill (mobile receiver)
-                Verbs.Deploy.ToString(),
-                new List<string> { Verbs.Deploy.ToString() }
-            },
-            {
-                // Deliver iron bars to me dispatches to
-                //   - Deliver iron bars
-                Verbs.Deliver.ToString(),
-                new List<string> { Verbs.Deliver.ToString(), Verbs.Stockpile.ToString() }
-            },
-            {
-                // Retrieve iron bars from me dispatches to
-                //   - Retrieve iron bars
-                //   - Stockpile iron bars
-                Verbs.Retrieve.ToString(),
-                new List<string> { Verbs.Retrieve.ToString(), Verbs.Stockpile.ToString() }
-            },
-            // Stockpile should never dispatch
-        };
 
         public enum Verbs
         {
-            Deploy,
+            // Collect <=> Deliver
+            Collect,
             Deliver,
-            Retrieve, // Get something once, used for truck receivers
-            Stockpile, // Get something repeatedly, used for factory receivers
+
+            // Retrieve <=> Deploy
+            Retrieve,
+            Deploy,
         }
 
         public enum Keywords
@@ -105,10 +85,10 @@ namespace Assets.Scripts.Components.Core
             }
 
             // If the dispatch subject is an item,
-            // then skip deliver to me dispatch if I have more than a stack of the item
+            // then skip Collect to me dispatch if I have more than a stack of the item
             // TODO: check if you can't fit any more
             if (
-                this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString()
+                this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
                 && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
                 && this.resources.resources.GetValueOrDefault(this.receiverSubject)
                     >= this.gameContent.Items[this.receiverSubject].StackSize
@@ -193,7 +173,16 @@ namespace Assets.Scripts.Components.Core
                 return new();
             }
 
-            // Acqiure list the target location
+            // Acqiure list of target locations
+            //  - If the receiver is me, then return the current world object location
+            //  - If the receiver is not me, then return the list of world objects
+            //    whose world object type match the receiver object
+            //
+            // Examples:
+            //  - Deploy mining drill to iron ore
+            //    targetLocations = < iron ore grid positions >
+            //  - Deliver iron ore to me, Collect iron ore from me
+            //    targetLocations = < current world object grid position >
             List<System.Numerics.Vector2> targetLocations =
                 this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
                     ? new List<System.Numerics.Vector2> { this.worldObject.gridPosition }
@@ -234,7 +223,7 @@ namespace Assets.Scripts.Components.Core
                     && dispatcher.receiver != null
                     // Where the dispatcher Subject and verb match the dispatch
                     && dispatcher.receiverSubject == this.receiverSubject
-                    && this.VerbMappings[this.receiverVerb].Contains(dispatcher.receiverVerb)
+                    && this.receiverVerb == dispatcher.receiverVerb
                 )
                 .ToList();
 
@@ -283,7 +272,7 @@ namespace Assets.Scripts.Components.Core
                     && receiver.dispatcher == null
                     // Where the receiver Subject and verb match the dispatch
                     && receiver.receiverSubject == this.receiverSubject
-                    && this.VerbMappings[this.receiverVerb].Contains(receiver.receiverVerb)
+                    && this.receiverVerb == receiver.receiverVerb
                 )
                 // Order by distance to the current world object
                 .OrderBy(receiver =>
@@ -572,74 +561,6 @@ namespace Assets.Scripts.Components.Tests
         }
 
         [Fact]
-        public void TestVerbMapping()
-        {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(100, 100);
-            ResourcesComponentCore dispactherResources = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                "MiningDrill",
-                "IronOre"
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "IronOre",
-            };
-
-            WorldObjectCore receiverWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
-
-            ResourcesComponentCore receiverResources = new(new(), 100, 100);
-
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                receiverResources,
-                DispatchComponentCore.Verbs.Stockpile.ToString(),
-                "MiningDrill"
-            );
-            receiverWorldObject.dispatchReceivers = new() { receiver };
-            Assert.Null(receiver.dispatcher);
-
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-            {
-                { "uuid-3", receiverWorldObject },
-            };
-
-            dispatch.Tick(gameController);
-            Assert.NotNull(receiver.dispatcher);
-        }
-
-        [Fact]
         public void TestDoesNotAssignWhenNoResourcesAvailable()
         {
             GameControllerCore gameController = new()
@@ -715,7 +636,7 @@ namespace Assets.Scripts.Components.Tests
                 battery,
                 dispactherResources,
                 new TestDispatchGameContent(),
-                DispatchComponentCore.Verbs.Deliver.ToString(),
+                DispatchComponentCore.Verbs.Collect.ToString(),
                 "MiningDrill",
                 DispatchComponentCore.Keywords.Me.ToString()
             );

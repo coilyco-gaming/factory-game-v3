@@ -22,9 +22,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
                     .ToList(),
-                Receivers = this
-                    .core.dispatchReceivers.Select(receiver => receiver.Description)
-                    .ToList(),
+                // Receivers = this
+                //     .core.dispatchReceivers.Select(receiver => receiver.Description)
+                //     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new()
                 {
@@ -74,7 +74,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core,
                     this.core.battery,
                     this.core.resources,
-                    new FactoryGameContent(), // TODO: cache this on this game controller
+                    gameContent,
                     // Retrieve...
                     DispatchComponentCore.Verbs.Retrieve.ToString(),
                     // ...< product >...
@@ -92,7 +92,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         this.core,
                         this.core.battery,
                         this.core.resources,
-                        new FactoryGameContent(), // TODO: cache this on this game controller
+                        gameContent,
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...< ingredient >...
@@ -101,16 +101,16 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                         DispatchComponentCore.Keywords.Me.ToString()
                     )
                 );
-                this.core.dispatchReceivers.Add(
-                    new(
-                        this.core,
-                        this.core.resources,
-                        // Stockpile...
-                        DispatchComponentCore.Verbs.Stockpile.ToString(),
-                        // ...< ingredient >
-                        ingredient
-                    )
-                );
+                // this.core.dispatchReceivers.Add(
+                //     new(
+                //         this.core,
+                //         this.core.resources,
+                //         // Stockpile...
+                //         DispatchComponentCore.Verbs.Stockpile.ToString(),
+                //         // ...< ingredient >
+                //         ingredient
+                //     )
+                // );
             }
             this.core.powerLine = new PowerLineComponentCore(
                 this.core,

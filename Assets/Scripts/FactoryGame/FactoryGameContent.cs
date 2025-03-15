@@ -46,7 +46,7 @@ namespace Assets.Scripts.Unity
                         stackSize: 200,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Resources.IronOre.ToString(), 1 },
+                            { Resources.CopperOre.ToString(), 1 },
                         }
                     )
                 },

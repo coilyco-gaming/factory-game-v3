@@ -22,11 +22,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     .core.dispatchReceivers.Select(receiver => receiver.Description)
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
-                Info = new()
-                {
-                    { "Storage Volume", this.core.resources.UsedVolumeString },
-                    { "Target", this.core.dispatchReceivers.First().Description },
-                },
+                Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -34,7 +30,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Instantiate(spawnQueueItem, gameContent);
             this.core.mobile = true;
             this.core.resources = new(
-                new FactoryGameContent(),
+                gameContent,
                 weightCapacity: this.totalWeightCapacity,
                 volumeCapacity: this.totalVolumeCapacity
             );
@@ -42,12 +38,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
             {
-                new(
-                    this.core,
-                    this.core.resources,
-                    DispatchComponentCore.Verbs.Retrieve.ToString(),
-                    this.core.targetType
-                ),
+                new(this.core, this.core.resources, this.core.targetType, this.core.targetSubType),
             };
             this.core.deployments = new List<DeploymentComponentCore>();
             foreach (DispatchReceiverComponentCore dispatchReceiver in this.core.dispatchReceivers)
@@ -60,19 +51,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.resources,
                 this.core.battery,
                 this.core.dispatchReceivers.First(),
-                new FactoryGameContent(),
-                this.core.targetType,
-                1
+                gameContent,
+                this.core.targetSubType,
+                gameContent.Items[this.core.targetSubType].StackSize
             );
-            this.core.resourceInserters = new List<ResourceInserterComponentCore>
-            {
-                new(
-                    this.core.battery,
-                    this.core.resources,
-                    this.core.targetType, // Mining drill
-                    this.insertionRate
-                ),
-            };
         }
 
         public override void Tick(GameController gameController)

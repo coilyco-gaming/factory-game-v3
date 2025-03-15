@@ -61,15 +61,6 @@ namespace Assets.Scripts.Components.Core
 
         public void Tick()
         {
-            // Only retrieve resources if we are in retrieve mode
-            bool weAreInRetrieveMode =
-                this.dispatchReceiver.receiverVerb
-                == DispatchComponentCore.Verbs.Retrieve.ToString();
-            if (!weAreInRetrieveMode)
-            {
-                return;
-            }
-
             // Only retrieve resources if we are adjacent to the dispatcher
             bool dispatcherIsAdjacent =
                 this.dispatchReceiver.targetPosition != null
@@ -129,7 +120,10 @@ namespace Assets.Scripts.Components.Core
             {
                 this.battery.Energy -= 1;
             }
-            catch (BatteryComponentCore.BatteryCapacityException) { }
+            catch (BatteryComponentCore.BatteryCapacityException)
+            {
+                return;
+            }
 
             // Retrieve the resource from the dispatcher
             try
