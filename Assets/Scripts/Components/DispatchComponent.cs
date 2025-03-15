@@ -6,6 +6,8 @@ namespace Assets.Scripts.Components.Core
 
     public class DispatchComponentCore
     {
+        private uint deliveryResourceBufferMultiplier = 4;
+
         // Example descriptions:
         //  - Retrieve power lines from me
         //  - Deploy mining drill to aluminum ore
@@ -84,10 +86,35 @@ namespace Assets.Scripts.Components.Core
                 return new();
             }
 
-            // If the dispatch subject is an item,
-            // then skip retrieve from me dispatch if I have less than a stack of the item
+            // If dispatch goal is deliver to me
+            // then skip if I have more than a X stacks of the item
             if (
-                this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
+                this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString()
+                && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
+                && this.resources.resources.GetValueOrDefault(this.receiverSubject)
+                    > this.deliveryResourceBufferMultiplier
+                        * this.gameContent.Items[this.receiverSubject].StackSize
+            )
+            {
+                return new List<Dictionary<uint, string>>
+                {
+                    new()
+                    {
+                        {
+                            gameController.backref.TickCount,
+                            $"{this.Description}: no more required"
+                        },
+                    },
+                };
+            }
+
+            // If dispatch goal is retrieve or collect from me
+            // then skip if I have less than a stack of the item
+            if (
+                (
+                    this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
+                    || this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
+                )
                 && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
                 && this.resources.resources.GetValueOrDefault(this.receiverSubject)
                     < this.gameContent.Items[this.receiverSubject].StackSize
@@ -851,6 +878,49 @@ namespace Assets.Scripts.Components.Tests
             Assert.Null(receiver.dispatcher);
             Assert.Equal(alerts.Count, 1);
             Assert.Equal($"{dispatch.Description}: no target found", alerts.First().Values.First());
+        }
+
+        [Fact]
+        public void TestDoesNotAssignWhenResourcesAlreadyPresent()
+        {
+            GameControllerCore gameController = new()
+            {
+                backref = new TestDispatchUnityGameController(),
+            };
+            WorldObjectCore HQWorldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
+
+            BatteryComponentCore battery = new(100, 100);
+            ResourcesComponentCore dispactherResources = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            dispactherResources.CreateResources("aluminumBars", 100);
+            DispatchComponentCore dispatch = new(
+                HQWorldObject,
+                battery,
+                dispactherResources,
+                new TestDispatchGameContent(),
+                DispatchComponentCore.Verbs.Deliver.ToString(),
+                "aluminumBars",
+                DispatchComponentCore.Keywords.Me.ToString()
+            );
+            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
+
+            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
+            {
+                { "uuid-1", HQWorldObject },
+            };
+
+            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
+            Assert.Equal(alerts.Count, 1);
+            Assert.Equal(
+                $"{dispatch.Description}: no more required",
+                alerts.First().Values.First()
+            );
         }
     }
 }
