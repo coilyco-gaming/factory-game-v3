@@ -5,8 +5,6 @@ namespace Assets.Scripts.Unity
 {
     public class FactoryGameContent : GameContent
     {
-        public override Dictionary<string, Object> Objects { get; } = new() { };
-
         public override Dictionary<string, Item> Items { get; } =
             new()
             {

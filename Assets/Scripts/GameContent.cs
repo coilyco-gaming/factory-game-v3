@@ -4,10 +4,7 @@ namespace Assets.Scripts.Core
 {
     public class GameContent
     {
-        public virtual Dictionary<string, Object> Objects { get; }
         public virtual Dictionary<string, Item> Items { get; }
-
-        public class Object { }
 
         public class Item
         {
@@ -17,7 +14,7 @@ namespace Assets.Scripts.Core
             public uint CraftTime;
             public uint StackSize;
             public Dictionary<string, uint> Ingredients;
-            public bool spawnable;
+            public bool Spawnable;
 
             public Item(
                 string name,
@@ -35,7 +32,7 @@ namespace Assets.Scripts.Core
                 this.CraftTime = craftTime;
                 this.StackSize = stackSize;
                 this.Ingredients = ingredients ?? new();
-                this.spawnable = spawnable;
+                this.Spawnable = spawnable;
             }
         }
     }
