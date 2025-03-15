@@ -23,7 +23,7 @@ namespace Assets.Scripts.Unity
                 },
                 {
                     Resources.Stone.ToString(), //
-                    new Item(Resources.Stone.ToString(), stackSize: 200, manifests: true)
+                    new Item(Resources.Stone.ToString(), stackSize: 200, createFromNothing: true)
                 },
                 // Products
                 {
@@ -115,7 +115,7 @@ namespace Assets.Scripts.Unity
                             { Products.Frames.ToString(), 8 },
                             { Products.BuildingMaterials.ToString(), 4 },
                         },
-                        spawnable: true
+                        canSpawnGameObject: true
                     )
                 },
                 {
@@ -131,7 +131,7 @@ namespace Assets.Scripts.Unity
                             { Products.BuildingMaterials.ToString(), 4 },
                             { Products.Motors.ToString(), 1 },
                         },
-                        spawnable: true
+                        canSpawnGameObject: true
                     )
                 },
                 {
@@ -148,7 +148,7 @@ namespace Assets.Scripts.Unity
                             { Products.Circuits.ToString(), 2 },
                             { Products.Motors.ToString(), 2 },
                         },
-                        spawnable: true
+                        canSpawnGameObject: true
                     )
                 },
                 // Medium Buildings
@@ -194,12 +194,16 @@ namespace Assets.Scripts.Unity
                             { Products.Frames.ToString(), 4 },
                             { Products.Motors.ToString(), 1 },
                         },
-                        spawnable: true
+                        canSpawnGameObject: true
                     )
                 },
                 {
                     Spawnables.PowerLines.ToString(),
-                    new Item(Spawnables.PowerLines.ToString(), spawnable: true, manifests: true)
+                    new Item(
+                        Spawnables.PowerLines.ToString(),
+                        canSpawnGameObject: true,
+                        createFromNothing: true
+                    )
                 },
             };
 

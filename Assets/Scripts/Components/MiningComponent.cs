@@ -44,7 +44,7 @@ namespace Assets.Scripts.Components.Core
         public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
             // If the target can manifest, then just create the resource and return
-            if (this.TargetItem.Manifests)
+            if (this.TargetItem.CreateFromNothing)
             {
                 this.worldObject.resources.CreateResources(this.targetType, (uint)this.MiningSpeed);
                 return new();
@@ -151,7 +151,7 @@ namespace Assets.Scripts.Components.Tests
             new()
             {
                 { "Ore", new Item("Ore") }, //
-                { "Stone", new Item("Ore", manifests: true) }, //
+                { "Stone", new Item("Ore", createFromNothing: true) }, //
             };
     }
 

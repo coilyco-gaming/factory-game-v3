@@ -64,6 +64,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             };
             this.core.mining = new MiningComponentCore(
                 this.core,
+                gameContent,
                 this.core.targetType,
                 WorldObjectMiningDrill.miningSpeed,
                 WorldObjectMiningDrill.miningEnergyCost

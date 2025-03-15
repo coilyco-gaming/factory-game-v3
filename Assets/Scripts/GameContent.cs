@@ -14,8 +14,8 @@ namespace Assets.Scripts.Core
             public uint CraftTime = 1;
             public uint StackSize = 1;
             public Dictionary<string, uint> Ingredients;
-            public bool Spawnable = false; // Can the item be spawned in the world?
-            public bool Manifests = false; // Can the object be created from nothing?
+            public bool CanSpawnGameObject = false;
+            public bool CreateFromNothing = false;
 
             public Item(
                 string name,
@@ -24,8 +24,8 @@ namespace Assets.Scripts.Core
                 uint craftTime = 1,
                 uint stackSize = 1,
                 Dictionary<string, uint> ingredients = null,
-                bool spawnable = false,
-                bool manifests = false
+                bool canSpawnGameObject = false,
+                bool createFromNothing = false
             )
             {
                 this.Name = name;
@@ -34,8 +34,8 @@ namespace Assets.Scripts.Core
                 this.CraftTime = craftTime;
                 this.StackSize = stackSize;
                 this.Ingredients = ingredients ?? new();
-                this.Spawnable = spawnable;
-                this.Manifests = manifests;
+                this.CanSpawnGameObject = canSpawnGameObject;
+                this.CreateFromNothing = createFromNothing;
             }
         }
     }

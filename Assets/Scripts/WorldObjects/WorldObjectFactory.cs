@@ -74,7 +74,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
 
             this.core.dispatchers = new();
 
-            bool spawnable = gameContent.Items[this.core.targetType].Spawnable;
+            bool spawnable = gameContent.Items[this.core.targetType].CanSpawnGameObject;
             if (spawnable)
             {
                 // Retrieve is for items that can be deployed

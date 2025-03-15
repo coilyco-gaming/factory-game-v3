@@ -93,7 +93,7 @@ namespace Assets.Scripts.Components.Core
                 inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
             }
 
-            if (!this.ProductItem.Manifests && this.ProductItem.Ingredients.Count == 0)
+            if (!this.ProductItem.CreateFromNothing && this.ProductItem.Ingredients.Count == 0)
             {
                 throw new GameControllerCore.MisconfigurationException(
                     @$"Production component requires a product with ingredients.
@@ -192,7 +192,7 @@ namespace Assets.Scripts.Components.Tests
         public override Dictionary<string, Item> Items { get; } =
             new()
             {
-                { "air", new Item("air", stackSize: 100, manifests: true) },
+                { "air", new Item("air", stackSize: 100, createFromNothing: true) },
                 { "wood", new Item("wood", stackSize: 100) },
                 { "nails", new Item("nails", stackSize: 100) },
                 {
