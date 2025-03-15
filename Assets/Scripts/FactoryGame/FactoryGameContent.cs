@@ -16,7 +16,7 @@ namespace Assets.Scripts.Unity
                     new Item(Resources.IronOre.ToString(), stackSize: 200)
                 },
                 {
-                    Resources.CopperOre.ToString(),
+                    Resources.CopperOre.ToString(), //
                     new Item(Resources.CopperOre.ToString(), stackSize: 200)
                 },
                 {
@@ -24,7 +24,7 @@ namespace Assets.Scripts.Unity
                     new Item(Resources.Coal.ToString(), stackSize: 200)
                 },
                 {
-                    Resources.Stone.ToString(),
+                    Resources.Stone.ToString(), //
                     new Item(Resources.Stone.ToString(), stackSize: 200)
                 },
                 // Products

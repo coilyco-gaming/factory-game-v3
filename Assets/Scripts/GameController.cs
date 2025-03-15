@@ -88,12 +88,6 @@ namespace Assets.Scripts.Core
                 : base(message) { }
         }
 
-        public class SpawnException : Exception
-        {
-            public SpawnException(string message)
-                : base(message) { }
-        }
-
         // FUNCTIONS //
 
         public static List<System.Numerics.Vector2> GetAdjacentPositions(
@@ -432,57 +426,53 @@ namespace Assets.Scripts.Unity
 
         protected virtual void Spawn(SpawnQueueItem spawnQueueItem)
         {
-            GameObject thisGameObject = null;
-            try
+            spawnQueueItem.gridPosition = spawnQueueItem.xyCentered
+                ? new System.Numerics.Vector2(
+                    (this.Map.MapSize.X / 2) + spawnQueueItem.x,
+                    (this.Map.MapSize.Y / 2) + spawnQueueItem.y
+                )
+                : new System.Numerics.Vector2(spawnQueueItem.x, spawnQueueItem.y);
+
+            // TODO: find spawnables once, then cache
+            Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.type);
+            GameObject gameObject = spawnablesTransform.gameObject;
+            GameObject thisGameObject = Instantiate(gameObject, new Vector2(), Quaternion.identity);
+
+            // Set the parent of this game object to a game object with the same name as the type
+            GameObject childGameObject;
+            if (this.Map.WorldGameObject.transform.Find(spawnQueueItem.type) == null)
             {
-                spawnQueueItem.gridPosition = spawnQueueItem.xyCentered
-                    ? new System.Numerics.Vector2(
-                        (this.Map.MapSize.X / 2) + spawnQueueItem.x,
-                        (this.Map.MapSize.Y / 2) + spawnQueueItem.y
-                    )
-                    : new System.Numerics.Vector2(spawnQueueItem.x, spawnQueueItem.y);
-
-                // TODO: don't allow spawning 2 buildings on the same tile
-
-                // TODO: find spawnables once, then cache
-                Transform spawnablesTransform = this.spawnables.transform.Find(spawnQueueItem.type);
-                GameObject gameObject = spawnablesTransform.gameObject;
-                thisGameObject = Instantiate(gameObject, new Vector2(), Quaternion.identity);
-
-                // TODO: spawn a game object to hold each world object type
-                // TODO: assign the thisGameObject to be the child of that world object type
-                WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
-                thisGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
-
-                // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate.
-                worldObject.Instantiate(spawnQueueItem, this.core.gameContent);
-
-                // Initialize the dictionary if it doesn't exist, this will only happen once
-                this.core.worldObjects ??=
-                    new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
-
-                // Initialize the current position if it doesn't exist, this happens frequently
-                // Null coallesce doesn't work here, not totally sure why
-                if (this.core.worldObjects.GetValueOrDefault(spawnQueueItem.gridPosition) == null)
-                {
-                    this.core.worldObjects[spawnQueueItem.gridPosition] =
-                        new Dictionary<string, WorldObjectCore>();
-                }
-
-                // We assume that the GetGuid() is unique enough to not cause a collision here
-                this.core.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] =
-                    worldObject.core;
+                childGameObject = new GameObject(spawnQueueItem.type);
+                childGameObject.transform.SetParent(this.Map.WorldGameObject.transform);
+                childGameObject.transform.localPosition = new Vector3(0, 0, 0);
             }
-            catch (SpawnException ex)
+            else
             {
-                if (thisGameObject != null)
-                {
-                    Debug.Log(ex.Message);
-                    Destroy(thisGameObject);
-                }
-                // TODO: write exception message to parent's status
-                // TODO: delete the object if you've already spawned it... at any single line in the above code
+                childGameObject = this
+                    .Map.WorldGameObject.transform.Find(spawnQueueItem.type)
+                    .gameObject;
             }
+            thisGameObject.transform.SetParent(childGameObject.transform);
+
+            // Instantiate is a custom function on each world object, it only conceptually relates to Unity's Instantiate.
+            WorldObject worldObject = thisGameObject.GetComponent<WorldObject>();
+            worldObject.Instantiate(spawnQueueItem, this.core.gameContent);
+
+            // Initialize the dictionary if it doesn't exist, this will only happen once
+            this.core.worldObjects ??=
+                new Dictionary<System.Numerics.Vector2, Dictionary<string, WorldObjectCore>>();
+
+            // Initialize the current position if it doesn't exist, this happens frequently
+            // Null coallesce doesn't work here, not totally sure why
+            if (this.core.worldObjects.GetValueOrDefault(spawnQueueItem.gridPosition) == null)
+            {
+                this.core.worldObjects[spawnQueueItem.gridPosition] =
+                    new Dictionary<string, WorldObjectCore>();
+            }
+
+            // We assume that the GetGuid() is unique enough to not cause a collision here
+            this.core.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] =
+                worldObject.core;
         }
     }
 }

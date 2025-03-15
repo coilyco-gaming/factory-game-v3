@@ -109,7 +109,7 @@ namespace Assets.Scripts.FactoryGame
                         y: 2,
                         xyCentered: true,
                         targetType: "Deliver",
-                        targetSubType: "IronOre"
+                        targetSubType: "CopperOre"
                     ),
                     new(
                         type: "Truck",
@@ -117,7 +117,7 @@ namespace Assets.Scripts.FactoryGame
                         y: 3,
                         xyCentered: true,
                         targetType: "Deliver",
-                        targetSubType: "IronOre"
+                        targetSubType: "Coal"
                     ),
                     // Coal and power lines (x=0)
                     new(
@@ -126,7 +126,7 @@ namespace Assets.Scripts.FactoryGame
                         x: 0,
                         y: 0,
                         xyCentered: true,
-                        resources: new Dictionary<string, uint> { { "Coal", 10000 } }
+                        resources: new Dictionary<string, uint> { { "Coal", 1000 } }
                     ),
                     new(type: "PowerLines", x: 0, y: 1, xyCentered: true),
                     new(type: "PowerLines", x: 0, y: 2, xyCentered: true),
