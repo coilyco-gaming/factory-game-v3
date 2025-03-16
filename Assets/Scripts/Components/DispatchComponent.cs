@@ -320,7 +320,7 @@ namespace Assets.Scripts.Components.Core
 
             // Assign the target to the receiver
             receiver.targetPosition = targetLocations[0];
-            receiver.dispatcher = this;
+            receiver.QueueDispatch(this, gameController);
             this.receiver = receiver;
             return new();
         }
@@ -439,7 +439,8 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
 
-            ResourcesComponentCore receiverResources = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources = new(new TestDispatchGameContent(), 100, 100);
+            receiverResources.CreateResources("MiningDrill", 1);
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
@@ -464,6 +465,7 @@ namespace Assets.Scripts.Components.Tests
             };
 
             dispatch.Tick(gameController);
+            receiver.Tick();
             Assert.NotNull(receiver.dispatcher);
         }
 
@@ -542,8 +544,8 @@ namespace Assets.Scripts.Components.Tests
             };
 
             receiverResources.CreateResources("MiningDrill", 1);
-            receiver.Tick();
             dispatch.Tick(gameController);
+            receiver.Tick();
             Assert.NotNull(receiver.dispatcher);
 
             // Should assign to the closest target on the first run
@@ -643,7 +645,12 @@ namespace Assets.Scripts.Components.Tests
             {
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
-            ResourcesComponentCore receiverResources1 = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources1 = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            receiverResources1.CreateResources("MiningDrill", 1);
             DispatchReceiverComponentCore receiver1 = new(
                 receiverWorldObject1,
                 receiverResources1,
@@ -657,7 +664,12 @@ namespace Assets.Scripts.Components.Tests
             {
                 GridPosition = new System.Numerics.Vector2(2, 2),
             };
-            ResourcesComponentCore receiverResources2 = new(new(), 100, 100);
+            ResourcesComponentCore receiverResources2 = new(
+                new TestDispatchGameContent(),
+                100,
+                100
+            );
+            receiverResources2.CreateResources("MiningDrill", 1);
             DispatchReceiverComponentCore receiver2 = new(
                 receiverWorldObject2,
                 receiverResources2,
@@ -689,6 +701,8 @@ namespace Assets.Scripts.Components.Tests
 
             dispatch1.Tick(gameController);
             dispatch2.Tick(gameController);
+            receiver1.Tick();
+            receiver2.Tick();
             Assert.NotNull(receiver1.dispatcher);
             Assert.Null(receiver2.dispatcher);
         }
