@@ -109,15 +109,14 @@ namespace Assets.Scripts.Components.Core
             }
 
             // If dispatch goal is retrieve or collect from me
-            // then skip if I have less than a stack of the item
+            // then skip if I don't have any of the item
             if (
                 (
                     this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
                     || this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
                 )
                 && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                && this.resources.resources.GetValueOrDefault(this.receiverSubject)
-                    < this.gameContent.Items[this.receiverSubject].StackSize
+                && this.resources.resources.GetValueOrDefault(this.receiverSubject) == 0
             )
             {
                 return new List<Dictionary<uint, string>>
