@@ -319,8 +319,7 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Assign the target to the receiver
-            receiver.targetPosition = targetLocations[0];
-            receiver.QueueDispatch(this, gameController);
+            receiver.QueueDispatch(this, targetLocations[0], gameController);
             this.receiver = receiver;
             return new();
         }

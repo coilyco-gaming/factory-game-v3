@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Assets.Scripts.Core;
 
 namespace Assets.Scripts.Components.Core
@@ -10,7 +11,7 @@ namespace Assets.Scripts.Components.Core
         public WorldObjectCore worldObject;
         public DispatchComponentCore dispatcher;
         public System.Numerics.Vector2? targetPosition = null;
-        private Dictionary<DispatchComponentCore, uint> dispatchHistory = new();
+        public Dictionary<DispatchComponentCore, Tuple<uint, Vector2>> dispatchHistory = new();
         private ResourcesComponentCore resources;
         private string DescriptionToOrFrom =>
             this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
@@ -53,17 +54,20 @@ namespace Assets.Scripts.Components.Core
 
         public void QueueDispatch(
             DispatchComponentCore dispatcher,
+            Vector2 targetPosition,
             GameControllerCore gameController
         )
         {
-            this.dispatchHistory[dispatcher] = gameController.backref.TickCount;
+            this.dispatchHistory[dispatcher] = new(
+                gameController.backref.TickCount,
+                targetPosition
+            );
+            this.dispatcher = dispatcher;
+            this.targetPosition = targetPosition;
         }
 
         public void Tick()
         {
-            // TODO: shuffle? idk...
-            this.dispatcher = this.dispatchHistory.Keys.LastOrDefault();
-
             bool hasTargetItem =
                 this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
             // If your job is to retrieve something and you have it, switch to deploy

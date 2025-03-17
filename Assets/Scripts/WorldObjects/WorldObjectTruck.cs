@@ -20,6 +20,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 Receivers = this
                     .core.dispatchReceivers.Select(receiver => receiver.Description)
                     .ToList(),
+                DispatchHistory = this
+                    .core.dispatchReceivers.First()
+                    .dispatchHistory.Select(kvp =>
+                        $"{kvp.Key.Description} via {kvp.Key.worldObject.gridPosition} at tick {kvp.Value.Item1} for target {kvp.Value.Item2}"
+                    )
+                    .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
             };
