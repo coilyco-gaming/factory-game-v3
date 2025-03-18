@@ -2,10 +2,12 @@ namespace Assets.Scripts.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Unity;
     using Microsoft.Extensions.Logging;
+    using UnityEngine;
 
     [Serializable]
     public class WorldObjectCore
@@ -70,9 +72,14 @@ namespace Assets.Scripts.Core
             foreach (Dictionary<uint, string> inputAlert in value)
             {
                 gameController.backref.Logger.LogInformation(
-                    "{Tick}: {Message}",
+                    "{WorldObjectType}: {Tick}: {Message}",
+                    this.worldObjectType,
                     inputAlert.Keys.First().ToString(),
                     inputAlert.Values.First().ToString()
+                );
+
+                UnityEngine.Debug.Log(
+                    $"{this.worldObjectType}: {inputAlert.Keys.First()}: {inputAlert.Values.First()}"
                 );
 
                 // If the alert is already in the list

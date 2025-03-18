@@ -178,12 +178,18 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <53, 52>\nStatus:\n- Alerts:\n  - 0: 'retrieve mining drill
-    from me: no receiver found'\n  - 43: 'deliver frames to me: no receiver found'\n 
-    - 43: 'deliver motors to me: no receiver found'\n  Name: Factory\n  Energy: 21%\n 
-    Dispatchers:\n  - retrieve mining drill from me\n  - deliver frames to me\n 
-    - deliver motors to me\n  Resources:\n    Mining Drill: 2\n  Info:\n    Outputs:
-    mining drill\n    Progress: 0%\n    Storage Volume: 0%\n"
+  m_text: "Position: <53, 52>\r\nStatus:\r\n- Alerts:\r\n  - 254: need ingredients
+    for product\r\n  - 254: 'retrieve mining drill from me: not enough available'\r\n 
+    - 256: 'retrieve mining drill from me: assigned to <38, 59>'\r\n  - 257: 'retrieve
+    mining drill from me: assigned to <39, 58>'\r\n  - 258: 'retrieve mining drill
+    from me: assigned to <40, 57>'\r\n  - 259: 'retrieve mining drill from me: assigned
+    to <41, 56>'\r\n  - 260: product output full\r\n  - 260: 'retrieve mining drill
+    from me: assigned to <42, 55>'\r\n  - 260: 'deliver frames to me: no receiver
+    found'\r\n  - 260: 'deliver motors to me: no receiver found'\r\n  Name: Factory\r\n 
+    Energy: 52%\r\n  Dispatchers:\r\n  - retrieve mining drill from me\r\n  - deliver
+    frames to me\r\n  - deliver motors to me\r\n  Resources:\r\n    Mining Drill:
+    1\r\n    Motors: 9\r\n    Frames: 2\r\n  Info:\r\n    Outputs: mining drill\r\n   
+    Progress: 0%\r\n    Storage Volume: 1%\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -977,6 +983,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -1293,6 +1302,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -1778,6 +1790,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -1899,6 +1914,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -2020,6 +2038,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -2876,9 +2897,6 @@ MonoBehaviour:
     - Name: random
       Entry: 6
       Data: 
-    - Name: openTelemetry
-      Entry: 6
-      Data: 
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
   tickFrequency: 0.1
@@ -3320,6 +3338,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -3441,6 +3462,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -4151,6 +4175,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0
@@ -4446,6 +4473,9 @@ MonoBehaviour:
       weightCapacity: 0
       volumeCapacity: 0
     resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
     production:
       Product: 
       Quantity: 0

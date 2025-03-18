@@ -234,7 +234,12 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      opentelemetry-icon-color_0: -225150302594925424
+      opentelemetry-icon-color_1: -7826051847886813928
+      opentelemetry-icon-color_2: 3593836467440329958
+      opentelemetry-icon-color_3: -3229110146828393344
+      opentelemetry-icon-color_4: -4146528965151602545
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
