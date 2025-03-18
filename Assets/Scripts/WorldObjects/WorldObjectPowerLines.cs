@@ -15,6 +15,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
                 Energy = this.core.battery.PercentEnergyStatus,
+                Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -31,8 +32,11 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Alerts = this.core.battery.Tick(gameController.core);
-            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
+            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core)
+            );
         }
     }
 }

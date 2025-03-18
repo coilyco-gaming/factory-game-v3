@@ -29,7 +29,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     { "Progress", this.core.production.PrecentProgressStatus },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
-                Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
+                Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -140,17 +140,23 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Alerts = this.core.battery.Tick(gameController.core);
-            this.core.Alerts = this.core.production.Tick(gameController.core);
+            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.production.Tick(gameController.core)
+            );
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.Alerts = this.core.Alerts = dispatcher.Tick(gameController.core);
+                this.core.CreateAlert(gameController.core, dispatcher.Tick(gameController.core));
             }
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
-                this.core.Alerts = inserter.Tick(gameController.core);
+                this.core.CreateAlert(gameController.core, inserter.Tick(gameController.core));
             }
-            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core)
+            );
         }
     }
 }

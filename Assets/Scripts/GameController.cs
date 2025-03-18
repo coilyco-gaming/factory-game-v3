@@ -11,6 +11,7 @@ namespace Assets.Scripts.Core
         uint TickCount { get; set; }
         ActivitySource ActivitySource { get; set; }
         SpriteMapComponent Map { get; set; }
+        Microsoft.Extensions.Logging.ILogger Logger { get; set; }
 
         void QueueForMovement(MovementQueueItem movementQueueItem);
         void QueueForDeletion(DeletionQueueItem deletionQueueItem);
@@ -204,8 +205,10 @@ namespace Assets.Scripts.Unity
     using System.Diagnostics;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
+    using Microsoft.Extensions.Logging;
     using OpenTelemetry;
     using OpenTelemetry.Exporter;
+    using OpenTelemetry.Logs;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
     using Sirenix.OdinInspector;
@@ -224,7 +227,7 @@ namespace Assets.Scripts.Unity
         public SpriteMapComponent Map { get; set; }
         public PlayerComponent PlayerComponent { get; set; }
         public ActivitySource ActivitySource { get; set; }
-        public TracerProvider openTelemetryTracer;
+        public Microsoft.Extensions.Logging.ILogger Logger { get; set; }
         public virtual List<string> ExcludeWorldObjectTypeFromStatus => new();
         public uint TickCount { get; set; } = 0;
         public float lastTick = 0;
@@ -242,9 +245,12 @@ namespace Assets.Scripts.Unity
         {
             this.core = new GameControllerCore() { backref = this };
             this.ActivitySource = new(GameControllerCore.openTelemetryDataset);
+
             ResourceBuilder resourceBuilder = ResourceBuilder
                 .CreateDefault()
                 .AddService(GameControllerCore.openTelemetryDataset);
+
+            // Traces
             Sdk.CreateTracerProviderBuilder()
                 .SetResourceBuilder(resourceBuilder)
                 .AddSource(GameControllerCore.openTelemetryDataset)
@@ -255,6 +261,22 @@ namespace Assets.Scripts.Unity
                     options.Headers = GameControllerCore.openTelemetryAuthHeader;
                 })
                 .Build();
+
+            // Logs
+            ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddOpenTelemetry(logging =>
+                {
+                    logging.AddOtlpExporter(options =>
+                    {
+                        options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
+                        options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                    });
+                });
+            });
+
+            this.Logger = loggerFactory.CreateLogger(GameControllerCore.openTelemetryDataset);
         }
 
         public virtual void Update()

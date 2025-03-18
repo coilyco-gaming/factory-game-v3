@@ -5,6 +5,7 @@ namespace Assets.Scripts.Core
     using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Unity;
+    using Microsoft.Extensions.Logging;
 
     [Serializable]
     public class WorldObjectCore
@@ -40,7 +41,7 @@ namespace Assets.Scripts.Core
         public WorldObject backref;
         public bool mobile = false;
         public bool passThrough = false;
-        private List<Dictionary<uint, string>> alerts = new();
+        public List<Dictionary<uint, string>> alerts = new();
         public System.Numerics.Vector2 gridPosition;
 
         public System.Numerics.Vector2 GridPosition
@@ -49,53 +50,56 @@ namespace Assets.Scripts.Core
             set => this.gridPosition = value;
         }
 
-        public List<Dictionary<uint, string>> Alerts
+        public void CreateAlert(
+            GameControllerCore gameController,
+            List<Dictionary<uint, string>> value
+        )
         {
-            get => this.alerts;
-            set
+            // Match on the string value of the alerts dictionary
+            // Then replace the int value with the current tick.
+            // This produces the following effect:
+            //
+            //   { 1: "I'm broken and need repairs!" } =>
+            //   { 2: "I'm broken and need repairs!" }
+            //
+            // This happens without creating a new line in the alerts list.
+
+            List<Dictionary<uint, string>> existingAlerts = this.alerts ??= new();
+
+            // For every input alert
+            foreach (Dictionary<uint, string> inputAlert in value)
             {
-                // Match on the string value of the alerts dictionary
-                // Then replace the int value with the current tick.
-                // This produces the following effect:
-                //
-                //   { 1: "I'm broken and need repairs!" } =>
-                //   { 2: "I'm broken and need repairs!" }
-                //
-                // This happens without creating a new line in the alerts list.
+                gameController.backref.Logger.LogInformation(
+                    "{Tick}: {Message}",
+                    inputAlert.Keys.First().ToString(),
+                    inputAlert.Values.First().ToString()
+                );
 
-                // TODO: emit into otel
+                // If the alert is already in the list
+                bool skip = false;
 
-                List<Dictionary<uint, string>> newAlerts = this.alerts ??= new();
-
-                // For every input alert
-                foreach (Dictionary<uint, string> inputAlert in value)
+                foreach (Dictionary<uint, string> existingAlert in existingAlerts)
                 {
-                    // If the alert is already in the list
-                    bool skip = false;
-
-                    foreach (Dictionary<uint, string> existingAlert in newAlerts)
+                    // If the alert message is the same
+                    if (existingAlert.Values.First() == inputAlert.Values.First())
                     {
-                        // If the alert message is the same
-                        if (existingAlert.Values.First() == inputAlert.Values.First())
-                        {
-                            // Replace the alert with the new tick
-                            newAlerts.Remove(existingAlert);
-                            newAlerts.Add(
-                                new() { { inputAlert.Keys.First(), inputAlert.Values.First() } }
-                            );
-                            skip = true;
-                            break;
-                        }
-                    }
-                    if (!skip)
-                    {
-                        newAlerts.Add(inputAlert);
+                        // Replace the alert with the new tick
+                        existingAlerts.Remove(existingAlert);
+                        existingAlerts.Add(
+                            new() { { inputAlert.Keys.First(), inputAlert.Values.First() } }
+                        );
+                        skip = true;
+                        break;
                     }
                 }
-
-                // Clip the alert list
-                this.alerts = newAlerts.TakeLast((int)MaxAlerts).ToList();
+                if (!skip)
+                {
+                    existingAlerts.Add(inputAlert);
+                }
             }
+
+            // Clip the alert list
+            this.alerts = existingAlerts.TakeLast((int)MaxAlerts).ToList();
         }
 
         // FUNCTIONS //
@@ -129,7 +133,9 @@ namespace Assets.Scripts.Core
 namespace Assets.Scripts.Tests
 {
     using System.Collections.Generic;
+    using Assets.Scripts.Components.Tests;
     using Assets.Scripts.Core;
+    using Microsoft.Extensions.Logging;
     using Xunit;
     using Xunit.Abstractions;
 
@@ -145,80 +151,115 @@ namespace Assets.Scripts.Tests
         [Fact]
         public void TestOneAlert()
         {
-            WorldObjectCore core = new(null)
+            GameControllerCore gameController = new()
             {
-                Alerts = new List<Dictionary<uint, string>>()
-                {
-                    new() { { 10, "I'm broken and need repairs!" } },
-                },
+                backref = new ExampleGameController(),
+                worldObjects = new(),
             };
-            Assert.Equal(1, core.Alerts.Count);
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
+
+            WorldObjectCore core = new(null);
+            core.CreateAlert(
+                gameController,
+                new() { new() { { 10, "I'm broken and need repairs!" } } }
+            );
+            Assert.Equal(1, core.alerts.Count);
         }
 
         [Fact]
         public void TestTwoOfSameAlert()
         {
-            WorldObjectCore core = new(null)
+            GameControllerCore gameController = new()
             {
-                Alerts = new List<Dictionary<uint, string>>()
-                {
-                    new() { { 10, "I'm broken and need repairs!" } },
-                },
+                backref = new ExampleGameController(),
+                worldObjects = new(),
             };
-            core.Alerts = new List<Dictionary<uint, string>>()
-            {
-                new() { { 20, "I'm broken and need repairs!" } },
-            };
-            Assert.Equal(1, core.Alerts.Count);
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
+
+            WorldObjectCore core = new(null);
+            core.CreateAlert(
+                gameController,
+                new() { new() { { 10, "I'm broken and need repairs!" } } }
+            );
+            core.CreateAlert(
+                gameController,
+                new() { new() { { 20, "I'm broken and need repairs!" } } }
+            );
+            Assert.Equal(1, core.alerts.Count);
         }
 
         [Fact]
         public void TestTwoDifferentAlert()
         {
-            WorldObjectCore core = new(null)
+            GameControllerCore gameController = new()
             {
-                Alerts = new List<Dictionary<uint, string>>()
-                {
-                    new() { { 10, "I'm broken and need repairs!" } },
-                },
+                backref = new ExampleGameController(),
+                worldObjects = new(),
             };
-            core.Alerts = new List<Dictionary<uint, string>>()
-            {
-                new() { { 20, "I'm out of power!" } },
-            };
-            Assert.Equal(2, core.Alerts.Count);
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
+
+            WorldObjectCore core = new(null);
+            core.CreateAlert(
+                gameController,
+                new() { new() { { 10, "I'm broken and need repairs!" } } }
+            );
+            core.CreateAlert(gameController, new() { new() { { 20, "I'm out of power!" } } });
+            Assert.Equal(2, core.alerts.Count);
         }
 
         [Fact]
         public void TestTwoAtOnce()
         {
-            WorldObjectCore core = new(null)
+            GameControllerCore gameController = new()
             {
-                Alerts = new List<Dictionary<uint, string>>()
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
+
+            WorldObjectCore core = new(null);
+            core.CreateAlert(
+                gameController,
+                new()
                 {
                     new() { { 10, "I'm broken and need repairs!" } },
                     new() { { 20, "I'm out of power!" } },
-                },
-            };
-            Assert.Equal(2, core.Alerts.Count);
+                }
+            );
+            Assert.Equal(2, core.alerts.Count);
         }
 
         [Fact]
         public void TestTwoThenOneMore()
         {
-            WorldObjectCore core = new(null)
+            GameControllerCore gameController = new()
             {
-                Alerts = new List<Dictionary<uint, string>>()
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
+
+            WorldObjectCore core = new(null);
+            core.CreateAlert(
+                gameController,
+                new()
                 {
                     new() { { 10, "I'm broken and need repairs!" } },
                     new() { { 20, "I'm out of power!" } },
-                },
-            };
-            core.Alerts = new List<Dictionary<uint, string>>()
-            {
-                new() { { 30, "I can't move!" } },
-            };
-            Assert.Equal(3, core.Alerts.Count);
+                }
+            );
+            core.CreateAlert(gameController, new() { new() { { 30, "I can't move!" } } });
+            Assert.Equal(3, core.alerts.Count);
         }
     }
 }

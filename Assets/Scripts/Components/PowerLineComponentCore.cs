@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Numerics;
 using Assets.Scripts.Core;
-using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -28,8 +26,20 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
-            // TODO: some kind of early exit condition...
-            // TODO: because we don't want to query the world objects every tick
+            if (this.worldObject.battery == null)
+            {
+                throw new GameControllerCore.MisconfigurationException(
+                    "PowerLineComponentCore requires a battery component"
+                );
+            }
+
+            // Only generate power lines when the battery is empty
+            if (this.worldObject.battery.Energy != 0)
+            {
+                return new();
+            }
+
+            // TODO: more exit early conditions
 
             // Find the nearest world object with a power component
             WorldObjectCore closestPower = gameController
@@ -74,7 +84,7 @@ namespace Assets.Scripts.Components.Core
 
                 return new List<Dictionary<uint, string>>
                 {
-                    new() { { gameController.backref.TickCount, "no power line found on tile" } },
+                    new() { { gameController.backref.TickCount, "spawning power line" } },
                 };
             }
 
@@ -110,6 +120,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
+                battery = new BatteryComponentCore(null, 100, 100),
             };
             worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
 
@@ -130,6 +141,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
+                battery = new BatteryComponentCore(null, 0, 100),
             };
             worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
 
@@ -149,6 +161,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject1 = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
+                battery = new BatteryComponentCore(null, 0, 100),
             };
             worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()
@@ -173,7 +186,7 @@ namespace Assets.Scripts.Components.Tests
             };
 
             List<Dictionary<uint, string>> alerts = worldObject1.powerLine.Tick(gameController);
-            Assert.Equal("no power line found on tile", alerts.First().Values.First());
+            Assert.Equal("spawning power line", alerts.First().Values.First());
         }
 
         [Fact]
@@ -188,6 +201,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject1 = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
+                battery = new BatteryComponentCore(null, 0, 100),
             };
             worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()

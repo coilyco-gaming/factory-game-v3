@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Assets.Scripts.Core;
-using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
@@ -15,8 +14,6 @@ namespace Assets.Scripts.Components.Core
         private WorldObjectCore worldObject;
         private ResourcesComponentCore resources;
         private DispatchReceiverComponentCore dispatchReceiver;
-        private BatteryComponentCore battery;
-        private GameContent gameContent;
         private string targetResource;
         private uint quantity;
 
@@ -36,20 +33,10 @@ namespace Assets.Scripts.Components.Core
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Receiver component requires a resource component"
                 );
-            this.battery =
-                battery
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires a battery component"
-                );
             this.dispatchReceiver =
                 dispatchReceiver
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Receiver component requires a dispatch receiver component"
-                );
-            this.gameContent =
-                gameContent
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires game content"
                 );
             this.targetResource =
                 targetResource

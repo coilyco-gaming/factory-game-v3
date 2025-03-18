@@ -28,6 +28,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
                 Info = new() { { "Storage Volume", this.core.resources.UsedVolumeString } },
+                Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -68,16 +69,22 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Alerts = this.core.movement.Tick(gameController.core);
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.movement.Tick(gameController.core)
+            );
             foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
             {
-                this.core.Alerts = receiver.Tick(gameController.core);
+                this.core.CreateAlert(gameController.core, receiver.Tick(gameController.core));
             }
             foreach (DeploymentComponentCore deployment in this.core.deployments)
             {
-                this.core.Alerts = deployment.Tick(gameController.core);
+                this.core.CreateAlert(gameController.core, deployment.Tick(gameController.core));
             }
-            this.core.Alerts = this.core.resourceRetriever.Tick(gameController.core);
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.resourceRetriever.Tick(gameController.core)
+            );
         }
     }
 }

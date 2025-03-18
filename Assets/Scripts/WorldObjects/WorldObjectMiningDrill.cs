@@ -30,7 +30,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     { "Outputs", Util.HumanizedString(this.core.targetType).ToLower() },
                     { "Storage Volume", this.core.resources.UsedVolumeString },
                 },
-                Alerts = this.core.Alerts.Count == 0 ? null : this.core.Alerts,
+                Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };
 
         public override void Instantiate(SpawnQueueItem spawnQueueItem, GameContent gameContent)
@@ -78,13 +78,16 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.Alerts = this.core.battery.Tick(gameController.core);
+            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.Alerts = dispatcher.Tick(gameController.core);
+                this.core.CreateAlert(gameController.core, dispatcher.Tick(gameController.core));
             }
-            this.core.Alerts = this.core.mining.Tick(gameController.core);
-            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
+            this.core.CreateAlert(gameController.core, this.core.mining.Tick(gameController.core));
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core)
+            );
 
             // If no ore world object is on our position
             bool oreAtPosition =

@@ -33,6 +33,7 @@ namespace Assets.Scripts.Components.Tests
     using System.Diagnostics;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Components.Unity;
+    using Microsoft.Extensions.Logging;
     using OpenTelemetry;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
@@ -60,6 +61,7 @@ namespace Assets.Scripts.Components.Tests
             set { }
         }
         public SpriteMapComponent Map { get; set; }
+        public Microsoft.Extensions.Logging.ILogger Logger { get; set; }
 
         public void QueueForMovement(MovementQueueItem movementQueueItem) { }
 
@@ -85,6 +87,9 @@ namespace Assets.Scripts.Components.Tests
                 backref = new ExampleGameController(),
                 worldObjects = new(),
             };
+            gameController.backref.Logger = LoggerFactory
+                .Create(builder => { })
+                .CreateLogger("ExampleGameController");
             ExampleComponentCore example = new(new WorldObjectCore(null));
             example.Tick(gameController);
             Assert.True(true);
