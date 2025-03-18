@@ -257,7 +257,7 @@ namespace Assets.Scripts.Unity
                 .AddSource(GameControllerCore.openTelemetryDataset)
                 .AddOtlpExporter(options =>
                 {
-                    options.Endpoint = new Uri("https://api.honeycomb.io");
+                    options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
                     options.Headers = GameControllerCore.openTelemetryAuthHeader;
                 })
@@ -274,7 +274,7 @@ namespace Assets.Scripts.Unity
                     logging.SetResourceBuilder(resourceBuilder);
                     logging.AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri("https://api.honeycomb.io");
+                        options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
                         options.Protocol = OtlpExportProtocol.HttpProtobuf;
                         options.Headers = GameControllerCore.openTelemetryAuthHeader;
                     });
