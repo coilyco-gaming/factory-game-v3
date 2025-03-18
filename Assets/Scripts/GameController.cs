@@ -314,6 +314,7 @@ namespace Assets.Scripts.Unity
                                 "WorldObjectType",
                                 worldObject.worldObjectType
                             );
+                            worldObjectTickActivity.SetTag("tick", this.TickCount);
                         }
                         worldObject.backref.Tick(this);
                     }
