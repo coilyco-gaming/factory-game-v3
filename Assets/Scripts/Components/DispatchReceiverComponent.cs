@@ -1,17 +1,21 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
+using System.Diagnostics;
 using Assets.Scripts.Core;
+using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
+    [Serializable]
     public class DispatchReceiverComponentCore
     {
         public WorldObjectCore worldObject;
         public DispatchComponentCore dispatcher;
         public System.Numerics.Vector2? targetPosition = null;
-        public Dictionary<DispatchComponentCore, Tuple<uint, Vector2>> dispatchHistory = new();
+        public Dictionary<
+            DispatchComponentCore,
+            Tuple<uint, System.Numerics.Vector2>
+        > dispatchHistory = new();
         private ResourcesComponentCore resources;
         private string DescriptionToOrFrom =>
             this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
@@ -38,11 +42,7 @@ namespace Assets.Scripts.Components.Core
             string receiverSubject
         )
         {
-            this.worldObject =
-                worldObject
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Reciever component requires a parent world object"
-                );
+            this.worldObject = worldObject;
             this.resources =
                 resources
                 ?? throw new GameControllerCore.MisconfigurationException(
@@ -54,7 +54,7 @@ namespace Assets.Scripts.Components.Core
 
         public void QueueDispatch(
             DispatchComponentCore dispatcher,
-            Vector2 targetPosition,
+            System.Numerics.Vector2 targetPosition,
             GameControllerCore gameController
         )
         {
@@ -66,8 +66,13 @@ namespace Assets.Scripts.Components.Core
             this.targetPosition = targetPosition;
         }
 
-        public void Tick()
+        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             bool hasTargetItem =
                 this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
             // If your job is to retrieve something and you have it, switch to deploy
@@ -76,6 +81,10 @@ namespace Assets.Scripts.Components.Core
                 if (hasTargetItem)
                 {
                     this.SwapTo(DispatchComponentCore.Verbs.Deploy);
+                    return new()
+                    {
+                        new() { { gameController.backref.TickCount, "retrieve => deploy" } },
+                    };
                 }
             }
             // If your job is to deploy and you have no more of the target item, switch to retrieve
@@ -84,6 +93,10 @@ namespace Assets.Scripts.Components.Core
                 if (!hasTargetItem)
                 {
                     this.SwapTo(DispatchComponentCore.Verbs.Retrieve);
+                    return new()
+                    {
+                        new() { { gameController.backref.TickCount, "deploy => retrieve" } },
+                    };
                 }
             }
             // If your job is to collect and you have the target item, switch to Deliver
@@ -92,6 +105,10 @@ namespace Assets.Scripts.Components.Core
                 if (hasTargetItem)
                 {
                     this.SwapTo(DispatchComponentCore.Verbs.Deliver);
+                    return new()
+                    {
+                        new() { { gameController.backref.TickCount, "collect => deliver" } },
+                    };
                 }
             }
             // If your job is to Deliver and you have no more of the target item, switch to collect
@@ -100,8 +117,23 @@ namespace Assets.Scripts.Components.Core
                 if (!hasTargetItem)
                 {
                     this.SwapTo(DispatchComponentCore.Verbs.Collect);
+                    return new()
+                    {
+                        new() { { gameController.backref.TickCount, "deliver => collect" } },
+                    };
                 }
             }
+
+            return new()
+            {
+                new()
+                {
+                    {
+                        gameController.backref.TickCount,
+                        $"{this.Description}: receiver state valid"
+                    },
+                },
+            };
         }
 
         private void SwapTo(DispatchComponentCore.Verbs verb)
@@ -146,6 +178,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTrue()
         {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
             WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(new TestGameContent(), 100, 100);
             DispatchReceiverComponentCore receiver = new(
@@ -154,13 +191,18 @@ namespace Assets.Scripts.Components.Tests
                 "FIGHT",
                 "DINOSAURS"
             );
-            receiver.Tick();
+            receiver.Tick(gameController);
             Assert.True(true);
         }
 
         [Fact]
         public void TestSwapsToDeploy()
         {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
             WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(new TestGameContent(), 100, 100);
             resources.resources["planks"] = 10;
@@ -170,7 +212,7 @@ namespace Assets.Scripts.Components.Tests
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks"
             );
-            receiver.Tick();
+            receiver.Tick(gameController);
             Assert.Equal(DispatchComponentCore.Verbs.Deploy.ToString(), receiver.receiverVerb);
         }
     }

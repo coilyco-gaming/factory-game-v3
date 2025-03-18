@@ -63,6 +63,8 @@ namespace Assets.Scripts.Core
                 //
                 // This happens without creating a new line in the alerts list.
 
+                // TODO: emit into otel
+
                 List<Dictionary<uint, string>> newAlerts = this.alerts ??= new();
 
                 // For every input alert

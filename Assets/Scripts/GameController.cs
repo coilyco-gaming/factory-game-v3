@@ -2,9 +2,20 @@ namespace Assets.Scripts.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
-    using System.Numerics;
-    using Assets.Scripts.Unity;
+    using Assets.Scripts.Components.Unity;
+
+    public interface IGameController
+    {
+        uint TickCount { get; set; }
+        ActivitySource ActivitySource { get; set; }
+        SpriteMapComponent Map { get; set; }
+
+        void QueueForMovement(MovementQueueItem movementQueueItem);
+        void QueueForDeletion(DeletionQueueItem deletionQueueItem);
+        void QueueForSpawn(SpawnQueueItem spawnQueueItem);
+    }
 
     public class SpawnQueueItem
     {
@@ -69,6 +80,8 @@ namespace Assets.Scripts.Core
 
     public class GameControllerCore
     {
+        public static string openTelemetryAuthHeader = "x-honeycomb-team=FIh8cNdHLsvKmx20pa5SaB";
+        public static string openTelemetryDataset = "FactoryGameV2";
         public GameContent gameContent;
         public IGameController backref;
 
@@ -186,17 +199,20 @@ namespace Assets.Scripts.Core
 
 namespace Assets.Scripts.Unity
 {
+    using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Logging;
+    using OpenTelemetry;
+    using OpenTelemetry.Exporter;
+    using OpenTelemetry.Logs;
+    using OpenTelemetry.Resources;
+    using OpenTelemetry.Trace;
     using Sirenix.OdinInspector;
     using UnityEngine;
-    using static Assets.Scripts.Core.GameControllerCore;
-
-    public interface IGameController
-    {
-        uint TickCount { get; set; }
-    }
 
     public class GameController : SerializedMonoBehaviour, IGameController
     {
@@ -210,6 +226,9 @@ namespace Assets.Scripts.Unity
         public bool readyForTicks = false;
         public SpriteMapComponent Map { get; set; }
         public PlayerComponent PlayerComponent { get; set; }
+        public ActivitySource ActivitySource { get; set; }
+        public TracerProvider openTelemetryTracer;
+        public ILogger<GameController> openTelemetryLogger;
         public uint TickCount { get; set; } = 0;
         public float lastTick = 0;
 
@@ -225,6 +244,48 @@ namespace Assets.Scripts.Unity
         public virtual void Start()
         {
             this.core = new GameControllerCore() { backref = this };
+
+            ResourceBuilder resourceBuilder = ResourceBuilder
+                .CreateDefault()
+                .AddService(GameControllerCore.openTelemetryDataset);
+
+            this.ActivitySource = new(GameControllerCore.openTelemetryDataset);
+
+            this.openTelemetryTracer = Sdk.CreateTracerProviderBuilder()
+                .SetResourceBuilder(resourceBuilder)
+                .AddAspNetCoreInstrumentation()
+                .AddSource(GameControllerCore.openTelemetryDataset) // Ensure it matches the ActivitySource name
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                    options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                })
+                .Build();
+
+            ServiceProvider serviceProvider = new ServiceCollection()
+                .AddLogging(logging =>
+                {
+                    logging.ClearProviders();
+                    logging.SetMinimumLevel(LogLevel.Debug); // Enable Debug Level Logging
+                    logging.AddOpenTelemetry(options =>
+                    {
+                        options.SetResourceBuilder(resourceBuilder);
+                        options.IncludeFormattedMessage = true;
+                        options.IncludeScopes = true;
+                        options.AddOtlpExporter(options =>
+                        {
+                            options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
+                            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                            options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                        });
+                    });
+                })
+                .BuildServiceProvider();
+
+            this.openTelemetryLogger = serviceProvider.GetRequiredService<
+                ILogger<GameController>
+            >();
         }
 
         public virtual void Update()
@@ -233,8 +294,6 @@ namespace Assets.Scripts.Unity
             // If we aren't ready for ticks, the main game loop won't run.
             if (this.readyForTicks && (Time.time > this.lastTick + this.tickFrequency))
             {
-                Debug.Log("Tick: " + this.TickCount);
-
                 // Generate the pathfinding grid
                 if (this.Map.Grid == null)
                 {
@@ -242,6 +301,8 @@ namespace Assets.Scripts.Unity
                 }
 
                 // Tick all objects
+                using Activity tickActivity = this.ActivitySource.StartActivity("Tick");
+                tickActivity.SetTag("tick", this.TickCount);
                 foreach (
                     Dictionary<string, WorldObjectCore> worldObjects in this.core
                         .worldObjects
@@ -250,6 +311,13 @@ namespace Assets.Scripts.Unity
                 {
                     foreach (WorldObjectCore worldObject in worldObjects.Values)
                     {
+                        using Activity worldObjectTickActivity = this.ActivitySource.StartActivity(
+                            "worldObjectTick"
+                        );
+                        worldObjectTickActivity.SetTag(
+                            "WorldObjectType",
+                            worldObject.worldObjectType
+                        );
                         worldObject.backref.Tick(this);
                     }
                 }

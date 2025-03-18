@@ -45,7 +45,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
 
             List<string> ingredients = gameContent
                 .Items[this.core.targetType]
@@ -55,11 +55,18 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             foreach (string ingredient in ingredients)
             {
                 this.core.resourceInserters.Add(
-                    new(this.core.battery, this.core.resources, ingredient, this.insertionRate)
+                    new(
+                        this.core,
+                        this.core.battery,
+                        this.core.resources,
+                        ingredient,
+                        this.insertionRate
+                    )
                 );
             }
 
             this.core.production = new ProductionComponentCore(
+                this.core,
                 gameContent,
                 this.core.resources,
                 this.core.battery,
@@ -133,17 +140,17 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.battery.Balance(this.core, gameController.core);
-            this.core.production.Produce();
+            this.core.Alerts = this.core.battery.Tick(gameController.core);
+            this.core.Alerts = this.core.production.Tick(gameController.core);
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.Alerts = dispatcher.Tick(gameController.core);
+                this.core.Alerts = this.core.Alerts = dispatcher.Tick(gameController.core);
             }
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
-                inserter.Insert(this.core, gameController.core);
+                this.core.Alerts = inserter.Tick(gameController.core);
             }
-            this.core.powerLine.Tick(gameController.core);
+            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
         }
     }
 }

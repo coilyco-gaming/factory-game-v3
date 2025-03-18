@@ -1,11 +1,15 @@
 // Override resource reservations to pull a product out of
 // its dispatchers resource inventory when it has become adjacent.
 
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Assets.Scripts.Core;
+using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
+    [Serializable]
     public class ResourceRetrieverCore
     {
         private WorldObjectCore worldObject;
@@ -26,11 +30,7 @@ namespace Assets.Scripts.Components.Core
             uint quantity = 1
         )
         {
-            this.worldObject =
-                worldObject
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires a parent world object"
-                );
+            this.worldObject = worldObject;
             this.resources =
                 resources
                 ?? throw new GameControllerCore.MisconfigurationException(
@@ -59,8 +59,13 @@ namespace Assets.Scripts.Components.Core
             this.quantity = quantity; // TODO: make this stack size
         }
 
-        public void Tick()
+        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             // Only get resources if we are in retrieve or collect mode
             bool weAreInRetrieveMode =
                 this.dispatchReceiver.receiverVerb
@@ -70,7 +75,13 @@ namespace Assets.Scripts.Components.Core
                 == DispatchComponentCore.Verbs.Collect.ToString();
             if (!weAreInRetrieveMode && !weAreInCollectMode)
             {
-                return;
+                return new()
+                {
+                    new()
+                    {
+                        { gameController.backref.TickCount, "not in retrieve or collect mode" },
+                    },
+                };
             }
 
             // Only retrieve resources if we are adjacent to the dispatcher
@@ -82,7 +93,10 @@ namespace Assets.Scripts.Components.Core
                 ) < 1.5;
             if (!dispatcherIsAdjacent)
             {
-                return;
+                return new()
+                {
+                    new() { { gameController.backref.TickCount, "dispatcher is not adjacent" } },
+                };
             }
 
             // Check if we already have some of the target resource
@@ -90,7 +104,10 @@ namespace Assets.Scripts.Components.Core
                 this.resources.resources.GetValueOrDefault(this.targetResource, 0u) > this.quantity;
             if (weHaveTargetResource)
             {
-                return;
+                return new()
+                {
+                    new() { { gameController.backref.TickCount, "we have resource to retrieve" } },
+                };
             }
 
             // Retrieve the resource from the dispatcher
@@ -103,6 +120,8 @@ namespace Assets.Scripts.Components.Core
                 );
             }
             catch (ResourcesComponentCore.ResourceException) { }
+
+            return new();
         }
     }
 }
@@ -144,6 +163,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTrue()
         {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
             // Receiver
             ResourcesComponentCore receiverResources = new(
                 new TestResourceReceiverGameContent(),
@@ -151,7 +176,7 @@ namespace Assets.Scripts.Components.Tests
                 100
             );
             WorldObjectCore receiverWorldObject = new(null) { resources = receiverResources };
-            BatteryComponentCore receiverBattery = new(100, 100);
+            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
             DispatchReceiverComponentCore dispatchReceiver = new(
                 receiverWorldObject,
                 receiverResources,
@@ -168,7 +193,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // Logic under test
-            resourceReceiver.Tick();
+            resourceReceiver.Tick(gameController);
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }
@@ -176,6 +201,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestRetrieve()
         {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
             // Dispatcher
             ResourcesComponentCore dispatcherResources = new(
                 new TestResourceReceiverGameContent(),
@@ -188,7 +219,7 @@ namespace Assets.Scripts.Components.Tests
                 resources = dispatcherResources,
                 gridPosition = new(0, 0),
             };
-            BatteryComponentCore dispatchBattery = new(100, 100);
+            BatteryComponentCore dispatchBattery = new(dispatcherWorldObject, 100, 100);
             DispatchComponentCore dispatcher = new(
                 dispatcherWorldObject,
                 dispatchBattery,
@@ -210,7 +241,7 @@ namespace Assets.Scripts.Components.Tests
                 resources = receiverResources,
                 gridPosition = new(0, 1),
             };
-            BatteryComponentCore receiverBattery = new(100, 100);
+            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
             DispatchReceiverComponentCore dispatchReceiver = new(
                 dispatcherWorldObject,
                 receiverResources,
@@ -231,7 +262,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // Logic under test
-            resourceReceiver.Tick();
+            resourceReceiver.Tick(gameController);
 
             // Assertions
             Assert.Equal(receiverResources.resources["planks"], 1u);
@@ -240,6 +271,12 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDoesNotDuplicate()
         {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
             // Dispatcher
             ResourcesComponentCore dispatcherResources = new(
                 new TestResourceReceiverGameContent(),
@@ -252,7 +289,7 @@ namespace Assets.Scripts.Components.Tests
                 resources = dispatcherResources,
                 gridPosition = new(0, 0),
             };
-            BatteryComponentCore dispatchBattery = new(100, 100);
+            BatteryComponentCore dispatchBattery = new(dispatcherWorldObject, 100, 100);
             DispatchComponentCore dispatcher = new(
                 dispatcherWorldObject,
                 dispatchBattery,
@@ -274,7 +311,7 @@ namespace Assets.Scripts.Components.Tests
                 resources = receiverResources,
                 gridPosition = new(0, 1),
             };
-            BatteryComponentCore receiverBattery = new(100, 100);
+            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
             DispatchReceiverComponentCore dispatchReceiver = new(
                 dispatcherWorldObject,
                 receiverResources,
@@ -295,9 +332,9 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // Logic under test
-            resourceReceiver.Tick();
-            resourceReceiver.Tick();
-            resourceReceiver.Tick();
+            resourceReceiver.Tick(gameController);
+            resourceReceiver.Tick(gameController);
+            resourceReceiver.Tick(gameController);
 
             // Assertions
             Assert.Equal(receiverResources.resources["planks"], 1u);

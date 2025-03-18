@@ -41,9 +41,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
 
             this.core.power = new PowerComponentCore(
+                this.core,
                 this.core.battery,
                 this.core.resources,
                 this.core.targetType,
@@ -54,6 +55,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resourceInserters = new()
             {
                 new(
+                    this.core,
                     this.core.battery,
                     this.core.resources,
                     this.core.targetType,
@@ -99,15 +101,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.Alerts = dispatcher.Tick(gameController.core);
+                this.core.Alerts = this.core.Alerts = dispatcher.Tick(gameController.core);
             }
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
-                inserter.Insert(this.core, gameController.core);
+                this.core.Alerts = inserter.Tick(gameController.core);
             }
-            this.core.power.GeneratePower();
-            this.core.battery.Balance(this.core, gameController.core);
-            this.core.powerLine.Tick(gameController.core);
+            this.core.Alerts = this.core.power.Tick(gameController.core);
+            this.core.Alerts = this.core.battery.Tick(gameController.core);
+            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
         }
     }
 }

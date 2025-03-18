@@ -6,24 +6,30 @@ namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using Assets.Scripts.Core;
+    using UnityEngine;
 
     [Serializable]
     public class ResourceInserterComponentCore
     {
+        private WorldObjectCore worldObject;
         public string resourceType = "";
         public uint insertionRate = 0;
+
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
 
         public ResourceInserterComponentCore(
+            WorldObjectCore worldObject,
             BatteryComponentCore battery,
             ResourcesComponentCore resources,
             string resourceType,
             uint insertionRate
         )
         {
+            this.worldObject = worldObject;
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
@@ -38,10 +44,15 @@ namespace Assets.Scripts.Components.Core
             this.insertionRate = insertionRate;
         }
 
-        public void Insert(WorldObjectCore worldObject, GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
-                worldObject.GridPosition
+                this.worldObject.GridPosition
             );
             List<ResourcesComponentCore> resources = localWorldObjects
                 .Select(localWorldObject => localWorldObject.resources)
@@ -74,6 +85,8 @@ namespace Assets.Scripts.Components.Core
                     catch (ResourcesComponentCore.ResourceException) { }
                 }
             }
+
+            return new();
         }
     }
 }
@@ -113,8 +126,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertCapacityOverflow()
         {
-            GameControllerCore gameController = new();
-            BatteryComponentCore battery = new(100, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
 
             // object 0
             ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 1, 1);
@@ -125,6 +143,7 @@ namespace Assets.Scripts.Components.Tests
                 new List<ResourceInserterComponentCore>()
                 {
                     new(
+                        new WorldObjectCore(null),
                         battery: battery,
                         resourceType: "wood",
                         insertionRate: 1,
@@ -144,7 +163,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Tick(gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -155,9 +174,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsert()
         {
-            GameControllerCore gameController = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
 
             // object 0
             ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 2, 2);
@@ -168,6 +191,7 @@ namespace Assets.Scripts.Components.Tests
                 new List<ResourceInserterComponentCore>()
                 {
                     new(
+                        new WorldObjectCore(null),
                         battery: battery,
                         resourceType: "wood",
                         insertionRate: 1,
@@ -188,7 +212,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Tick(gameController);
 
             // assertions
             Assert.Equal(2u, worldObject0.resources.resources["wood"]);
@@ -198,9 +222,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBatteryMaxedAndStorageMaxed()
         {
-            GameControllerCore gameController = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
 
             // object 0
             ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 1, 1);
@@ -211,6 +239,7 @@ namespace Assets.Scripts.Components.Tests
                 new List<ResourceInserterComponentCore>()
                 {
                     new(
+                        new WorldObjectCore(null),
                         battery: battery,
                         resourceType: "wood",
                         insertionRate: 1,
@@ -231,7 +260,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Tick(gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -242,9 +271,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestEmptyBatteryPreventsInsert()
         {
-            GameControllerCore gameController = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
 
-            BatteryComponentCore battery = new(0, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
 
             // object 0
             ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 2, 2);
@@ -255,6 +288,7 @@ namespace Assets.Scripts.Components.Tests
                 new List<ResourceInserterComponentCore>()
                 {
                     new(
+                        new WorldObjectCore(null),
                         battery: battery,
                         resourceType: "wood",
                         insertionRate: 1,
@@ -275,7 +309,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Tick(gameController);
 
             // assertions
             Assert.Equal(1u, worldObject0.resources.resources["wood"]);
@@ -285,9 +319,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestInsertMultiple()
         {
-            GameControllerCore gameController = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
 
             // object 0
             ResourcesComponentCore resources0 = new(new TestResourcesGameContent(), 3, 3);
@@ -298,6 +336,7 @@ namespace Assets.Scripts.Components.Tests
                 new List<ResourceInserterComponentCore>()
                 {
                     new(
+                        new WorldObjectCore(null),
                         battery: battery,
                         resourceType: "wood",
                         insertionRate: 1,
@@ -328,7 +367,7 @@ namespace Assets.Scripts.Components.Tests
             );
 
             // logic under test
-            worldObject0.resourceInserters[0].Insert(worldObject0, gameController);
+            worldObject0.resourceInserters[0].Tick(gameController);
 
             // assertions
             Assert.Equal(3u, worldObject0.resources.resources["wood"]);

@@ -45,7 +45,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 // TODO: adjacent stone mining drill if necessary
@@ -78,13 +78,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.battery.Balance(this.core, gameController.core);
+            this.core.Alerts = this.core.battery.Tick(gameController.core);
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
                 this.core.Alerts = dispatcher.Tick(gameController.core);
             }
             this.core.Alerts = this.core.mining.Tick(gameController.core);
-            this.core.powerLine.Tick(gameController.core);
+            this.core.Alerts = this.core.powerLine.Tick(gameController.core);
 
             // If no ore world object is on our position
             bool oreAtPosition =

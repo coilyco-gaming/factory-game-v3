@@ -1,9 +1,13 @@
 namespace Assets.Scripts.Components.Core
 {
+    using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using Assets.Scripts.Core;
+    using UnityEngine;
 
+    [Serializable]
     public class DispatchComponentCore
     {
         private uint deliveryResourceBufferMultiplier = 4;
@@ -57,15 +61,11 @@ namespace Assets.Scripts.Components.Core
             string receiverObject
         )
         {
+            this.worldObject = worldObject;
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
                     "Dispatch component requires a battery component"
-                );
-            this.worldObject =
-                worldObject
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Dispatch component requires a parent world object"
                 );
             this.resources =
                 resources
@@ -80,10 +80,24 @@ namespace Assets.Scripts.Components.Core
 
         public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)
             {
-                return new();
+                return new()
+                {
+                    new()
+                    {
+                        {
+                            gameController.backref.TickCount,
+                            $"{this.Description}: assigned to {this.receiver.worldObject.gridPosition}"
+                        },
+                    },
+                };
             }
 
             // If dispatch goal is deliver to me
@@ -96,7 +110,7 @@ namespace Assets.Scripts.Components.Core
                         * this.gameContent.Items[this.receiverSubject].StackSize
             )
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new()
                     {
@@ -119,7 +133,7 @@ namespace Assets.Scripts.Components.Core
                 && this.resources.resources.GetValueOrDefault(this.receiverSubject) == 0
             )
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new()
                     {
@@ -155,7 +169,7 @@ namespace Assets.Scripts.Components.Core
             }
             if (!hasEmptyAdjacent)
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new()
                     {
@@ -262,7 +276,7 @@ namespace Assets.Scripts.Components.Core
 
             if (targetLocations.Count == 0)
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new()
                     {
@@ -305,7 +319,7 @@ namespace Assets.Scripts.Components.Core
 
             if (receiver == null)
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new()
                     {
@@ -331,7 +345,6 @@ namespace Assets.Scripts.Components.Tests
     using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
-    using Assets.Scripts.Unity;
     using Xunit;
     using Xunit.Abstractions;
 
@@ -360,11 +373,6 @@ namespace Assets.Scripts.Components.Tests
             };
     }
 
-    internal class TestDispatchUnityGameController : IGameController
-    {
-        public uint TickCount { get; set; } = 0;
-    }
-
     public class DispatchComponentTest
     {
         private ITestOutputHelper testOutput;
@@ -377,12 +385,9 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTrue()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore worldObject = new(null);
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore resources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 worldObject,
@@ -400,16 +405,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestAssignTarget()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(
                 new TestDispatchGameContent(),
                 100,
@@ -463,23 +465,20 @@ namespace Assets.Scripts.Components.Tests
             };
 
             dispatch.Tick(gameController);
-            receiver.Tick();
+            receiver.Tick(gameController);
             Assert.NotNull(receiver.dispatcher);
         }
 
         [Fact]
         public void TestAssignTargetToMultipleLocations()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(
                 new TestDispatchGameContent(),
                 100,
@@ -543,7 +542,7 @@ namespace Assets.Scripts.Components.Tests
 
             receiverResources.CreateResources("MiningDrill", 1);
             dispatch.Tick(gameController);
-            receiver.Tick();
+            receiver.Tick(gameController);
             Assert.NotNull(receiver.dispatcher);
 
             // Should assign to the closest target on the first run
@@ -562,19 +561,19 @@ namespace Assets.Scripts.Components.Tests
                     }
                 );
             receiverResources.ConsumeResources("MiningDrill", 1);
-            receiver.Tick();
+            receiver.Tick(gameController);
             dispatch.Tick(gameController);
             Assert.Equal("Retrieve", receiver.receiverVerb);
             Assert.Null(receiver.targetPosition); // Should be null after deployment
 
             // Simulate the reciever returning to the HQ to get a new drill
             receiverResources.CreateResources("MiningDrill", 1);
-            receiver.Tick();
+            receiver.Tick(gameController);
             dispatch.Tick(gameController);
             Assert.Equal("Deploy", receiver.receiverVerb);
 
             // Then being sent back to the next target
-            receiver.Tick();
+            receiver.Tick(gameController);
             dispatch.Tick(gameController);
             Assert.Equal(targetWorldObject2.gridPosition, receiver.targetPosition);
         }
@@ -582,17 +581,14 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestNoDuplicateDispatches()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
 
             // HQ 1
             WorldObjectCore HQWorldObject1 = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
-            BatteryComponentCore battery1 = new(100, 100);
+            BatteryComponentCore battery1 = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources1 = new(
                 new TestDispatchGameContent(),
                 100,
@@ -614,7 +610,7 @@ namespace Assets.Scripts.Components.Tests
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
-            BatteryComponentCore battery2 = new(100, 100);
+            BatteryComponentCore battery2 = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources2 = new(
                 new TestDispatchGameContent(),
                 100,
@@ -699,8 +695,8 @@ namespace Assets.Scripts.Components.Tests
 
             dispatch1.Tick(gameController);
             dispatch2.Tick(gameController);
-            receiver1.Tick();
-            receiver2.Tick();
+            receiver1.Tick(gameController);
+            receiver2.Tick(gameController);
             Assert.NotNull(receiver1.dispatcher);
             Assert.Null(receiver2.dispatcher);
         }
@@ -708,16 +704,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDoesNotAssignWhenNoResourcesAvailable()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(
                 new TestDispatchGameContent(),
                 100,
@@ -760,16 +753,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDoesNotAssignTargetWhenVerbMismatch()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
@@ -831,14 +821,15 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new()
             {
-                backref = new TestDispatchUnityGameController(),
+                backref = new ExampleGameController(),
+                worldObjects = new(),
             };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(new(), 100, 100);
             DispatchComponentCore dispatch = new(
                 HQWorldObject,
@@ -895,16 +886,13 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestDoesNotAssignWhenResourcesAlreadyPresent()
         {
-            GameControllerCore gameController = new()
-            {
-                backref = new TestDispatchUnityGameController(),
-            };
+            GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore HQWorldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(100, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore dispactherResources = new(
                 new TestDispatchGameContent(),
                 100,

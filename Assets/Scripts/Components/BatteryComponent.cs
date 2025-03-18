@@ -2,8 +2,10 @@ namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using Assets.Scripts.Core;
+    using UnityEngine;
 
     [Serializable]
     public class BatteryComponentCore
@@ -47,8 +49,15 @@ namespace Assets.Scripts.Components.Core
                 : base(message) { }
         }
 
-        public BatteryComponentCore(float startingEnergy = 0, uint capacity = 0)
+        private WorldObjectCore worldObject;
+
+        public BatteryComponentCore(
+            WorldObjectCore worldObject,
+            float startingEnergy = 0,
+            uint capacity = 0
+        )
         {
+            this.worldObject = worldObject;
             // Setting a min capacity + rounding to 1 decimal place helps
             // prevent a battery being charged infinitely.
             this.Capacity = capacity == 0 ? (uint)startingEnergy : capacity;
@@ -61,10 +70,14 @@ namespace Assets.Scripts.Components.Core
 
         // Balance each battery in the list, including yourself,
         // to the same % of battery capacity.
-        public void Balance(WorldObjectCore worldObject, GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+
             List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
-                worldObject.GridPosition
+                this.worldObject.GridPosition
             );
 
             List<BatteryComponentCore> batteries = localWorldObjects
@@ -94,6 +107,8 @@ namespace Assets.Scripts.Components.Core
                 }
                 catch (BatteryCapacityException) { }
             }
+
+            return new();
         }
     }
 }
@@ -115,7 +130,7 @@ namespace Assets.Scripts.Components.Tests
         {
             WorldObjectCore core = new(null)
             {
-                battery = new BatteryComponentCore(energy, capacity),
+                battery = new BatteryComponentCore(new WorldObjectCore(null), energy, capacity),
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
             core.guid = core.CreateGuid();
@@ -131,12 +146,16 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceTwo()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -144,12 +163,16 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceWithNulls()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -157,23 +180,31 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceOnlyNulls()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(25u, Math.Round(battery1.Energy));
         }
 
         [Fact]
         public void TestBalanceTwoWithDuplicate()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
         }
@@ -181,15 +212,19 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThree()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 75, 100);
             BatteryComponentCore battery3 = this.Battery(gameController, 50, 100);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
-            battery2.Balance(new WorldObjectCore(null), gameController);
-            battery3.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
+            battery2.Tick(gameController);
+            battery3.Tick(gameController);
 
             Assert.Equal(50u, Math.Round(battery1.Energy));
             Assert.Equal(50u, Math.Round(battery2.Energy));
@@ -199,12 +234,16 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceTwoWithDifferentCapacity()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 25, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 75, 200);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(33, Math.Round(battery1.Energy));
             Assert.Equal(67, Math.Round(battery2.Energy));
         }
@@ -212,13 +251,17 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThreeWithDifferentCapacity()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 33, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 66, 200);
             BatteryComponentCore battery3 = this.Battery(gameController, 99, 300);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(33u, Math.Round(battery1.Energy));
             Assert.Equal(66u, Math.Round(battery2.Energy));
             Assert.Equal(99u, Math.Round(battery3.Energy));
@@ -227,13 +270,17 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceThreeWithDifferentCapacityTwo()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 66, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 66, 200);
             BatteryComponentCore battery3 = this.Battery(gameController, 66, 300);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(33u, Math.Round(battery1.Energy));
             Assert.Equal(66u, Math.Round(battery2.Energy));
             Assert.Equal(99u, Math.Round(battery3.Energy));
@@ -242,7 +289,11 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestWildlyDifferentCapacitiesDoesntExplode()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(
                 gameController,
@@ -251,19 +302,23 @@ namespace Assets.Scripts.Components.Tests
             );
             BatteryComponentCore battery2 = this.Battery(gameController, 0, 0);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
-            battery2.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
+            battery2.Tick(gameController);
         }
 
         [Fact]
         public void TestBalanceTwoEmptyBatteries()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 0, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 0, 200);
 
-            battery1.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
             Assert.Equal(0u, (uint)battery1.Energy);
             Assert.Equal(0u, (uint)battery2.Energy);
         }
@@ -271,14 +326,18 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestCapacityDropout()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
 
             BatteryComponentCore battery1 = this.Battery(gameController, 100, 100);
             BatteryComponentCore battery2 = this.Battery(gameController, 100, 100);
 
             battery1.Capacity = 0;
-            battery1.Balance(new WorldObjectCore(null), gameController);
-            battery2.Balance(new WorldObjectCore(null), gameController);
+            battery1.Tick(gameController);
+            battery2.Tick(gameController);
 
             Assert.Equal(0u, (uint)battery1.Energy);
             Assert.Equal(100u, (uint)battery2.Energy);
@@ -287,25 +346,33 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestBalanceMisconfiguredCapacity()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            BatteryComponentCore battery = new();
-            battery.Balance(new WorldObjectCore(null), gameController);
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
+            BatteryComponentCore battery = new(new WorldObjectCore(null));
+            battery.Tick(gameController);
             Assert.Equal(0u, battery.Energy);
         }
 
         [Fact]
         public void TestBalanceEmptyList()
         {
-            GameControllerCore gameController = new() { worldObjects = new() };
-            BatteryComponentCore battery = new(50, 100);
-            battery.Balance(new WorldObjectCore(null), gameController);
+            GameControllerCore gameController = new()
+            {
+                worldObjects = new(),
+                backref = new ExampleGameController(),
+            };
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 50, 100);
+            battery.Tick(gameController);
             Assert.Equal(50, Math.Round(battery.Energy));
         }
 
         [Fact]
         public void TestPercentEnergy()
         {
-            BatteryComponentCore battery = new(50, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 50, 100);
             Assert.Equal(Math.Round(0.5, 2), Math.Round(battery.PercentEnergy, 2));
             Assert.Equal("50%", battery.PercentEnergyStatus);
         }
@@ -313,7 +380,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestPercentEnergy9s()
         {
-            BatteryComponentCore battery = new(99, 100);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 99, 100);
             Assert.Equal(100u, battery.Capacity);
             Assert.Equal(99, battery.Energy);
             Assert.Equal(0.99d, battery.PercentEnergy);
@@ -323,7 +390,7 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestMinCapacity()
         {
-            BatteryComponentCore battery = new(0, 0);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 0);
             Assert.Equal(5u, battery.Capacity);
             Assert.Equal(0, battery.Energy);
         }

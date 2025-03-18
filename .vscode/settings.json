@@ -4,6 +4,10 @@
     "Assets/Plugins/**": true,
     "Assets/TextMesh Pro/**": true,
     "Assets/PluginMaster/**": true,
+    "Assets/Packages/**": true,
+    "Assets/Scenes/**": true,
+    "Assets/Materials/**": true,
+    "Assets/Resources/**": true,
     "Packages/**": true
   },
   "dotnet.defaultSolution": "factory-game-v2.sln"

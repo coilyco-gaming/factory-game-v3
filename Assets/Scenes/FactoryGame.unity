@@ -178,9 +178,12 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Position: <53, 51>
-
-'
+  m_text: "Position: <53, 52>\nStatus:\n- Alerts:\n  - 0: 'retrieve mining drill
+    from me: no receiver found'\n  - 43: 'deliver frames to me: no receiver found'\n 
+    - 43: 'deliver motors to me: no receiver found'\n  Name: Factory\n  Energy: 21%\n 
+    Dispatchers:\n  - retrieve mining drill from me\n  - deliver frames to me\n 
+    - deliver motors to me\n  Resources:\n    Mining Drill: 2\n  Info:\n    Outputs:
+    mining drill\n    Progress: 0%\n    Storage Volume: 0%\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2871,6 +2874,9 @@ MonoBehaviour:
       Entry: 6
       Data: 
     - Name: random
+      Entry: 6
+      Data: 
+    - Name: openTelemetry
       Entry: 6
       Data: 
   spawnables: {fileID: 646330575}

@@ -2,7 +2,9 @@ namespace Assets.Scripts.Components.Core
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using Assets.Scripts.Core;
+    using UnityEngine;
 
     [Serializable]
     public class PowerComponentCore
@@ -11,10 +13,12 @@ namespace Assets.Scripts.Components.Core
         private uint burnRate = 0; // ex: burn 1 coal per tick
         private uint gainRate = 0; // ex: gain 10 energy per tick
 
-        private BatteryComponentCore battery = new();
+        private BatteryComponentCore battery;
         private ResourcesComponentCore resources;
+        private WorldObjectCore worldObject;
 
         public PowerComponentCore(
+            WorldObjectCore worldObject,
             BatteryComponentCore battery,
             ResourcesComponentCore resources,
             string burnResource = "",
@@ -22,6 +26,7 @@ namespace Assets.Scripts.Components.Core
             uint gainRate = 0
         )
         {
+            this.worldObject = worldObject;
             this.battery =
                 battery
                 ?? throw new GameControllerCore.MisconfigurationException(
@@ -37,11 +42,16 @@ namespace Assets.Scripts.Components.Core
             this.gainRate = gainRate;
         }
 
-        public void GeneratePower()
+        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             if (this.battery.PercentEnergy >= 1)
             {
-                return;
+                return new();
             }
             uint resourcesToBurn = this.resources.resources.GetValueOrDefault(
                 this.burnResource,
@@ -57,6 +67,8 @@ namespace Assets.Scripts.Components.Core
                 }
                 catch (BatteryComponentCore.BatteryCapacityException) { }
             }
+
+            return new();
         }
     }
 }
@@ -77,7 +89,7 @@ namespace Assets.Scripts.Components.Tests
             uint gainRate = 0
         )
         {
-            BatteryComponentCore battery = new(startingEnergy, capacity);
+            BatteryComponentCore battery = new(new WorldObjectCore(null), startingEnergy, capacity);
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             WorldObjectCore core = new(null)
             {
@@ -86,7 +98,12 @@ namespace Assets.Scripts.Components.Tests
             };
             if (gainRate != 0)
             {
-                core.power = new PowerComponentCore(battery, resources, gainRate: gainRate);
+                core.power = new PowerComponentCore(
+                    new WorldObjectCore(null),
+                    battery,
+                    resources,
+                    gainRate: gainRate
+                );
             }
             core.guid = core.CreateGuid();
             gameController.worldObjects ??= new();
@@ -101,14 +118,20 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGeneratePowerZeroes()
         {
-            BatteryComponentCore battery = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null));
             ResourcesComponentCore resources = new(
                 new TestResourcesGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
-            PowerComponentCore power = new(battery, resources, "", 0, 0);
-            power.GeneratePower();
+            PowerComponentCore power = new(new WorldObjectCore(null), battery, resources, "", 0, 0);
+            power.Tick(gameController);
             Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
@@ -116,11 +139,24 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestGeneratePower()
         {
-            BatteryComponentCore battery = new(0, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("coal", 1);
-            PowerComponentCore power = new(battery, resources, "coal", 1, 10);
-            power.GeneratePower();
+            PowerComponentCore power = new(
+                new WorldObjectCore(null),
+                battery,
+                resources,
+                "coal",
+                1,
+                10
+            );
+            power.Tick(gameController);
             Assert.Equal(10, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
@@ -128,10 +164,23 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestConsumeResourcesNoneAvailable()
         {
-            BatteryComponentCore battery = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null));
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
-            PowerComponentCore power = new(battery, resources, "coal", 1, 10);
-            power.GeneratePower();
+            PowerComponentCore power = new(
+                new WorldObjectCore(null),
+                battery,
+                resources,
+                "coal",
+                1,
+                10
+            );
+            power.Tick(gameController);
             Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
@@ -139,10 +188,23 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestConsumeResourcesDifferentAvailable()
         {
-            BatteryComponentCore battery = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null));
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
-            PowerComponentCore power = new(battery, resources, "coal", 1, 10);
-            power.GeneratePower();
+            PowerComponentCore power = new(
+                new WorldObjectCore(null),
+                battery,
+                resources,
+                "coal",
+                1,
+                10
+            );
+            power.Tick(gameController);
             Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)0, resources.TotalResources);
         }
@@ -150,11 +212,24 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestConsumeMoreThanAvailable()
         {
-            BatteryComponentCore battery = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null));
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("coal", 1);
-            PowerComponentCore power = new(battery, resources, "coal", 2, 10);
-            power.GeneratePower();
+            PowerComponentCore power = new(
+                new WorldObjectCore(null),
+                battery,
+                resources,
+                "coal",
+                2,
+                10
+            );
+            power.Tick(gameController);
             Assert.Equal(0, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
@@ -162,41 +237,68 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestSolarPower()
         {
-            BatteryComponentCore battery = new(0, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
             PowerComponentCore power = new(
+                new WorldObjectCore(null),
                 battery,
                 new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
                 "sunlight",
                 0,
                 10
             );
-            power.GeneratePower();
+            power.Tick(gameController);
             Assert.Equal(10, battery.Energy);
         }
 
         [Fact]
         public void TestOvercharge()
         {
-            BatteryComponentCore battery = new(0, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
             PowerComponentCore power = new(
+                new WorldObjectCore(null),
                 battery,
                 new ResourcesComponentCore(new TestResourcesGameContent(), 1, 1),
                 "sunlight",
                 0,
                 200
             );
-            power.GeneratePower();
+            power.Tick(gameController);
             Assert.Equal(100, battery.Energy);
         }
 
         [Fact]
         public void TestOverchargeDoesntConsume()
         {
-            BatteryComponentCore battery = new(100, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
             ResourcesComponentCore resources = new(new TestResourcesGameContent(), 1, 1);
             resources.CreateResources("coal", 1);
-            PowerComponentCore power = new(battery, resources, "coal", 1, 200);
-            power.GeneratePower();
+            PowerComponentCore power = new(
+                new WorldObjectCore(null),
+                battery,
+                resources,
+                "coal",
+                1,
+                200
+            );
+            power.Tick(gameController);
             Assert.Equal(100, battery.Energy);
             Assert.Equal((uint)1, resources.TotalResources);
         }
@@ -204,17 +306,24 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestChargingTo100Percent()
         {
-            BatteryComponentCore battery = new(0, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
             PowerComponentCore power = new(
+                new WorldObjectCore(null),
                 battery,
                 new ResourcesComponentCore(new TestProductionCraftTime(), 1, 1),
                 burnResource: "sunlight",
                 gainRate: 1
             );
-            power.GeneratePower();
+            power.Tick(gameController);
             for (int i = 0; i < 100; i++)
             {
-                power.GeneratePower();
+                power.Tick(gameController);
             }
             Assert.Equal(1, battery.PercentEnergy);
             Assert.Equal("100%", battery.PercentEnergyStatus);
@@ -223,13 +332,20 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestHighGain()
         {
-            BatteryComponentCore battery = new(0, 100);
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            BatteryComponentCore battery = new(new WorldObjectCore(null), 0, 100);
             PowerComponentCore power = new(
+                new WorldObjectCore(null),
                 battery,
                 new ResourcesComponentCore(new TestProductionCraftTime(), 1, 1),
                 gainRate: 95
             );
-            power.GeneratePower();
+            power.Tick(gameController);
             Assert.Equal(95, battery.Energy);
             Assert.Equal(Math.Round(0.95, 2), Math.Round(battery.PercentEnergy, 2));
             Assert.Equal("95%", battery.PercentEnergyStatus);
@@ -238,27 +354,31 @@ namespace Assets.Scripts.Components.Tests
         [Fact]
         public void TestTwoGeneratorsFourConsumers()
         {
-            GameControllerCore gameController = new();
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
 
             WorldObjectCore core1 = this.WorldObject(gameController, 0, 100, gainRate: 10);
             WorldObjectCore core2 = this.WorldObject(gameController, 0, 100, gainRate: 10);
             WorldObjectCore core3 = this.WorldObject(gameController, 0, 100);
             WorldObjectCore core4 = this.WorldObject(gameController, 0, 100);
 
-            core1.power.GeneratePower();
-            core2.power.GeneratePower();
+            core1.power.Tick(gameController);
+            core2.power.Tick(gameController);
 
             // Round 1
-            core1.battery.Balance(new WorldObjectCore(null), gameController);
-            core2.battery.Balance(new WorldObjectCore(null), gameController);
-            core3.battery.Balance(new WorldObjectCore(null), gameController);
-            core4.battery.Balance(new WorldObjectCore(null), gameController);
+            core1.battery.Tick(gameController);
+            core2.battery.Tick(gameController);
+            core3.battery.Tick(gameController);
+            core4.battery.Tick(gameController);
 
             // Round 2
-            core1.battery.Balance(new WorldObjectCore(null), gameController);
-            core2.battery.Balance(new WorldObjectCore(null), gameController);
-            core3.battery.Balance(new WorldObjectCore(null), gameController);
-            core4.battery.Balance(new WorldObjectCore(null), gameController);
+            core1.battery.Tick(gameController);
+            core2.battery.Tick(gameController);
+            core3.battery.Tick(gameController);
+            core4.battery.Tick(gameController);
 
             float totalEnergy =
                 core1.battery.Energy

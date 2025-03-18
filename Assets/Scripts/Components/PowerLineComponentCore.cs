@@ -1,10 +1,14 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Assets.Scripts.Core;
+using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
+    [Serializable]
     public class PowerLineComponentCore
     {
         private WorldObjectCore worldObject;
@@ -18,6 +22,11 @@ namespace Assets.Scripts.Components.Core
 
         public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+
             // TODO: some kind of early exit condition...
             // TODO: because we don't want to query the world objects every tick
 
@@ -44,7 +53,7 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Determine the closest tile that is pointed towards the power source
-            Vector2 closestTile = GameControllerCore
+            System.Numerics.Vector2 closestTile = GameControllerCore
                 .GetAdjacentPositions(this.worldObject.GridPosition)
                 .OrderBy(tile => System.Numerics.Vector2.Distance(tile, closestPower.GridPosition))
                 .First();
@@ -76,14 +85,8 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using Assets.Scripts.Components.Core;
-    using Assets.Scripts.Unity;
     using Xunit;
     using Xunit.Abstractions;
-
-    internal class PowerLineGameController : IGameController
-    {
-        public uint TickCount { get; set; } = 0;
-    }
 
     public class PowerLineComponentCoreTest
     {
@@ -99,11 +102,14 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new()
             {
-                backref = new MiningGameController() { TickCount = 0 },
-                worldObjects = new Dictionary<Vector2, Dictionary<string, WorldObjectCore>>(),
+                backref = new ExampleGameController() { TickCount = 0 },
+                worldObjects = new(),
             };
 
-            WorldObjectCore worldObject = new(null) { GridPosition = new Vector2(0, 0) };
+            WorldObjectCore worldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
             worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
 
             worldObject.powerLine.Tick(gameController);
@@ -116,11 +122,14 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new()
             {
-                backref = new PowerLineGameController() { TickCount = 0 },
-                worldObjects = new Dictionary<Vector2, Dictionary<string, WorldObjectCore>>(),
+                backref = new ExampleGameController() { TickCount = 0 },
+                worldObjects = new(),
             };
 
-            WorldObjectCore worldObject = new(null) { GridPosition = new Vector2(0, 0) };
+            WorldObjectCore worldObject = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
             worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
 
             List<Dictionary<uint, string>> alerts = worldObject.powerLine.Tick(gameController);
@@ -132,11 +141,14 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new()
             {
-                backref = new PowerLineGameController() { TickCount = 0 },
-                worldObjects = new Dictionary<Vector2, Dictionary<string, WorldObjectCore>>(),
+                backref = new ExampleGameController() { TickCount = 0 },
+                worldObjects = new(),
             };
 
-            WorldObjectCore worldObject1 = new(null) { GridPosition = new Vector2(0, 0) };
+            WorldObjectCore worldObject1 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
             worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()
             {
@@ -145,12 +157,14 @@ namespace Assets.Scripts.Components.Tests
 
             WorldObjectCore worldObject2 = new(null)
             {
-                GridPosition = new Vector2(10, 10),
-                power = new PowerComponentCore(
-                    new BatteryComponentCore(100, 100),
-                    new ResourcesComponentCore(null, 100, 100)
-                ),
+                GridPosition = new System.Numerics.Vector2(10, 10),
             };
+            worldObject2.battery = new BatteryComponentCore(worldObject2, 100, 100);
+            worldObject2.power = new PowerComponentCore(
+                worldObject2,
+                worldObject2.battery,
+                new ResourcesComponentCore(null, 100, 100)
+            );
             worldObject2.powerLine = new PowerLineComponentCore(worldObject2, "testPowerLine");
             gameController.worldObjects[worldObject2.GridPosition] = new()
             {
@@ -166,11 +180,14 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new()
             {
-                backref = new PowerLineGameController() { TickCount = 0 },
-                worldObjects = new Dictionary<Vector2, Dictionary<string, WorldObjectCore>>(),
+                backref = new ExampleGameController() { TickCount = 0 },
+                worldObjects = new(),
             };
 
-            WorldObjectCore worldObject1 = new(null) { GridPosition = new Vector2(0, 0) };
+            WorldObjectCore worldObject1 = new(null)
+            {
+                GridPosition = new System.Numerics.Vector2(0, 0),
+            };
             worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()
             {
@@ -179,12 +196,14 @@ namespace Assets.Scripts.Components.Tests
 
             WorldObjectCore worldObject2 = new(null)
             {
-                GridPosition = new Vector2(1, 0),
-                power = new PowerComponentCore(
-                    new BatteryComponentCore(100, 100),
-                    new ResourcesComponentCore(null, 100, 100)
-                ),
+                GridPosition = new System.Numerics.Vector2(1, 0),
             };
+            worldObject2.battery = new BatteryComponentCore(worldObject2, 100, 100);
+            worldObject2.power = new PowerComponentCore(
+                worldObject2,
+                worldObject2.battery,
+                new ResourcesComponentCore(null, 100, 100)
+            );
             worldObject2.powerLine = new PowerLineComponentCore(worldObject2, "testPowerLine");
             gameController.worldObjects[worldObject2.GridPosition] = new()
             {

@@ -42,7 +42,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(capacity: this.totalBatteryCapacity);
+            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
             {
@@ -51,9 +51,9 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.deployments = new List<DeploymentComponentCore>();
             foreach (DispatchReceiverComponentCore dispatchReceiver in this.core.dispatchReceivers)
             {
-                this.core.deployments.Add(new(this.core.resources, dispatchReceiver));
+                this.core.deployments.Add(new(this.core, this.core.resources, dispatchReceiver));
             }
-            this.core.movement = new MovementComponentCore(this);
+            this.core.movement = new MovementComponentCore(this.core);
             this.core.resourceRetriever = new ResourceRetrieverCore(
                 this.core,
                 this.core.resources,
@@ -68,16 +68,16 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.movement.Tick(gameController);
+            this.core.Alerts = this.core.movement.Tick(gameController.core);
             foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
             {
-                receiver.Tick();
+                this.core.Alerts = receiver.Tick(gameController.core);
             }
             foreach (DeploymentComponentCore deployment in this.core.deployments)
             {
-                deployment.Tick(gameController.core);
+                this.core.Alerts = deployment.Tick(gameController.core);
             }
-            this.core.resourceRetriever.Tick();
+            this.core.Alerts = this.core.resourceRetriever.Tick(gameController.core);
         }
     }
 }
