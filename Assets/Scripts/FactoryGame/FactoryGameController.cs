@@ -57,8 +57,6 @@ namespace Assets.Scripts.FactoryGame
             this.statusUIRightComponent = this.StatusUIRight.GetComponent<StatusUIRight>();
             this.statusUIRightComponent.Instantiate();
             this.StartCoroutine(this.WriteStatusUIRight());
-
-            this.Reset();
         }
 
         protected override void Reset()
@@ -330,19 +328,23 @@ namespace Assets.Scripts.FactoryGame
             while (true)
             {
                 yield return new WaitForSeconds(this.statusUpdateInterval);
-                // Get the list of objects at the player's position
-                IEnumerable<WorldObjectCore> worldObjects = this
-                    ?.core?.worldObjects?.GetValueOrDefault(
-                        this.PlayerComponent.GetGridPosition(),
-                        null
-                    )
-                    ?.Values.ToList();
+                try
+                {
+                    // Get the list of objects at the player's position
+                    IEnumerable<WorldObjectCore> worldObjects = this
+                        ?.core?.worldObjects?.GetValueOrDefault(
+                            this.PlayerComponent.GetGridPosition(),
+                            null
+                        )
+                        ?.Values.ToList();
 
-                // Display the status data in the UI
-                this.statusUILeftComponent.Display(
-                    worldObjects,
-                    this.PlayerComponent.GetGridPosition()
-                );
+                    // Display the status data in the UI
+                    this.statusUILeftComponent.Display(
+                        worldObjects,
+                        this.PlayerComponent.GetGridPosition()
+                    );
+                }
+                catch (Exception) { }
             }
         }
 
@@ -351,21 +353,25 @@ namespace Assets.Scripts.FactoryGame
             while (true)
             {
                 yield return new WaitForSeconds(this.statusUpdateInterval);
-                // Get the list of all objects
-                IEnumerable<WorldObjectCore> worldObjects = this
-                    ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
-                    .Where(worldObject => worldObject != null)
-                    .Where(worldObject =>
-                        !new List<string>
-                        {
-                            FactoryGameContent.Resources.IronOre.ToString(),
-                            FactoryGameContent.Resources.CopperOre.ToString(),
-                            FactoryGameContent.Resources.Coal.ToString(),
-                        }.Contains(worldObject.worldObjectType)
-                    );
+                try
+                {
+                    // Get the list of all objects
+                    IEnumerable<WorldObjectCore> worldObjects = this
+                        ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
+                        .Where(worldObject => worldObject != null)
+                        .Where(worldObject =>
+                            !new List<string>
+                            {
+                                FactoryGameContent.Resources.IronOre.ToString(),
+                                FactoryGameContent.Resources.CopperOre.ToString(),
+                                FactoryGameContent.Resources.Coal.ToString(),
+                            }.Contains(worldObject.worldObjectType)
+                        );
 
-                // Display the status data in the UI
-                this.statusUIRightComponent.Display(this, worldObjects);
+                    // Display the status data in the UI
+                    this.statusUIRightComponent.Display(this, worldObjects);
+                }
+                catch (Exception) { }
             }
         }
     }

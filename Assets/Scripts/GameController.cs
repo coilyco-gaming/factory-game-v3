@@ -204,11 +204,8 @@ namespace Assets.Scripts.Unity
     using System.Diagnostics;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
-    using Microsoft.Extensions.DependencyInjection;
-    using Microsoft.Extensions.Logging;
     using OpenTelemetry;
     using OpenTelemetry.Exporter;
-    using OpenTelemetry.Logs;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
     using Sirenix.OdinInspector;
@@ -228,7 +225,6 @@ namespace Assets.Scripts.Unity
         public PlayerComponent PlayerComponent { get; set; }
         public ActivitySource ActivitySource { get; set; }
         public TracerProvider openTelemetryTracer;
-        public ILogger<GameController> openTelemetryLogger;
         public uint TickCount { get; set; } = 0;
         public float lastTick = 0;
 
@@ -244,17 +240,13 @@ namespace Assets.Scripts.Unity
         public virtual void Start()
         {
             this.core = new GameControllerCore() { backref = this };
-
+            this.ActivitySource = new(GameControllerCore.openTelemetryDataset);
             ResourceBuilder resourceBuilder = ResourceBuilder
                 .CreateDefault()
                 .AddService(GameControllerCore.openTelemetryDataset);
-
-            this.ActivitySource = new(GameControllerCore.openTelemetryDataset);
-
-            this.openTelemetryTracer = Sdk.CreateTracerProviderBuilder()
+            Sdk.CreateTracerProviderBuilder()
                 .SetResourceBuilder(resourceBuilder)
-                .AddAspNetCoreInstrumentation()
-                .AddSource(GameControllerCore.openTelemetryDataset) // Ensure it matches the ActivitySource name
+                .AddSource(GameControllerCore.openTelemetryDataset)
                 .AddOtlpExporter(options =>
                 {
                     options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
@@ -262,30 +254,6 @@ namespace Assets.Scripts.Unity
                     options.Headers = GameControllerCore.openTelemetryAuthHeader;
                 })
                 .Build();
-
-            ServiceProvider serviceProvider = new ServiceCollection()
-                .AddLogging(logging =>
-                {
-                    logging.ClearProviders();
-                    logging.SetMinimumLevel(LogLevel.Debug); // Enable Debug Level Logging
-                    logging.AddOpenTelemetry(options =>
-                    {
-                        options.SetResourceBuilder(resourceBuilder);
-                        options.IncludeFormattedMessage = true;
-                        options.IncludeScopes = true;
-                        options.AddOtlpExporter(options =>
-                        {
-                            options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
-                            options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                            options.Headers = GameControllerCore.openTelemetryAuthHeader;
-                        });
-                    });
-                })
-                .BuildServiceProvider();
-
-            this.openTelemetryLogger = serviceProvider.GetRequiredService<
-                ILogger<GameController>
-            >();
         }
 
         public virtual void Update()
