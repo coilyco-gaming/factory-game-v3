@@ -26,6 +26,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // TODO: some kind of early exit condition...
             // TODO: because we don't want to query the world objects every tick

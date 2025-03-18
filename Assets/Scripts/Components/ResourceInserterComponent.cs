@@ -50,6 +50,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             List<WorldObjectCore> localWorldObjects = gameController.GetAdjacentWorldObjects(
                 this.worldObject.GridPosition

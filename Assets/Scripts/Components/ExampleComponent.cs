@@ -21,6 +21,8 @@ namespace Assets.Scripts.Components.Core
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
+            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
             return new();
         }
     }

@@ -24,6 +24,14 @@ namespace Assets.Scripts.FactoryGame
         public float oreSpawnFactor = 0.5f;
         public uint OreQuantityBase = 2000;
         public uint OreQuantityRange = 1000;
+        public override List<string> ExcludeWorldObjectTypeFromStatus =>
+            new()
+            {
+                FactoryGameContent.Resources.IronOre.ToString(),
+                FactoryGameContent.Resources.CopperOre.ToString(),
+                FactoryGameContent.Resources.Coal.ToString(),
+            };
+
         private TextMeshProUGUI pauseTextComponent;
         private StatusUILeft statusUILeftComponent;
         private StatusUIRight statusUIRightComponent;
@@ -360,12 +368,9 @@ namespace Assets.Scripts.FactoryGame
                         ?.core?.worldObjects.Values.SelectMany(worldObject => worldObject.Values)
                         .Where(worldObject => worldObject != null)
                         .Where(worldObject =>
-                            !new List<string>
-                            {
-                                FactoryGameContent.Resources.IronOre.ToString(),
-                                FactoryGameContent.Resources.CopperOre.ToString(),
-                                FactoryGameContent.Resources.Coal.ToString(),
-                            }.Contains(worldObject.worldObjectType)
+                            !this.ExcludeWorldObjectTypeFromStatus.Contains(
+                                worldObject.worldObjectType
+                            )
                         );
 
                     // Display the status data in the UI

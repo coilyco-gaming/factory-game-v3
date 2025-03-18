@@ -84,6 +84,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)

@@ -24,6 +24,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             if (
                 this.worldObject.dispatchReceivers.Count != 0

@@ -225,6 +225,7 @@ namespace Assets.Scripts.Unity
         public PlayerComponent PlayerComponent { get; set; }
         public ActivitySource ActivitySource { get; set; }
         public TracerProvider openTelemetryTracer;
+        public virtual List<string> ExcludeWorldObjectTypeFromStatus => new();
         public uint TickCount { get; set; } = 0;
         public float lastTick = 0;
 
@@ -279,13 +280,19 @@ namespace Assets.Scripts.Unity
                 {
                     foreach (WorldObjectCore worldObject in worldObjects.Values)
                     {
-                        using Activity worldObjectTickActivity = this.ActivitySource.StartActivity(
-                            "worldObjectTick"
-                        );
-                        worldObjectTickActivity.SetTag(
-                            "WorldObjectType",
-                            worldObject.worldObjectType
-                        );
+                        if (
+                            !this.ExcludeWorldObjectTypeFromStatus.Contains(
+                                worldObject.worldObjectType
+                            )
+                        )
+                        {
+                            using Activity worldObjectTickActivity =
+                                this.ActivitySource.StartActivity("worldObjectTick");
+                            worldObjectTickActivity.SetTag(
+                                "WorldObjectType",
+                                worldObject.worldObjectType
+                            );
+                        }
                         worldObject.backref.Tick(this);
                     }
                 }

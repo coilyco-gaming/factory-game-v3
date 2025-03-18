@@ -113,6 +113,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)

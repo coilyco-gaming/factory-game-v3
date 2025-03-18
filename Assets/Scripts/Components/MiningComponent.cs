@@ -52,6 +52,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // If the target can manifest, then just create the resource and return
             if (this.TargetItem.CreateFromNothing)

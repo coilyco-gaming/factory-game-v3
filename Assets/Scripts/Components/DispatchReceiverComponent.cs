@@ -72,6 +72,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             bool hasTargetItem =
                 this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;

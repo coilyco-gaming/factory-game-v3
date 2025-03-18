@@ -31,6 +31,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // If your job is deploy
             if (this.dispatchReceiver.receiverVerb == DispatchComponentCore.Verbs.Deploy.ToString())

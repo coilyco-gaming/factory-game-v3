@@ -65,6 +65,7 @@ namespace Assets.Scripts.Components.Core
                 this.GetType().Name
             );
             activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
             // Only get resources if we are in retrieve or collect mode
             bool weAreInRetrieveMode =
