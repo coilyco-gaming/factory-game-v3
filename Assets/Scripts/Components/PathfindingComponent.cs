@@ -85,13 +85,13 @@ namespace Assets.Scripts.Components.Core
             return currentTarget;
         }
 
-        public static System.Numerics.Vector2? GetPosition(
+        public static List<System.Numerics.Vector2> GetPosition(
             System.Numerics.Vector2 start,
             System.Numerics.Vector2 end,
             StaticGrid grid
         )
         {
-            System.Numerics.Vector2? position = null;
+            List<System.Numerics.Vector2> path = new();
             GridPos startGridPosition = new((int)start.X, (int)start.Y);
             GridPos endGridPosition = new((int)end.X, (int)end.Y);
 
@@ -102,25 +102,30 @@ namespace Assets.Scripts.Components.Core
                 iAllowEndNodeUnWalkable: EndNodeUnWalkableTreatment.ALLOW,
                 iDiagonalMovement: DiagonalMovement.IfAtLeastOneWalkable
             );
-
             List<GridPos> resultPathList = JumpPointFinder.FindPath(jpParam);
 
             if (resultPathList != null && resultPathList.Count != 0)
             {
-                // Derive the position vector from the next node on the path
-                int nextX = resultPathList[1].x;
-                int nextY = resultPathList[1].y;
+                foreach (GridPos pos in resultPathList)
+                {
+                    // Derive the position vector from the next node on the path
 
-                // The pathfinding algo is coded to "jump" when possible
-                // so we need to clip the movement if the next node is more than 1 away
-                nextX = Math.Clamp(nextX, (int)start.X - 1, (int)start.X + 1);
-                nextY = Math.Clamp(nextY, (int)start.Y - 1, (int)start.Y + 1);
+                    path.Add(new System.Numerics.Vector2(pos.x, pos.y));
+                    int nextX = resultPathList[0].x;
+                    int nextY = resultPathList[0].y;
 
-                System.Numerics.Vector2 nextPosition = new(nextX, nextY);
-                position = nextPosition - start;
+                    // The pathfinding algo is coded to "jump" when possible
+                    // so we need to clip the movement if the next node is more than 1 away
+                    nextX = Math.Clamp(nextX, (int)start.X - 1, (int)start.X + 1);
+                    nextY = Math.Clamp(nextY, (int)start.Y - 1, (int)start.Y + 1);
+
+                    System.Numerics.Vector2 position = new(nextX, nextY);
+                    path.Add(position);
+                }
             }
 
-            return position;
+            return path;
+            ;
         }
 
         public static System.Numerics.Quaternion FacePosition(System.Numerics.Vector2 position)
