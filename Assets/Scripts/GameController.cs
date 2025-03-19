@@ -207,7 +207,6 @@ namespace Assets.Scripts.Unity
     using Assets.Scripts.Core;
     using Microsoft.Extensions.Logging;
     using OpenTelemetry;
-    using OpenTelemetry.Context.Propagation;
     using OpenTelemetry.Exporter;
     using OpenTelemetry.Logs;
     using OpenTelemetry.Resources;

@@ -86,17 +86,6 @@ namespace Assets.Scripts.Components.Core
             parentActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
             parentActivity.SetTag("tick", gameController.backref.TickCount);
 
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "receiver-null-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
-            }
-
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)
             {
@@ -110,17 +99,6 @@ namespace Assets.Scripts.Components.Core
                         },
                     },
                 };
-            }
-
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "deliver-to-me-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
             }
 
             // If dispatch goal is deliver to me
@@ -145,17 +123,6 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "collect-from-me-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
-            }
-
             // If dispatch goal is retrieve or collect from me
             // then skip if I don't have any of the item
             if (
@@ -177,17 +144,6 @@ namespace Assets.Scripts.Components.Core
                         },
                     },
                 };
-            }
-
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "has-empty-adjacent-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
             }
 
             // Only dispatch if there's an empty adjacent tile
@@ -226,17 +182,6 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "battery-energy-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
-            }
-
             // Abort early if the battery is empty
             try
             {
@@ -245,17 +190,6 @@ namespace Assets.Scripts.Components.Core
             catch (BatteryComponentCore.BatteryCapacityException)
             {
                 return new();
-            }
-
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "target-locations-query"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
             }
 
             // Acqiure list of target locations
@@ -290,17 +224,6 @@ namespace Assets.Scripts.Components.Core
                         .Select(worldObject => worldObject.Value.GridPosition)
                         .ToList();
 
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "existing-deploys-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
-            }
-
             // If dispatch verb is deploy, filter out target locations
             // that are already occupied by the same dispatch subject
 
@@ -315,17 +238,6 @@ namespace Assets.Scripts.Components.Core
                             )
                     )
                     .ToList();
-            }
-
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "identical-dispatch-type-check"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
             }
 
             // Don't dispatch to target if there's already another dispatch
@@ -377,17 +289,6 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity(
-                    "receiver-query"
-                )
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
-            }
-
             // TODO: immobible recievers only match when they are adjacent
             // Get the first receiver awaiting a target
             DispatchReceiverComponentCore receiver = gameController
@@ -429,15 +330,6 @@ namespace Assets.Scripts.Components.Core
                         },
                     },
                 };
-            }
-
-            using (
-                Activity childActivity = gameController.backref.ActivitySource.StartActivity("done")
-            )
-            {
-                childActivity.SetParentId(parentActivity?.Id);
-                childActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
-                childActivity.SetTag("tick", gameController.backref.TickCount);
             }
 
             // Assign the target to the receiver
