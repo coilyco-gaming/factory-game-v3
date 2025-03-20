@@ -259,9 +259,9 @@ namespace Assets.Scripts.Unity
                 .AddSource(GameControllerCore.openTelemetryDataset)
                 .AddOtlpExporter(options =>
                 {
-                    // options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
-                    // options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                    // options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                    options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                    options.Headers = GameControllerCore.openTelemetryAuthHeader;
                 })
                 .Build();
 
@@ -275,9 +275,9 @@ namespace Assets.Scripts.Unity
                     logging.SetResourceBuilder(resourceBuilder);
                     logging.AddOtlpExporter(options =>
                     {
-                        // options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
-                        // options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                        // options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                        options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
+                        options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                        options.Headers = GameControllerCore.openTelemetryAuthHeader;
                     });
                 });
             });
@@ -300,6 +300,7 @@ namespace Assets.Scripts.Unity
                 // Tick all objects
                 using Activity tickActivity = this.ActivitySource.StartActivity("Tick");
                 tickActivity.SetTag("tick", this.TickCount);
+                tickActivity.Start();
                 foreach (
                     Dictionary<string, WorldObjectCore> worldObjects in this.core
                         .worldObjects

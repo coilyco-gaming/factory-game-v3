@@ -30,9 +30,15 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("tick", gameController.backref.TickCount);
             activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
+            // If we have already spawned power lines, we don't need to do it again
             if (this.powerLinesSpawned)
             {
-                // If we have already spawned power lines, we don't need to do it again
+                return new();
+            }
+
+            // Power lines should only spawn from power generators
+            if (worldObject.power == null)
+            {
                 return new();
             }
 
