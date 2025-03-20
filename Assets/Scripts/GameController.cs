@@ -87,6 +87,7 @@ namespace Assets.Scripts.Core
         public GameContent gameContent;
         public IGameController backref;
 
+        // TODO: the 2nd layer of world objects should be a list
         public Dictionary<
             System.Numerics.Vector2,
             Dictionary<string, WorldObjectCore>

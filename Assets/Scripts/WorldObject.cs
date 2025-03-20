@@ -140,13 +140,7 @@ namespace Assets.Scripts.Core
 
         public string CreateGuid()
         {
-            long time = DateTime.UtcNow.Ticks;
-            byte[] guidBytes = System.Guid.NewGuid().ToByteArray();
-            byte[] counterBytes = BitConverter.GetBytes(time);
-            Array.Copy(counterBytes, 0, guidBytes, guidBytes.Length - 8, 8);
-            Guid timeOffsetGuid = new(guidBytes);
-            string guidString = timeOffsetGuid.ToString();
-            return guidString;
+            return System.Guid.NewGuid().ToString()[0..4];
         }
     }
 }

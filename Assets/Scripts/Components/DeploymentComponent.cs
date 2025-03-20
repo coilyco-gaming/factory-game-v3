@@ -54,13 +54,13 @@ namespace Assets.Scripts.Components.Core
                 );
                 if (distance > 1.5)
                 {
-                    return new()
-                    {
-                        new()
-                        {
-                            { gameController.backref.TickCount, "not close enough to deploy" },
-                        },
-                    };
+                    return new();
+                    // {
+                    //     new()
+                    //     {
+                    //         { gameController.backref.TickCount, "not close enough to deploy" },
+                    //     },
+                    // };
                 }
                 // If you have the target item, remove it from your resources
                 if (

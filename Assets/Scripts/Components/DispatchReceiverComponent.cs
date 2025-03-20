@@ -126,16 +126,16 @@ namespace Assets.Scripts.Components.Core
                 }
             }
 
-            return new()
-            {
-                new()
-                {
-                    {
-                        gameController.backref.TickCount,
-                        $"{this.Description}: receiver state valid"
-                    },
-                },
-            };
+            return new();
+            // {
+            //     new()
+            //     {
+            //         {
+            //             gameController.backref.TickCount,
+            //             $"{this.Description}: receiver state valid"
+            //         },
+            //     },
+            // };
         }
 
         private void SwapTo(DispatchComponentCore.Verbs verb)

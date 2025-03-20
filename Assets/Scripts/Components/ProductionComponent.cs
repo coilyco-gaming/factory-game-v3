@@ -174,13 +174,6 @@ namespace Assets.Scripts.Components.Core
                     return new();
                 }
             }
-            else
-            {
-                return new()
-                {
-                    new() { { gameController.backref.TickCount, "need ingredients for product" } },
-                };
-            }
 
             return new();
         }

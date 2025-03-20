@@ -11,26 +11,26 @@ namespace Assets.Scripts.Unity
                 // Resources
                 {
                     Resources.IronOre.ToString(), //
-                    new Item(Resources.IronOre.ToString(), stackSize: 200)
+                    new Item(Resources.IronOre.ToString(), stackSize: 100)
                 },
                 {
                     Resources.CopperOre.ToString(), //
-                    new Item(Resources.CopperOre.ToString(), stackSize: 200)
+                    new Item(Resources.CopperOre.ToString(), stackSize: 100)
                 },
                 {
                     Resources.Coal.ToString(), //
-                    new Item(Resources.Coal.ToString(), stackSize: 200)
+                    new Item(Resources.Coal.ToString(), stackSize: 100)
                 },
                 {
                     Resources.Stone.ToString(), //
-                    new Item(Resources.Stone.ToString(), stackSize: 200, createFromNothing: true)
+                    new Item(Resources.Stone.ToString(), stackSize: 100, createFromNothing: true)
                 },
                 // Products
                 {
                     Products.IronBars.ToString(),
                     new Item(
                         Products.IronBars.ToString(),
-                        stackSize: 200,
+                        stackSize: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.IronOre.ToString(), 1 },
@@ -41,7 +41,7 @@ namespace Assets.Scripts.Unity
                     Products.CopperBars.ToString(),
                     new Item(
                         Products.CopperBars.ToString(),
-                        stackSize: 200,
+                        stackSize: 100,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Resources.CopperOre.ToString(), 1 },
@@ -55,7 +55,7 @@ namespace Assets.Scripts.Unity
                         weight: 20,
                         volume: 5,
                         craftTime: 5,
-                        stackSize: 20,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.IronBars.ToString(), 4 },
@@ -68,7 +68,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Motors.ToString(),
                         craftTime: 5,
-                        stackSize: 20,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.IronBars.ToString(), 2 },
@@ -81,7 +81,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Circuits.ToString(),
                         craftTime: 5,
-                        stackSize: 20,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Products.CopperBars.ToString(), 2 },
@@ -95,7 +95,7 @@ namespace Assets.Scripts.Unity
                         weight: 10,
                         volume: 10,
                         craftTime: 5,
-                        stackSize: 20,
+                        stackSize: 10,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Products.IronBars.ToString(), 4 },
@@ -109,7 +109,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.StorageWarehouse.ToString(),
                         weight: 400,
                         volume: 200,
-                        craftTime: 50,
+                        craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 8 },
@@ -124,7 +124,7 @@ namespace Assets.Scripts.Unity
                         Spawnables.CoalPlant.ToString(),
                         weight: 400,
                         volume: 200,
-                        craftTime: 50,
+                        craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.Frames.ToString(), 8 },
@@ -187,7 +187,6 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Spawnables.MiningDrill.ToString(),
                         weight: 50,
-                        volume: 25,
                         craftTime: 5,
                         ingredients: new Dictionary<string, uint>
                         {
@@ -197,15 +196,16 @@ namespace Assets.Scripts.Unity
                         canSpawnGameObject: true
                     )
                 },
-                {
-                    Spawnables.PowerLines.ToString(),
-                    new Item(
-                        Spawnables.PowerLines.ToString(),
-                        stackSize: 10,
-                        canSpawnGameObject: true,
-                        createFromNothing: true
-                    )
-                },
+                // {
+                //     Spawnables.PowerLines.ToString(),
+                //     new Item(
+                //         Spawnables.PowerLines.ToString(),
+                //         weight: 50,
+                //         craftTime: 5,
+                //         canSpawnGameObject: true,
+                //         createFromNothing: true
+                //     )
+                // },
             };
 
         public enum Resources

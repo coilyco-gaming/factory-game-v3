@@ -15,6 +15,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         private uint powerBurnRate = 4;
         private uint powerGainRate = 160;
         private uint insertionRate = 20;
+        private int miningSpeed = 20;
+        private int miningEnergyCost = 2;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -64,6 +66,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     DispatchComponentCore.Keywords.Me.ToString()
                 ),
             };
+            this.core.mining = new MiningComponentCore(
+                gameContent,
+                FactoryGameContent.Resources.Coal.ToString(),
+                this.miningSpeed,
+                this.miningEnergyCost
+            );
             this.core.powerLine = new PowerLineComponentCore(
                 FactoryGameContent.Spawnables.PowerLines.ToString()
             );
@@ -86,6 +94,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     inserter.Tick(gameController.core, this.core)
                 );
             }
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.mining.Tick(gameController.core, this.core)
+            );
             this.core.CreateAlert(
                 gameController.core,
                 this.core.power.Tick(gameController.core, this.core)

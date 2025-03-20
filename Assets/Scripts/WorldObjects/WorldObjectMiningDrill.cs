@@ -12,8 +12,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     {
         private uint totalVolumeCapacity = 1000;
         private uint totalBatteryCapacity = 1000;
-        private int miningSpeed = 5;
-        private int miningEnergyCost = 5;
+        private int miningSpeed = 20;
+        private int miningEnergyCost = 2;
         public override float ZIndex => 2; // TODO: make this a constant
 
         public override StatusDataComponentCore StatusData =>

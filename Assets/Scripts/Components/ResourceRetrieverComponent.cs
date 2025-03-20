@@ -47,13 +47,13 @@ namespace Assets.Scripts.Components.Core
                 == DispatchComponentCore.Verbs.Collect.ToString();
             if (!weAreInRetrieveMode && !weAreInCollectMode)
             {
-                return new()
-                {
-                    new()
-                    {
-                        { gameController.backref.TickCount, "not in retrieve or collect mode" },
-                    },
-                };
+                return new();
+                // {
+                //     new()
+                //     {
+                //         { gameController.backref.TickCount, "not in retrieve or collect mode" },
+                //     },
+                // };
             }
 
             // Only retrieve resources if we are adjacent to the dispatcher
@@ -65,10 +65,10 @@ namespace Assets.Scripts.Components.Core
                 ) < 1.5;
             if (!dispatcherIsAdjacent)
             {
-                return new()
-                {
-                    new() { { gameController.backref.TickCount, "dispatcher is not adjacent" } },
-                };
+                return new();
+                // {
+                //     new() { { gameController.backref.TickCount, "dispatcher is not adjacent" } },
+                // };
             }
 
             // Check if we already have some of the target resource
@@ -77,10 +77,10 @@ namespace Assets.Scripts.Components.Core
                 > this.quantity;
             if (weHaveTargetResource)
             {
-                return new()
-                {
-                    new() { { gameController.backref.TickCount, "we have resource to retrieve" } },
-                };
+                return new();
+                // {
+                //     new() { { gameController.backref.TickCount, "we have resource to retrieve" } },
+                // };
             }
 
             try

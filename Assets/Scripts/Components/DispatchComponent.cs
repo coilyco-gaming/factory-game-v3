@@ -90,7 +90,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: assigned to {this.receiver.worldObject.gridPosition}"
+                            $"{this.Description}, assigned to {this.receiver.worldObject.guid}"
                         },
                     },
                 };
@@ -112,7 +112,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: no more required"
+                            $"{this.Description}, no more required"
                         },
                     },
                 };
@@ -135,7 +135,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: not enough available"
+                            $"{this.Description}, not enough available"
                         },
                     },
                 };
@@ -156,7 +156,12 @@ namespace Assets.Scripts.Components.Core
                 }
                 if (
                     gameController.worldObjects.ContainsKey(adjacentTile)
-                    && gameController.worldObjects[adjacentTile].Count == 0
+                    && gameController
+                        .worldObjects[adjacentTile]
+                        .Where(worldObject => !worldObject.Value.passThrough)
+                        .Where(worldObject => !worldObject.Value.mobile)
+                        .ToList()
+                        .Count == 0
                 )
                 {
                     hasEmptyAdjacent = true;
@@ -171,7 +176,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: no empty adjacent tile"
+                            $"{this.Description}, no empty adjacent tile"
                         },
                     },
                 };
@@ -278,7 +283,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: no target found"
+                            $"{this.Description}, no target found"
                         },
                     },
                 };
@@ -321,7 +326,7 @@ namespace Assets.Scripts.Components.Core
                     {
                         {
                             gameController.backref.TickCount,
-                            $"{this.Description}: no receiver found"
+                            $"{this.Description}, no receiver found"
                         },
                     },
                 };

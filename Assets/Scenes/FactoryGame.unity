@@ -178,16 +178,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <50, 50>\r\nStatus:\r\n- Alerts:\r\n  - 2647: 'deploy mining
-    drill to iron ore: assigned to <81, 78>'\r\n  - 2648: 'deploy mining drill to
-    iron ore: assigned to <81, 81>'\r\n  - 2653: 'deploy mining drill to iron ore:
-    assigned to <50, 53>'\r\n  - 2655: 'deploy mining drill to iron ore: assigned
-    to <53, 52>'\r\n  - 2656: 'deploy mining drill to iron ore: assigned to <52,
-    53>'\r\n  - 2657: 'deploy mining drill to iron ore: assigned to <51, 54>'\r\n 
-    - 2658: 'deploy mining drill to iron ore: assigned to <37, 54>'\r\n  - 2659:
-    'deploy mining drill to iron ore: assigned to <24, 54>'\r\n  - 2660: 'deploy
-    mining drill to iron ore: assigned to <6, 54>'\r\n  - 2662: 'deploy mining drill
-    to iron ore: no receiver found'\r\n  Name: Radar\r\n  Energy: 0%\r\n  Dispatchers:\r\n 
+  m_text: "Position: <50, 50>\r\nStatus:\r\n- Name: Radar\r\n  Energy: 0%\r\n  Dispatchers:\r\n 
     - deploy mining drill to iron ore\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2947,8 +2938,8 @@ MonoBehaviour:
   HQOreBuffer: 10
   spawnAttempts: 10
   oreSpawnFactor: 1
-  OreQuantityBase: 500
-  OreQuantityRange: 250
+  OreQuantityBase: 4000
+  OreQuantityRange: 2000
 --- !u!223 &1318506233
 Canvas:
   m_ObjectHideFlags: 0
