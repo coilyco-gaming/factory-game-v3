@@ -9,6 +9,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
     public class WorldObjectPowerLines : WorldObject
     {
         private uint totalBatteryCapacity = 1000;
+        private int lifetime = 100;
 
         public override StatusDataComponentCore StatusData =>
             new()
@@ -39,6 +40,15 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameController.core,
                 this.core.powerLine.Tick(gameController.core, this.core)
             );
+
+            // Power lines degrade over time.
+            this.lifetime--;
+            if (this.lifetime <= 0)
+            {
+                gameController.QueueForDeletion(
+                    new DeletionQueueItem(this.core, this.GridPosition)
+                );
+            }
         }
     }
 }

@@ -100,7 +100,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     .core.worldObjects.GetValueOrDefault(this.GridPosition)
                     ?.Any(worldObject => worldObject.Value.backref is WorldObjectOre ore) ?? false;
 
-            // If our resources are empty
+            // And if our resources are empty
             bool resourcesEmpty = !this.core.resources.HasResources;
 
             // Then delete the mining drill

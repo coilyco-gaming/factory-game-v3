@@ -390,6 +390,7 @@ namespace Assets.Scripts.Unity
                 }
 
                 // Handle ticks
+                tickActivity.Stop();
                 this.TickCount++;
                 this.lastTick = Time.time;
             }

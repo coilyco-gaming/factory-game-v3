@@ -10,6 +10,9 @@ namespace Assets.Scripts.Components.Core
     public class PowerLineComponentCore
     {
         private string powerLineName;
+        private uint powerLineSpawn = 10;
+        private float powerLineSpawnPercent = 0.1f;
+        private uint powerLineSpawnCost = 1;
 
         public PowerLineComponentCore(string powerLineName = "")
         {
@@ -28,11 +31,27 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("tick", gameController.backref.TickCount);
             activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
-            // Only generate power lines when the battery is empty
-            if (worldObject.battery.Energy != 0)
+            // Only generate power lines when the battery is nearly empty
+            if (worldObject.battery.PercentEnergy < this.powerLineSpawnPercent)
             {
                 return new();
             }
+
+            // If you are here, you want to spawn a power line, but can't afford it.
+            if (worldObject.battery.Energy < this.powerLineSpawnCost)
+            {
+                return new List<Dictionary<uint, string>>
+                {
+                    new()
+                    {
+                        {
+                            gameController.backref.TickCount,
+                            "not enough energy to spawn power line"
+                        },
+                    },
+                };
+            }
+            worldObject.battery.Energy -= this.powerLineSpawnCost;
 
             // TODO: more exit early conditions
 
