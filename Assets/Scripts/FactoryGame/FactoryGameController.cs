@@ -76,17 +76,6 @@ namespace Assets.Scripts.FactoryGame
             this.SpawnOres(FactoryGameContent.Resources.Coal.ToString());
 
             // Spawn some initial buildings
-            //
-            // C = Coal Plant
-            // F = Factory
-            // D = Foundry
-            // T = Truck
-            // P = Power Lines
-            // M = Mining Drill
-            //
-            //   T P F F F F T
-            //   T P F F F F T
-            //   T C M D D D T <== the coal on the far left is our 0x 0y
 
             foreach (
                 SpawnQueueItem spawnQueueItem in new List<SpawnQueueItem>

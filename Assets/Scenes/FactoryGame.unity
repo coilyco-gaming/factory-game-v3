@@ -178,10 +178,17 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Position: <53, 52>\nStatus:\n- Name: Factory\n  Energy: 0%\n  Dispatchers:\n 
-    - retrieve mining drill from me\n  - deliver frames to me\n  - deliver motors
-    to me\n  Resources:\n    Mining Drill: 10\n  Info:\n    Outputs: mining drill\n   
-    Progress: 0%\n    Storage Volume: 2%\n"
+  m_text: "Position: <50, 50>\r\nStatus:\r\n- Alerts:\r\n  - 2647: 'deploy mining
+    drill to iron ore: assigned to <81, 78>'\r\n  - 2648: 'deploy mining drill to
+    iron ore: assigned to <81, 81>'\r\n  - 2653: 'deploy mining drill to iron ore:
+    assigned to <50, 53>'\r\n  - 2655: 'deploy mining drill to iron ore: assigned
+    to <53, 52>'\r\n  - 2656: 'deploy mining drill to iron ore: assigned to <52,
+    53>'\r\n  - 2657: 'deploy mining drill to iron ore: assigned to <51, 54>'\r\n 
+    - 2658: 'deploy mining drill to iron ore: assigned to <37, 54>'\r\n  - 2659:
+    'deploy mining drill to iron ore: assigned to <24, 54>'\r\n  - 2660: 'deploy
+    mining drill to iron ore: assigned to <6, 54>'\r\n  - 2662: 'deploy mining drill
+    to iron ore: no receiver found'\r\n  Name: Radar\r\n  Energy: 0%\r\n  Dispatchers:\r\n 
+    - deploy mining drill to iron ore\r\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2744,6 +2751,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1306989971}
   - component: {fileID: 1306989972}
+  - component: {fileID: 1306989973}
   m_Layer: 0
   m_Name: Radar
   m_TagString: Untagged
@@ -2821,6 +2829,42 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1306989973
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1306989970}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db23bb29912d5ef4a8e1d1600acdddca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  core:
+    battery:
+      minimumStartingCapacity: 0
+    resources:
+      reservedInputBufferMultiplier: 0
+      reservedOuputBufferMultiplier: 0
+      weightCapacity: 0
+      volumeCapacity: 0
+    resourceInserters: []
+    dispatchers: []
+    dispatchReceivers: []
+    deployments: []
+    production:
+      Product: 
+      Quantity: 0
+      currentCraftProgress: 0
+      outputBufferOccupied: 0
+    guid: 
+    worldObjectType: 
+    targetType: 
+    targetSubType: 
+    backref: {fileID: 0}
+    mobile: 0
+    passThrough: 0
 --- !u!1 &1318506227
 GameObject:
   m_ObjectHideFlags: 0
@@ -2892,7 +2936,7 @@ MonoBehaviour:
   spawnables: {fileID: 646330575}
   userInterface: {fileID: 284713081}
   tickFrequency: 0.1
-  randomSeed: 123124
+  randomSeed: 4382721
   readyForTicks: 1
   lastTick: 52.85319
   resetButton: {fileID: 1883276799}
