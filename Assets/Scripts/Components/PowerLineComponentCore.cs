@@ -9,32 +9,26 @@ namespace Assets.Scripts.Components.Core
     [Serializable]
     public class PowerLineComponentCore
     {
-        private WorldObjectCore worldObject;
         private string powerLineName;
 
-        public PowerLineComponentCore(WorldObjectCore worldObject, string powerLineName)
+        public PowerLineComponentCore(string powerLineName = "")
         {
-            this.worldObject = worldObject;
             this.powerLineName = powerLineName;
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
-            if (this.worldObject.battery == null)
-            {
-                throw new GameControllerCore.MisconfigurationException(
-                    "PowerLineComponentCore requires a battery component"
-                );
-            }
-
             // Only generate power lines when the battery is empty
-            if (this.worldObject.battery.Energy != 0)
+            if (worldObject.battery.Energy != 0)
             {
                 return new();
             }
@@ -45,10 +39,10 @@ namespace Assets.Scripts.Components.Core
             WorldObjectCore closestPower = gameController
                 .worldObjects.SelectMany(worldObjects => worldObjects.Value)
                 .Where(worldObject => worldObject.Value?.power != null)
-                .OrderBy(worldObject =>
+                .OrderBy(thisWorldObject =>
                     System.Numerics.Vector2.Distance(
-                        worldObject.Value.GridPosition,
-                        this.worldObject.GridPosition
+                        thisWorldObject.Value.GridPosition,
+                        worldObject.GridPosition
                     )
                 )
                 .Select(worldObject => worldObject.Value)
@@ -65,7 +59,7 @@ namespace Assets.Scripts.Components.Core
 
             // Determine the closest tile that is pointed towards the power source
             System.Numerics.Vector2 closestTile = GameControllerCore
-                .GetAdjacentPositions(this.worldObject.GridPosition)
+                .GetAdjacentPositions(worldObject.GridPosition)
                 .OrderBy(tile => System.Numerics.Vector2.Distance(tile, closestPower.GridPosition))
                 .First();
 
@@ -120,11 +114,11 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
-                battery = new BatteryComponentCore(null, 100, 100),
+                battery = new BatteryComponentCore(100, 100),
             };
-            worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
+            worldObject.powerLine = new PowerLineComponentCore("testPowerLine");
 
-            worldObject.powerLine.Tick(gameController);
+            worldObject.powerLine.Tick(gameController, worldObject);
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }
@@ -141,11 +135,14 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
-                battery = new BatteryComponentCore(null, 0, 100),
+                battery = new BatteryComponentCore(0, 100),
             };
-            worldObject.powerLine = new PowerLineComponentCore(worldObject, "testPowerLine");
+            worldObject.powerLine = new PowerLineComponentCore("testPowerLine");
 
-            List<Dictionary<uint, string>> alerts = worldObject.powerLine.Tick(gameController);
+            List<Dictionary<uint, string>> alerts = worldObject.powerLine.Tick(
+                gameController,
+                worldObject
+            );
             Assert.Equal("no power source found", alerts.First().Values.First());
         }
 
@@ -161,9 +158,9 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject1 = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
-                battery = new BatteryComponentCore(null, 0, 100),
+                battery = new BatteryComponentCore(0, 100),
             };
-            worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
+            worldObject1.powerLine = new PowerLineComponentCore("testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()
             {
                 ["guid-0"] = worldObject1,
@@ -173,19 +170,18 @@ namespace Assets.Scripts.Components.Tests
             {
                 GridPosition = new System.Numerics.Vector2(10, 10),
             };
-            worldObject2.battery = new BatteryComponentCore(worldObject2, 100, 100);
-            worldObject2.power = new PowerComponentCore(
-                worldObject2,
-                worldObject2.battery,
-                new ResourcesComponentCore(null, 100, 100)
-            );
-            worldObject2.powerLine = new PowerLineComponentCore(worldObject2, "testPowerLine");
+            worldObject2.battery = new BatteryComponentCore(100, 100);
+            worldObject2.power = new PowerComponentCore();
+            worldObject2.powerLine = new PowerLineComponentCore("testPowerLine");
             gameController.worldObjects[worldObject2.GridPosition] = new()
             {
                 ["guid-1"] = worldObject2,
             };
 
-            List<Dictionary<uint, string>> alerts = worldObject1.powerLine.Tick(gameController);
+            List<Dictionary<uint, string>> alerts = worldObject1.powerLine.Tick(
+                gameController,
+                worldObject1
+            );
             Assert.Equal("spawning power line", alerts.First().Values.First());
         }
 
@@ -201,9 +197,9 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject1 = new(null)
             {
                 GridPosition = new System.Numerics.Vector2(0, 0),
-                battery = new BatteryComponentCore(null, 0, 100),
+                battery = new BatteryComponentCore(0, 100),
             };
-            worldObject1.powerLine = new PowerLineComponentCore(worldObject1, "testPowerLine");
+            worldObject1.powerLine = new PowerLineComponentCore("testPowerLine");
             gameController.worldObjects[worldObject1.GridPosition] = new()
             {
                 ["guid-0"] = worldObject1,
@@ -213,19 +209,18 @@ namespace Assets.Scripts.Components.Tests
             {
                 GridPosition = new System.Numerics.Vector2(1, 0),
             };
-            worldObject2.battery = new BatteryComponentCore(worldObject2, 100, 100);
-            worldObject2.power = new PowerComponentCore(
-                worldObject2,
-                worldObject2.battery,
-                new ResourcesComponentCore(null, 100, 100)
-            );
-            worldObject2.powerLine = new PowerLineComponentCore(worldObject2, "testPowerLine");
+            worldObject2.battery = new BatteryComponentCore(100, 100);
+            worldObject2.power = new PowerComponentCore();
+            worldObject2.powerLine = new PowerLineComponentCore("testPowerLine");
             gameController.worldObjects[worldObject2.GridPosition] = new()
             {
                 ["guid-1"] = worldObject2,
             };
 
-            List<Dictionary<uint, string>> alerts = worldObject1.powerLine.Tick(gameController);
+            List<Dictionary<uint, string>> alerts = worldObject1.powerLine.Tick(
+                gameController,
+                worldObject1
+            );
             Assert.Equal(0, alerts.Count);
         }
     }

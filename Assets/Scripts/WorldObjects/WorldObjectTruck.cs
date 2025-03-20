@@ -43,23 +43,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
             {
-                new(this.core, this.core.resources, this.core.targetType, this.core.targetSubType),
+                new(this.core, this.core.targetType, this.core.targetSubType),
             };
             this.core.deployments = new List<DeploymentComponentCore>();
             foreach (DispatchReceiverComponentCore dispatchReceiver in this.core.dispatchReceivers)
             {
-                this.core.deployments.Add(new(this.core, this.core.resources, dispatchReceiver));
+                this.core.deployments.Add(new());
             }
-            this.core.movement = new MovementComponentCore(this.core);
+            this.core.movement = new MovementComponentCore();
             this.core.resourceRetriever = new ResourceRetrieverCore(
-                this.core,
-                this.core.resources,
-                this.core.battery,
-                this.core.dispatchReceivers.First(),
                 gameContent,
                 this.core.targetSubType,
                 gameContent.Items[this.core.targetSubType].StackSize
@@ -71,19 +67,25 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
             this.core.CreateAlert(
                 gameController.core,
-                this.core.movement.Tick(gameController.core)
+                this.core.movement.Tick(gameController.core, this.core)
             );
             foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
             {
-                this.core.CreateAlert(gameController.core, receiver.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    receiver.Tick(gameController.core, this.core)
+                );
             }
             foreach (DeploymentComponentCore deployment in this.core.deployments)
             {
-                this.core.CreateAlert(gameController.core, deployment.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    deployment.Tick(gameController.core, this.core)
+                );
             }
             this.core.CreateAlert(
                 gameController.core,
-                this.core.resourceRetriever.Tick(gameController.core)
+                this.core.resourceRetriever.Tick(gameController.core, this.core)
             );
         }
     }

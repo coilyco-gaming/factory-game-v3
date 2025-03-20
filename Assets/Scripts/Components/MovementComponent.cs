@@ -10,20 +10,23 @@ namespace Assets.Scripts.Components.Core
     [Serializable]
     public class MovementComponentCore
     {
-        private WorldObjectCore worldObject;
         private List<System.Numerics.Vector2> path = new();
         private int pathIndex = 0;
 
-        public MovementComponentCore(WorldObjectCore worldObject)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
-            this.worldObject = worldObject;
-        }
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
+                this.GetType().Name
+            );
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
-        {
             if (
-                this.worldObject.dispatchReceivers.Count != 0
-                && this.worldObject.dispatchReceivers.First().targetPosition == null
+                worldObject.dispatchReceivers.Count != 0
+                && worldObject.dispatchReceivers.First().targetPosition == null
             )
             {
                 // We have no target position
@@ -33,9 +36,9 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            System.Numerics.Vector2 start = this.worldObject.GridPosition;
-            System.Numerics.Vector2 end = this
-                .worldObject.dispatchReceivers.First()
+            System.Numerics.Vector2 start = worldObject.GridPosition;
+            System.Numerics.Vector2 end = worldObject
+                .dispatchReceivers.First()
                 .targetPosition.Value;
 
             // Determine if we are already close enough
@@ -90,7 +93,7 @@ namespace Assets.Scripts.Components.Core
 
             // Queue up movement
             gameController.backref.QueueForMovement(
-                new MovementQueueItem(this.worldObject.GridPosition, nextPosition, this.worldObject)
+                new MovementQueueItem(worldObject.GridPosition, nextPosition, worldObject)
             );
 
             return new();

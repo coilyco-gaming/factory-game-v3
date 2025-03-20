@@ -5,61 +5,44 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Assets.Scripts.Core;
+using UnityEngine;
 
 namespace Assets.Scripts.Components.Core
 {
     [Serializable]
     public class ResourceRetrieverCore
     {
-        private WorldObjectCore worldObject;
-        private ResourcesComponentCore resources;
-        private DispatchReceiverComponentCore dispatchReceiver;
         private string targetResource;
         private uint quantity;
 
         public ResourceRetrieverCore(
-            WorldObjectCore worldObject,
-            ResourcesComponentCore resources,
-            BatteryComponentCore battery,
-            DispatchReceiverComponentCore dispatchReceiver,
             GameContent gameContent,
             string targetResource,
             uint quantity = 1
         )
         {
-            this.worldObject = worldObject;
-            this.resources =
-                resources
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires a resource component"
-                );
-            this.dispatchReceiver =
-                dispatchReceiver
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires a dispatch receiver component"
-                );
-            this.targetResource =
-                targetResource
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Receiver component requires a target resource"
-                );
+            this.targetResource = targetResource;
             this.quantity = quantity; // TODO: make this stack size
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
+            // TODO: worldObject.dispatchReceivers[0] is bad
             // Only get resources if we are in retrieve or collect mode
             bool weAreInRetrieveMode =
-                this.dispatchReceiver.receiverVerb
+                worldObject.dispatchReceivers[0].receiverVerb
                 == DispatchComponentCore.Verbs.Retrieve.ToString();
             bool weAreInCollectMode =
-                this.dispatchReceiver.receiverVerb
+                worldObject.dispatchReceivers[0].receiverVerb
                 == DispatchComponentCore.Verbs.Collect.ToString();
             if (!weAreInRetrieveMode && !weAreInCollectMode)
             {
@@ -74,10 +57,10 @@ namespace Assets.Scripts.Components.Core
 
             // Only retrieve resources if we are adjacent to the dispatcher
             bool dispatcherIsAdjacent =
-                this.dispatchReceiver.targetPosition != null
+                worldObject.dispatchReceivers[0].targetPosition != null
                 && System.Numerics.Vector2.Distance(
-                    this.worldObject.gridPosition,
-                    this.dispatchReceiver.targetPosition.Value
+                    worldObject.gridPosition,
+                    worldObject.dispatchReceivers[0].targetPosition.Value
                 ) < 1.5;
             if (!dispatcherIsAdjacent)
             {
@@ -89,7 +72,8 @@ namespace Assets.Scripts.Components.Core
 
             // Check if we already have some of the target resource
             bool weHaveTargetResource =
-                this.resources.resources.GetValueOrDefault(this.targetResource, 0u) > this.quantity;
+                worldObject.resources.resources.GetValueOrDefault(this.targetResource, 0u)
+                > this.quantity;
             if (weHaveTargetResource)
             {
                 return new()
@@ -98,11 +82,15 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            // Retrieve the resource from the dispatcher
             try
             {
-                this.resources.RetrieveResources(
-                    this.dispatchReceiver.dispatcher.worldObject.resources,
+                ResourcesComponentCore dispatcherResources = worldObject
+                    .dispatchReceivers[0]
+                    .dispatcher
+                    .worldObject
+                    .resources;
+                worldObject.resources.RetrieveResources(
+                    dispatcherResources,
                     this.targetResource,
                     this.quantity
                 );
@@ -117,6 +105,7 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using System.Collections.Generic;
+    using System.Linq;
     using Assets.Scripts.Components.Core;
     using Xunit;
     using Xunit.Abstractions;
@@ -164,24 +153,18 @@ namespace Assets.Scripts.Components.Tests
                 100
             );
             WorldObjectCore receiverWorldObject = new(null) { resources = receiverResources };
-            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
-            DispatchReceiverComponentCore dispatchReceiver = new(
-                receiverWorldObject,
-                receiverResources,
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                "planks"
-            );
             ResourceRetrieverCore resourceReceiver = new(
-                receiverWorldObject,
-                receiverResources,
-                receiverBattery,
-                dispatchReceiver,
                 new TestResourceReceiverGameContent(),
-                "planks"
+                "planks",
+                1
             );
+            receiverWorldObject.dispatchReceivers = new()
+            {
+                new DispatchReceiverComponentCore(receiverWorldObject),
+            };
 
             // Logic under test
-            resourceReceiver.Tick(gameController);
+            resourceReceiver.Tick(gameController, receiverWorldObject);
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }
@@ -196,27 +179,28 @@ namespace Assets.Scripts.Components.Tests
             };
 
             // Dispatcher
+            WorldObjectCore dispatcherWorldObject = new(null) { gridPosition = new(0, 0) };
             ResourcesComponentCore dispatcherResources = new(
                 new TestResourceReceiverGameContent(),
                 100,
                 100
             );
+            dispatcherWorldObject.resources = dispatcherResources;
             dispatcherResources.CreateResources("planks", 1);
-            WorldObjectCore dispatcherWorldObject = new(null)
+            gameController.worldObjects[dispatcherWorldObject.gridPosition] = new()
             {
-                resources = dispatcherResources,
-                gridPosition = new(0, 0),
+                { "uuid-0", dispatcherWorldObject },
             };
-            BatteryComponentCore dispatchBattery = new(dispatcherWorldObject, 100, 100);
-            DispatchComponentCore dispatcher = new(
-                dispatcherWorldObject,
-                dispatchBattery,
-                new ResourcesComponentCore(new TestResourceReceiverGameContent(), 100, 100),
-                new TestResourceReceiverGameContent(),
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                "planks",
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
+            dispatcherWorldObject.dispatchers = new()
+            {
+                new DispatchComponentCore(
+                    new TestResourceReceiverGameContent(),
+                    dispatcherWorldObject,
+                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    "planks",
+                    DispatchComponentCore.Keywords.Me.ToString()
+                ),
+            };
 
             // Receiver
             ResourcesComponentCore receiverResources = new(
@@ -229,28 +213,31 @@ namespace Assets.Scripts.Components.Tests
                 resources = receiverResources,
                 gridPosition = new(0, 1),
             };
-            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
-            DispatchReceiverComponentCore dispatchReceiver = new(
-                dispatcherWorldObject,
-                receiverResources,
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                "planks"
-            )
-            {
-                dispatcher = dispatcher,
-                targetPosition = new(0, 1),
-            };
             ResourceRetrieverCore resourceReceiver = new(
-                receiverWorldObject,
-                receiverResources,
-                receiverBattery,
-                dispatchReceiver,
                 new TestResourceReceiverGameContent(),
-                "planks"
+                "planks",
+                1
             );
+            receiverWorldObject.dispatchReceivers = new()
+            {
+                new DispatchReceiverComponentCore(
+                    receiverWorldObject,
+                    DispatchComponentCore.Verbs.Retrieve.ToString(),
+                    "planks"
+                ),
+            };
+            receiverWorldObject.dispatchReceivers[0].targetPosition = new(0, 0);
+            receiverWorldObject.dispatchReceivers[0].dispatcher = dispatcherWorldObject.dispatchers[
+                0
+            ];
+            receiverWorldObject.dispatchReceivers[0].dispatcher.worldObject = dispatcherWorldObject;
+            gameController.worldObjects[receiverWorldObject.gridPosition] = new()
+            {
+                { "uuid-1", receiverWorldObject },
+            };
 
             // Logic under test
-            resourceReceiver.Tick(gameController);
+            resourceReceiver.Tick(gameController, receiverWorldObject);
 
             // Assertions
             Assert.Equal(receiverResources.resources["planks"], 1u);
@@ -266,23 +253,17 @@ namespace Assets.Scripts.Components.Tests
             };
 
             // Dispatcher
+            WorldObjectCore dispatcherWorldObject = new(null);
             ResourcesComponentCore dispatcherResources = new(
                 new TestResourceReceiverGameContent(),
                 100,
                 100
             );
+            dispatcherWorldObject.resources = dispatcherResources;
             dispatcherResources.CreateResources("planks", 1);
-            WorldObjectCore dispatcherWorldObject = new(null)
-            {
-                resources = dispatcherResources,
-                gridPosition = new(0, 0),
-            };
-            BatteryComponentCore dispatchBattery = new(dispatcherWorldObject, 100, 100);
             DispatchComponentCore dispatcher = new(
-                dispatcherWorldObject,
-                dispatchBattery,
-                new ResourcesComponentCore(new TestResourceReceiverGameContent(), 100, 100),
                 new TestResourceReceiverGameContent(),
+                dispatcherWorldObject,
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks",
                 DispatchComponentCore.Keywords.Me.ToString()
@@ -294,15 +275,15 @@ namespace Assets.Scripts.Components.Tests
                 100,
                 100
             );
+            BatteryComponentCore receiverBattery = new(100, 100);
             WorldObjectCore receiverWorldObject = new(null)
             {
                 resources = receiverResources,
+                battery = receiverBattery,
                 gridPosition = new(0, 1),
             };
-            BatteryComponentCore receiverBattery = new(receiverWorldObject, 100, 100);
-            DispatchReceiverComponentCore dispatchReceiver = new(
-                dispatcherWorldObject,
-                receiverResources,
+            DispatchReceiverComponentCore receiverDispatcher = new(
+                receiverWorldObject,
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks"
             )
@@ -310,19 +291,18 @@ namespace Assets.Scripts.Components.Tests
                 dispatcher = dispatcher,
                 targetPosition = new(0, 1),
             };
+            receiverWorldObject.dispatchReceivers = new() { receiverDispatcher };
+            receiverWorldObject.resources = receiverResources;
+
             ResourceRetrieverCore resourceReceiver = new(
-                receiverWorldObject,
-                receiverResources,
-                receiverBattery,
-                dispatchReceiver,
                 new TestResourceReceiverGameContent(),
                 "planks"
             );
 
             // Logic under test
-            resourceReceiver.Tick(gameController);
-            resourceReceiver.Tick(gameController);
-            resourceReceiver.Tick(gameController);
+            resourceReceiver.Tick(gameController, receiverWorldObject);
+            resourceReceiver.Tick(gameController, receiverWorldObject);
+            resourceReceiver.Tick(gameController, receiverWorldObject);
 
             // Assertions
             Assert.Equal(receiverResources.resources["planks"], 1u);

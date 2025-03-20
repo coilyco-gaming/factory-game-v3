@@ -37,17 +37,11 @@ namespace Assets.Scripts.Components.Core
 
         public DispatchReceiverComponentCore(
             WorldObjectCore worldObject,
-            ResourcesComponentCore resources,
-            string receiverVerb,
-            string receiverSubject
+            string receiverVerb = "",
+            string receiverSubject = ""
         )
         {
             this.worldObject = worldObject;
-            this.resources =
-                resources
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Reciever component requires a resource component"
-                );
             this.receiverVerb = receiverVerb;
             this.receiverSubject = receiverSubject;
         }
@@ -66,16 +60,22 @@ namespace Assets.Scripts.Components.Core
             this.targetPosition = targetPosition;
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
+            // TODO: not this
+            this.worldObject = worldObject;
+
             bool hasTargetItem =
-                this.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
+                worldObject.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
             // If your job is to retrieve something and you have it, switch to deploy
             if (this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString())
             {
@@ -186,13 +186,9 @@ namespace Assets.Scripts.Components.Tests
             };
             WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(new TestGameContent(), 100, 100);
-            DispatchReceiverComponentCore receiver = new(
-                worldObject,
-                resources,
-                "FIGHT",
-                "DINOSAURS"
-            );
-            receiver.Tick(gameController);
+            worldObject.resources = resources;
+            DispatchReceiverComponentCore receiver = new(worldObject, "FIGHT", "DINOSAURS");
+            receiver.Tick(gameController, worldObject);
             Assert.True(true);
         }
 
@@ -207,13 +203,13 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(new TestGameContent(), 100, 100);
             resources.resources["planks"] = 10;
+            worldObject.resources = resources;
             DispatchReceiverComponentCore receiver = new(
                 worldObject,
-                resources,
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks"
             );
-            receiver.Tick(gameController);
+            receiver.Tick(gameController, worldObject);
             Assert.Equal(DispatchComponentCore.Verbs.Deploy.ToString(), receiver.receiverVerb);
         }
     }

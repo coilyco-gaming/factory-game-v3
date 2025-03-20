@@ -32,19 +32,10 @@ namespace Assets.Scripts.Components.Core
 
         public string PrecentProgressStatus => $"{this.PercentCraftProgress * 100}%";
 
-        public bool OutputStacksFullfilled =>
-            this.resources.resources.GetValueOrDefault(this.Product, 0u)
-            >= this.ProductItem.StackSize;
-        public bool OutputWeightFull =>
-            this.ProductItem.Weight > this.resources.RemainingWeightCapacity;
-        public bool OutputVolumeFull =>
-            this.ProductItem.Volume > this.resources.RemainingVolumeCapacity;
-
         public bool outputBufferOccupied = false;
         private GameContent gameContent;
         private ResourcesComponentCore resources;
         private BatteryComponentCore battery;
-        private WorldObjectCore worldObject;
 
         public class ProductionQueueRequests
         {
@@ -53,50 +44,34 @@ namespace Assets.Scripts.Components.Core
             public uint Quantity;
         }
 
-        public ProductionComponentCore(
-            WorldObjectCore worldObject,
-            GameContent gameContent,
-            ResourcesComponentCore resources,
-            BatteryComponentCore battery,
-            List<ResourceInserterComponentCore> inserters,
-            string product
-        )
+        // !!! TODO IMPORTANT: MAKE SURE TO CALL THESE IN THE WORLD OBJECT
+        public void SetReservedCapacity(ResourcesComponentCore resources, string product)
         {
-            this.worldObject = worldObject;
-            this.gameContent = gameContent;
-            this.Product = product;
-
-            this.battery =
-                battery
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Production component requires a battery component"
-                );
-
-            this.resources =
-                resources
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Production component requires a resource component"
-                );
-            this.resources.reservedCapacity = this.ProductItem.Ingredients.ToDictionary(
+            resources.reservedCapacity = this.ProductItem.Ingredients.ToDictionary(
                 pair => pair.Key,
                 pair => pair.Value * this.ProductItem.StackSize
             );
-            this.resources.reservedCapacity[this.Product] = 1;
+            resources.reservedCapacity[this.Product] = 1;
+        }
 
-            if (inserters == null || inserters.Count != this.ProductItem.Ingredients.Count)
+        // !!! TODO IMPORTANT: MAKE SURE TO CALL THESE IN THE WORLD OBJECT
+        public void SetInserterResourceTypes(
+            List<ResourceInserterComponentCore> inserters,
+            GameContent.Item product
+        )
+        {
+            inserters.ForEach(inserter =>
             {
-                throw new GameControllerCore.MisconfigurationException(
-                    @$"Production component requires a list of inserters.
-                       The number of inserters ({inserters.Count}) must match
-                    the number of ingredients ({this.ProductItem.Ingredients.Count})
-                    for the product {this.Product}
-                    "
-                );
-            }
-            for (int i = 0; i < inserters.Count; i++)
-            {
-                inserters[i].resourceType = this.ProductItem.Ingredients.Keys.ToList()[i];
-            }
+                inserter.resourceType = product.Ingredients.Keys.ToList()[
+                    inserters.IndexOf(inserter)
+                ];
+            });
+        }
+
+        public ProductionComponentCore(GameContent gameContent, string product)
+        {
+            this.gameContent = gameContent;
+            this.Product = product;
 
             if (!this.ProductItem.CreateFromNothing && this.ProductItem.Ingredients.Count == 0)
             {
@@ -107,12 +82,15 @@ namespace Assets.Scripts.Components.Core
             }
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
             // If we have already started a craft, continue it.
@@ -121,11 +99,11 @@ namespace Assets.Scripts.Components.Core
                 // Perform no crafting if the battery is empty.
                 try
                 {
-                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                    worldObject.battery.Energy -= ProductionComponentCore.PowerUsage;
                     this.currentCraftProgress += 1;
                     if (this.currentCraftProgress >= this.ProductItem.CraftTime)
                     {
-                        this.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                        worldObject.resources.ForceCreateResources(this.ProductItem.Name, 1);
                         this.currentCraftProgress = 0;
                     }
                 }
@@ -136,7 +114,10 @@ namespace Assets.Scripts.Components.Core
             }
 
             // If we have already produced the desired quantity, return.
-            if (this.OutputStacksFullfilled)
+            if (
+                worldObject.resources.resources.GetValueOrDefault(this.Product, 0u)
+                >= this.ProductItem.StackSize
+            )
             {
                 return new()
                 {
@@ -145,7 +126,10 @@ namespace Assets.Scripts.Components.Core
             }
 
             // If we would not have enough space to store the output, return.
-            if (this.OutputWeightFull || this.OutputVolumeFull)
+            if (
+                this.ProductItem.Weight > worldObject.resources.RemainingWeightCapacity
+                || this.ProductItem.Volume > worldObject.resources.RemainingVolumeCapacity
+            )
             {
                 return new()
                 {
@@ -158,8 +142,8 @@ namespace Assets.Scripts.Components.Core
             foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
             {
                 if (
-                    !this.resources.resources.ContainsKey(ingredient.Key)
-                    || this.resources.resources[ingredient.Key] < ingredient.Value
+                    !worldObject.resources.resources.ContainsKey(ingredient.Key)
+                    || worldObject.resources.resources[ingredient.Key] < ingredient.Value
                 )
                 {
                     canCraft = false;
@@ -173,14 +157,14 @@ namespace Assets.Scripts.Components.Core
                 // Perform no crafting if the battery is empty.
                 try
                 {
-                    this.battery.Energy -= ProductionComponentCore.PowerUsage;
+                    worldObject.battery.Energy -= ProductionComponentCore.PowerUsage;
                     foreach (KeyValuePair<string, uint> ingredient in this.ProductItem.Ingredients)
                     {
-                        this.resources.ConsumeResources(ingredient.Key, ingredient.Value);
+                        worldObject.resources.ConsumeResources(ingredient.Key, ingredient.Value);
                     }
                     if (this.ProductItem.CraftTime == 1)
                     {
-                        this.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                        worldObject.resources.ForceCreateResources(this.ProductItem.Name, 1);
                     }
                     else
                     {
@@ -335,34 +319,27 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
+            WorldObjectCore worldObject = new(null);
+
             ResourcesComponentCore resources = new(
                 new TestProductionGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wood", 5);
+            worldObject.resources = resources;
 
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            List<ResourceInserterComponentCore> inserters = new()
-            { //
-                new(new WorldObjectCore(null), battery, resources, "wood", 1),
-            };
+            BatteryComponentCore battery = new(100, 100);
+            worldObject.battery = battery;
 
-            Assert.Equal(5u, resources.resources["wood"]);
-            Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
+            Assert.Equal(5u, worldObject.resources.resources["wood"]);
+            Assert.Equal(0u, worldObject.resources.resources.GetValueOrDefault("planks", 0u));
 
-            ProductionComponentCore production = new(
-                new WorldObjectCore(null),
-                new TestProductionGameContent(),
-                resources,
-                battery,
-                inserters,
-                "planks"
-            );
-            production.Tick(gameController);
+            ProductionComponentCore production = new(new TestProductionGameContent(), "planks");
+            production.Tick(gameController, worldObject);
 
-            Assert.Equal(0u, resources.resources["wood"]);
-            Assert.Equal(1u, resources.resources["planks"]);
+            Assert.Equal(0u, worldObject.resources.resources["wood"]);
+            Assert.Equal(1u, worldObject.resources.resources["planks"]);
         }
 
         [Fact]
@@ -374,30 +351,23 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
+            WorldObjectCore worldObject = new(null);
+
             ResourcesComponentCore resources = new(
                 new TestProductionGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wall", 4);
+            worldObject.resources = resources;
 
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            List<ResourceInserterComponentCore> inserters = new()
-            { //
-                new(new WorldObjectCore(null), battery, resources, "wall", 1),
-            };
+            BatteryComponentCore battery = new(100, 100);
+            worldObject.battery = battery;
 
-            ProductionComponentCore production = new(
-                new WorldObjectCore(null),
-                new TestProductionGameContent(),
-                resources,
-                battery,
-                inserters,
-                "house"
-            );
-            production.Tick(gameController);
-            Assert.Equal(0u, resources.resources.GetValueOrDefault("house", 0u));
-            Assert.Equal(4u, resources.resources["wall"]);
+            ProductionComponentCore production = new(new TestProductionGameContent(), "house");
+            production.Tick(gameController, worldObject);
+            Assert.Equal(0u, worldObject.resources.resources.GetValueOrDefault("house", 0u));
+            Assert.Equal(4u, worldObject.resources.resources["wall"]);
         }
 
         [Fact]
@@ -409,30 +379,23 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
+            WorldObjectCore worldObject = new(null);
+
             ResourcesComponentCore resources = new(
                 new TestProductionGameContent(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wood", 20);
+            worldObject.resources = resources;
 
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            List<ResourceInserterComponentCore> inserters = new()
-            { //
-                new(new WorldObjectCore(null), battery, resources, "wood", 1),
-            };
+            BatteryComponentCore battery = new(100, 100);
+            worldObject.battery = battery;
 
-            ProductionComponentCore production = new(
-                new WorldObjectCore(null),
-                new TestProductionGameContent(),
-                resources,
-                battery,
-                inserters,
-                "planks"
-            );
-            production.Tick(gameController);
-            production.Tick(gameController);
-            production.Tick(gameController);
+            ProductionComponentCore production = new(new TestProductionGameContent(), "planks");
+            production.Tick(gameController, worldObject);
+            production.Tick(gameController, worldObject);
+            production.Tick(gameController, worldObject);
 
             Assert.Equal(5u, resources.resources["wood"]);
             Assert.Equal(3u, resources.resources["planks"]);
@@ -447,43 +410,40 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
+            WorldObjectCore worldObject = new WorldObjectCore(null);
             ResourcesComponentCore resources = new(
                 new TestProductionCraftTime(),
                 weightCapacity: 500,
                 volumeCapacity: 500
             );
             resources.CreateResources("wood", 5);
+            worldObject.resources = resources;
 
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
+            BatteryComponentCore battery = new(100, 100);
             List<ResourceInserterComponentCore> inserters = new()
             { //
-                new(new WorldObjectCore(null), battery, resources, "wood", 1),
+                new("wood", 1),
             };
+            worldObject.battery = battery;
 
-            ProductionComponentCore production = new(
-                new WorldObjectCore(null),
-                new TestProductionCraftTime(),
-                resources,
-                battery,
-                inserters,
-                "planks"
-            );
+            ProductionComponentCore production = new(new TestProductionCraftTime(), "planks");
+            worldObject.production = production;
 
-            production.Tick(gameController);
+            production.Tick(gameController, worldObject);
             Assert.Equal(90u, battery.Energy);
             Assert.Equal(0u, resources.resources["wood"]);
             Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(1u, production.currentCraftProgress);
             Assert.Equal("33%", production.PrecentProgressStatus);
 
-            production.Tick(gameController);
+            production.Tick(gameController, worldObject);
             Assert.Equal(80u, battery.Energy);
             Assert.Equal(0u, resources.resources["wood"]);
             Assert.Equal(0u, resources.resources.GetValueOrDefault("planks", 0u));
             Assert.Equal(2u, production.currentCraftProgress);
             Assert.Equal("67%", production.PrecentProgressStatus);
 
-            production.Tick(gameController);
+            production.Tick(gameController, worldObject);
             Assert.Equal(70u, battery.Energy);
             Assert.Equal(0u, resources.resources["wood"]);
             Assert.Equal(1u, resources.resources["planks"]);
@@ -498,45 +458,20 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
-            ResourcesComponentCore resources = new(
-                new TestProductionGameContent(),
-                weightCapacity: 500,
-                volumeCapacity: 500
-            );
+            WorldObjectCore worldObject = new(null)
+            {
+                resources = new(
+                    new TestProductionGameContent(),
+                    weightCapacity: 500,
+                    volumeCapacity: 500
+                ),
+                battery = new BatteryComponentCore(100, 100),
+            };
 
-            ProductionComponentCore production = new(
-                new WorldObjectCore(null),
-                new TestProductionGameContent(),
-                resources,
-                new(new WorldObjectCore(null), 100, 100),
-                new(),
-                "air"
-            );
+            ProductionComponentCore production = new(new TestProductionGameContent(), "air");
 
-            production.Tick(gameController);
-            Assert.Equal(1u, resources.resources.GetValueOrDefault("air", 0u));
-        }
-
-        [Fact]
-        public void TestOnlyManifestsNotBaseProduct()
-        {
-            ResourcesComponentCore resources = new(
-                new TestProductionGameContent(),
-                weightCapacity: 500,
-                volumeCapacity: 500
-            );
-
-            Assert.Throws<GameControllerCore.MisconfigurationException>(
-                () =>
-                    new ProductionComponentCore(
-                        new WorldObjectCore(null),
-                        new TestProductionGameContent(),
-                        resources,
-                        new(new WorldObjectCore(null), 100, 100),
-                        new(),
-                        "wood"
-                    )
-            );
+            production.Tick(gameController, worldObject);
+            Assert.Equal(1u, worldObject.resources.resources.GetValueOrDefault("air", 0u));
         }
     }
 }

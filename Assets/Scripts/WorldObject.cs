@@ -78,9 +78,11 @@ namespace Assets.Scripts.Core
                     inputAlert.Values.First().ToString()
                 );
 
+#if UNITY_6000
                 UnityEngine.Debug.Log(
                     $"{this.worldObjectType}: {inputAlert.Keys.First()}: {inputAlert.Values.First()}"
                 );
+#endif
 
                 // If the alert is already in the list
                 bool skip = false;

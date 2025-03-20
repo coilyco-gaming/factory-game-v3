@@ -44,7 +44,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             List<string> ingredients = gameContent
                 .Items[this.core.targetType]
@@ -53,33 +53,19 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             this.core.resourceInserters = new();
             foreach (string ingredient in ingredients)
             {
-                this.core.resourceInserters.Add(
-                    new(
-                        this.core,
-                        this.core.battery,
-                        this.core.resources,
-                        ingredient,
-                        this.insertionRate
-                    )
-                );
+                this.core.resourceInserters.Add(new(ingredient, this.insertionRate));
             }
 
             this.core.production = new ProductionComponentCore(
-                this.core,
                 gameContent,
-                this.core.resources,
-                this.core.battery,
-                this.core.resourceInserters,
                 this.core.targetType // < iron bar | copper bar >
             );
 
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
                     gameContent,
+                    this.core,
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...
@@ -88,10 +74,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.targetSubType
                 ),
                 new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
                     gameContent,
+                    this.core,
                     // Collect...
                     DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< iron bar | copper bar >...
@@ -105,10 +89,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 this.core.dispatchers.Add(
                     new(
-                        this.core,
-                        this.core.battery,
-                        this.core.resources,
                         gameContent,
+                        this.core,
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...< ingredient >...
@@ -119,7 +101,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 );
             }
             this.core.powerLine = new PowerLineComponentCore(
-                this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()
             );
         }
@@ -127,22 +108,31 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
             this.core.CreateAlert(
                 gameController.core,
-                this.core.production.Tick(gameController.core)
+                this.core.battery.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.production.Tick(gameController.core, this.core)
             );
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.CreateAlert(gameController.core, dispatcher.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    dispatcher.Tick(gameController.core, this.core)
+                );
             }
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
-                this.core.CreateAlert(gameController.core, inserter.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    inserter.Tick(gameController.core, this.core)
+                );
             }
             this.core.CreateAlert(
                 gameController.core,
-                this.core.powerLine.Tick(gameController.core)
+                this.core.powerLine.Tick(gameController.core, this.core)
             );
         }
     }

@@ -16,42 +16,30 @@ namespace Assets.Scripts.Components.Core
         private GameContent.Item TargetItem =>
             this.gameContent.Items.GetValueOrDefault(this.targetType);
 
-        private WorldObjectCore worldObject;
         private GameContent gameContent;
 
         public MiningComponentCore(
-            WorldObjectCore worldObject,
             GameContent gameContent,
             string targetType,
             int miningSpeed = 1,
             int miningEneryCost = 1
         )
         {
-            this.worldObject = worldObject;
-            if (worldObject.resources == null)
-            {
-                throw new GameControllerCore.MisconfigurationException(
-                    "Mining component requires a resources component on its parent world object"
-                );
-            }
-            if (worldObject.battery == null)
-            {
-                throw new GameControllerCore.MisconfigurationException(
-                    "Mining component requires a battery component on its parent world object"
-                );
-            }
             this.gameContent = gameContent;
             this.targetType = targetType;
             this.MiningSpeed = miningSpeed;
             this.MiningEnergyCost = miningEneryCost;
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
             // If the target can manifest, then just create the resource and return
@@ -59,10 +47,7 @@ namespace Assets.Scripts.Components.Core
             {
                 try
                 {
-                    this.worldObject.resources.CreateResources(
-                        this.targetType,
-                        (uint)this.MiningSpeed
-                    );
+                    worldObject.resources.CreateResources(this.targetType, (uint)this.MiningSpeed);
                 }
                 catch (ResourcesComponentCore.ResourceException) { }
                 return new();
@@ -70,7 +55,7 @@ namespace Assets.Scripts.Components.Core
 
             // Get objects on our tile
             List<WorldObjectCore> objectsOnTile = gameController
-                .worldObjects.GetValueOrDefault(this.worldObject.gridPosition)
+                .worldObjects.GetValueOrDefault(worldObject.gridPosition)
                 ?.Values.ToList();
 
             // If there are no objects on our tile, or only one object (us), return
@@ -119,7 +104,7 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Check if we have enough energy to mine
-            if (this.worldObject.battery.Energy < this.MiningEnergyCost)
+            if (worldObject.battery.Energy < this.MiningEnergyCost)
             {
                 return new()
                 {
@@ -128,12 +113,12 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Consume energy
-            this.worldObject.battery.Energy -= this.MiningEnergyCost;
+            worldObject.battery.Energy -= this.MiningEnergyCost;
 
             // Take "mining speed" worth of resources
             try
             {
-                this.worldObject.resources.TakeResources(
+                worldObject.resources.TakeResources(
                     oreResources,
                     this.targetType,
                     (uint)this.MiningSpeed
@@ -187,16 +172,16 @@ namespace Assets.Scripts.Components.Tests
                     weightCapacity: uint.MaxValue,
                     volumeCapacity: uint.MaxValue
                 ),
-                battery = new BatteryComponentCore(new WorldObjectCore(null), startingEnergy: 1000),
+                battery = new BatteryComponentCore(startingEnergy: 1000),
             };
-            MiningComponentCore mining = new(worldObject, new MiningGameContent(), "Ore", 1);
-            mining.Tick(gameController);
+            MiningComponentCore mining = new(new MiningGameContent(), "Ore", 1, 1);
+            mining.Tick(gameController, worldObject);
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }
 
         [Fact]
-        public void TestTakesResouces()
+        public void TestTakesResources()
         {
             GameControllerCore gameController = new()
             {
@@ -212,10 +197,10 @@ namespace Assets.Scripts.Components.Tests
                     volumeCapacity: uint.MaxValue
                 ),
                 gridPosition = new Vector2(0, 0),
-                battery = new BatteryComponentCore(new WorldObjectCore(null), startingEnergy: 1000),
+                battery = new BatteryComponentCore(startingEnergy: 1000),
             };
             miningWorldObject.guid = miningWorldObject.CreateGuid();
-            MiningComponentCore mining = new(miningWorldObject, new MiningGameContent(), "Ore", 1);
+            MiningComponentCore mining = new(new MiningGameContent(), "Ore", 1, 1);
             gameController.worldObjects[miningWorldObject.GridPosition] = new()
             {
                 { miningWorldObject.guid, miningWorldObject },
@@ -229,15 +214,16 @@ namespace Assets.Scripts.Components.Tests
                     weightCapacity: uint.MaxValue,
                     volumeCapacity: uint.MaxValue
                 ),
+                gridPosition = new Vector2(0, 0),
             };
             oreWorldObject.guid = oreWorldObject.CreateGuid();
             oreWorldObject.resources.CreateResources("Ore", 1000);
             gameController.worldObjects[oreWorldObject.gridPosition][oreWorldObject.guid] =
                 oreWorldObject;
 
-            mining.Tick(gameController);
+            mining.Tick(gameController, miningWorldObject);
 
-            Assert.Equal(miningWorldObject.resources.resources.GetValueOrDefault("Ore"), 1u);
+            Assert.Equal(1u, miningWorldObject.resources.resources.GetValueOrDefault("Ore"));
         }
 
         [Fact]
@@ -255,11 +241,11 @@ namespace Assets.Scripts.Components.Tests
                     weightCapacity: uint.MaxValue,
                     volumeCapacity: uint.MaxValue
                 ),
-                battery = new BatteryComponentCore(new WorldObjectCore(null), startingEnergy: 1000),
+                battery = new BatteryComponentCore(startingEnergy: 1000),
             };
-            MiningComponentCore mining = new(worldObject, new MiningGameContent(), "Stone", 1);
-            mining.Tick(gameController);
-            Assert.Equal(worldObject.resources.resources.GetValueOrDefault("Stone"), 1u);
+            MiningComponentCore mining = new(new MiningGameContent(), "Stone", 1, 1);
+            mining.Tick(gameController, worldObject);
+            Assert.Equal(1u, worldObject.resources.resources.GetValueOrDefault("Stone"));
         }
     }
 }

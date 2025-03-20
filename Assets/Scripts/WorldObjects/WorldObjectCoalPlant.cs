@@ -41,35 +41,21 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 resources = spawnQueueItem.resources,
             };
 
-            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
 
             this.core.power = new PowerComponentCore(
-                this.core,
-                this.core.battery,
-                this.core.resources,
                 this.core.targetType,
                 this.powerBurnRate,
                 this.powerGainRate
             );
 
-            this.core.resourceInserters = new()
-            {
-                new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
-                    this.core.targetType,
-                    this.insertionRate
-                ),
-            };
+            this.core.resourceInserters = new() { new(this.core.targetType, this.insertionRate) };
 
             this.core.dispatchers = new List<DispatchComponentCore>()
             {
                 new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
                     gameContent,
+                    this.core,
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...
@@ -78,10 +64,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     this.core.targetType
                 ),
                 new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
                     gameContent,
+                    this.core,
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...
@@ -91,7 +75,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
             this.core.powerLine = new PowerLineComponentCore(
-                this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()
             );
         }
@@ -101,17 +84,29 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
             foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
             {
-                this.core.CreateAlert(gameController.core, dispatcher.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    dispatcher.Tick(gameController.core, this.core)
+                );
             }
             foreach (ResourceInserterComponentCore inserter in this.core.resourceInserters)
             {
-                this.core.CreateAlert(gameController.core, inserter.Tick(gameController.core));
+                this.core.CreateAlert(
+                    gameController.core,
+                    inserter.Tick(gameController.core, this.core)
+                );
             }
-            this.core.CreateAlert(gameController.core, this.core.power.Tick(gameController.core));
-            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
             this.core.CreateAlert(
                 gameController.core,
-                this.core.powerLine.Tick(gameController.core)
+                this.core.power.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.battery.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core, this.core)
             );
         }
     }

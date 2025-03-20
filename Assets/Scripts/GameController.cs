@@ -265,7 +265,6 @@ namespace Assets.Scripts.Unity
             // Logs
             using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
             {
-                builder.ClearProviders();
                 builder.AddOpenTelemetry(logging =>
                 {
                     logging.IncludeFormattedMessage = true;

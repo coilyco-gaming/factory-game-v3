@@ -9,19 +9,15 @@ namespace Assets.Scripts.Components.Core
     [Serializable]
     public class ExampleComponentCore
     {
-        private WorldObjectCore worldObject;
-
-        public ExampleComponentCore(WorldObjectCore worldObject)
-        {
-            this.worldObject = worldObject;
-        }
-
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
             return new();
         }
@@ -90,8 +86,8 @@ namespace Assets.Scripts.Components.Tests
             gameController.backref.Logger = LoggerFactory
                 .Create(builder => { })
                 .CreateLogger("ExampleGameController");
-            ExampleComponentCore example = new(new WorldObjectCore(null));
-            example.Tick(gameController);
+            ExampleComponentCore example = new();
+            example.Tick(gameController, new WorldObjectCore(null));
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }

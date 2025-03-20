@@ -45,15 +45,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 resources = spawnQueueItem.resources,
             };
-            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.dispatchers = new List<DispatchComponentCore>
             {
                 // TODO: adjacent stone mining drill if necessary
                 new(
-                    this.core,
-                    this.core.battery,
-                    this.core.resources,
                     gameContent,
+                    this.core,
                     // Collect...
                     DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< product >...
@@ -63,14 +61,12 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 ),
             };
             this.core.mining = new MiningComponentCore(
-                this.core,
                 gameContent,
                 this.core.targetType,
                 this.miningSpeed,
                 this.miningEnergyCost
             );
             this.core.powerLine = new PowerLineComponentCore(
-                this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()
             );
         }
@@ -78,15 +74,24 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
-            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
-            {
-                this.core.CreateAlert(gameController.core, dispatcher.Tick(gameController.core));
-            }
-            this.core.CreateAlert(gameController.core, this.core.mining.Tick(gameController.core));
             this.core.CreateAlert(
                 gameController.core,
-                this.core.powerLine.Tick(gameController.core)
+                this.core.battery.Tick(gameController.core, this.core)
+            );
+            foreach (DispatchComponentCore dispatcher in this.core.dispatchers)
+            {
+                this.core.CreateAlert(
+                    gameController.core,
+                    dispatcher.Tick(gameController.core, this.core)
+                );
+            }
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.mining.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core, this.core)
             );
 
             // If no ore world object is on our position

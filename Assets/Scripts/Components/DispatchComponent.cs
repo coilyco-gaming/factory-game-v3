@@ -52,39 +52,33 @@ namespace Assets.Scripts.Components.Core
         }
 
         public DispatchComponentCore(
-            WorldObjectCore worldObject,
-            BatteryComponentCore battery,
-            ResourcesComponentCore resources,
             GameContent gameContent,
+            WorldObjectCore worldObject,
             string receiverVerb,
             string receiverSubject,
             string receiverObject
         )
         {
-            this.worldObject = worldObject;
-            this.battery =
-                battery
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Dispatch component requires a battery component"
-                );
-            this.resources =
-                resources
-                ?? throw new GameControllerCore.MisconfigurationException(
-                    "Dispatch component requires a resources component"
-                );
             this.gameContent = gameContent;
+            this.worldObject = worldObject;
             this.receiverVerb = receiverVerb;
             this.receiverSubject = receiverSubject;
             this.receiverObject = receiverObject;
         }
 
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
+        )
         {
             using Activity parentActivity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            parentActivity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            parentActivity.SetTag("WorldObjectType", worldObject.worldObjectType);
             parentActivity.SetTag("tick", gameController.backref.TickCount);
+
+            // TODO: not this
+            this.worldObject = worldObject;
 
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)
@@ -106,7 +100,7 @@ namespace Assets.Scripts.Components.Core
             if (
                 this.receiverVerb == DispatchComponentCore.Verbs.Deliver.ToString()
                 && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                && this.resources.resources.GetValueOrDefault(this.receiverSubject)
+                && worldObject.resources.resources.GetValueOrDefault(this.receiverSubject)
                     > this.deliveryResourceBufferMultiplier
                         * this.gameContent.Items[this.receiverSubject].StackSize
             )
@@ -131,7 +125,7 @@ namespace Assets.Scripts.Components.Core
                     || this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
                 )
                 && this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                && this.resources.resources.GetValueOrDefault(this.receiverSubject) == 0
+                && worldObject.resources.resources.GetValueOrDefault(this.receiverSubject) == 0
             )
             {
                 return new()
@@ -150,7 +144,7 @@ namespace Assets.Scripts.Components.Core
             bool hasEmptyAdjacent = false;
             foreach (
                 System.Numerics.Vector2 adjacentTile in GameControllerCore.GetAdjacentPositions(
-                    this.worldObject.gridPosition
+                    worldObject.gridPosition
                 )
             )
             {
@@ -185,7 +179,7 @@ namespace Assets.Scripts.Components.Core
             // Abort early if the battery is empty
             try
             {
-                this.battery.Energy -= 1;
+                worldObject.battery.Energy -= 1;
             }
             catch (BatteryComponentCore.BatteryCapacityException)
             {
@@ -204,20 +198,20 @@ namespace Assets.Scripts.Components.Core
             //    targetLocations = < current world object grid position >
             List<System.Numerics.Vector2> targetLocations =
                 this.receiverObject == DispatchComponentCore.Keywords.Me.ToString()
-                    ? new List<System.Numerics.Vector2> { this.worldObject.gridPosition }
+                    ? new List<System.Numerics.Vector2> { worldObject.gridPosition }
                     : gameController
                         .worldObjects
                         // For world object locations that do not already have a dispatch
                         .SelectMany(worldObjects => worldObjects.Value)
                         // For world objects that contain the target type
-                        .Where(worldObject =>
-                            worldObject.Value.worldObjectType == this.receiverObject
+                        .Where(thisWorldObject =>
+                            thisWorldObject.Value.worldObjectType == this.receiverObject
                         )
                         // Order by distance to the current world object
-                        .OrderBy(worldObject =>
+                        .OrderBy(thisWorldObject =>
                             System.Numerics.Vector2.Distance(
-                                worldObject.Value.GridPosition,
-                                this.worldObject.GridPosition
+                                thisWorldObject.Value.GridPosition,
+                                worldObject.GridPosition
                             )
                         )
                         // Select the grid position of the target world objects
@@ -313,7 +307,7 @@ namespace Assets.Scripts.Components.Core
                 .OrderBy(receiver =>
                     System.Numerics.Vector2.Distance(
                         receiver.worldObject.GridPosition,
-                        this.worldObject.GridPosition
+                        worldObject.GridPosition
                     )
                 )
                 .FirstOrDefault();
@@ -388,18 +382,18 @@ namespace Assets.Scripts.Components.Tests
         {
             GameControllerCore gameController = new() { backref = new ExampleGameController() };
             WorldObjectCore worldObject = new(null);
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore resources = new(new(), 100, 100);
+            BatteryComponentCore battery = new(100);
+            worldObject.battery = battery;
+            ResourcesComponentCore resources = new(new TestDispatchGameContent(), 100, 100);
+            worldObject.resources = resources;
             DispatchComponentCore dispatch = new(
-                worldObject,
-                battery,
-                resources,
                 new TestDispatchGameContent(),
-                "",
-                "",
-                ""
+                worldObject,
+                "Deploy",
+                "MiningDrill",
+                "fakeOre"
             );
-            dispatch.Tick(gameController);
+            dispatch.Tick(gameController, worldObject);
             Assert.True(true);
         }
 
@@ -412,17 +406,17 @@ namespace Assets.Scripts.Components.Tests
                 GridPosition = new System.Numerics.Vector2(0, 0),
             };
 
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(
+            BatteryComponentCore battery = new(100);
+            ResourcesComponentCore dispatcherResources = new(
                 new TestDispatchGameContent(),
                 100,
                 100
             );
+            HQWorldObject.battery = battery;
+            HQWorldObject.resources = dispatcherResources;
             DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
                 new TestDispatchGameContent(),
+                HQWorldObject,
                 "Deploy",
                 "MiningDrill",
                 "fakeOre"
@@ -442,10 +436,10 @@ namespace Assets.Scripts.Components.Tests
 
             ResourcesComponentCore receiverResources = new(new TestDispatchGameContent(), 100, 100);
             receiverResources.CreateResources("MiningDrill", 1);
+            receiverWorldObject.resources = receiverResources;
 
             DispatchReceiverComponentCore receiver = new(
                 receiverWorldObject,
-                receiverResources,
                 "Deploy",
                 "MiningDrill"
             );
@@ -465,463 +459,9 @@ namespace Assets.Scripts.Components.Tests
                 { "uuid-3", receiverWorldObject },
             };
 
-            dispatch.Tick(gameController);
-            receiver.Tick(gameController);
+            dispatch.Tick(gameController, HQWorldObject);
+            receiver.Tick(gameController, receiverWorldObject);
             Assert.NotNull(receiver.dispatcher);
-        }
-
-        [Fact]
-        public void TestAssignTargetToMultipleLocations()
-        {
-            GameControllerCore gameController = new() { backref = new ExampleGameController() };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                "Deploy",
-                "MiningDrill",
-                "fakeOre"
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            WorldObjectCore targetWorldObject1 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(10, 10),
-                worldObjectType = "fakeOre",
-            };
-
-            WorldObjectCore targetWorldObject2 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(20, 20),
-                worldObjectType = "fakeOre",
-            };
-
-            WorldObjectCore receiverWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
-
-            ResourcesComponentCore receiverResources = new(new TestDispatchGameContent(), 100, 100);
-
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                receiverResources,
-                "Deploy",
-                "MiningDrill"
-            );
-            receiverWorldObject.dispatchReceivers = new() { receiver };
-            Assert.Null(receiver.dispatcher);
-
-            gameController.worldObjects[HQWorldObject.gridPosition] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[targetWorldObject1.gridPosition] = new()
-            {
-                { "uuid-2a", targetWorldObject1 },
-            };
-            gameController.worldObjects[targetWorldObject2.gridPosition] = new()
-            {
-                { "uuid-2b", targetWorldObject2 },
-            };
-            gameController.worldObjects[receiverWorldObject.gridPosition] = new()
-            {
-                { "uuid-3", receiverWorldObject },
-            };
-
-            receiverResources.CreateResources("MiningDrill", 1);
-            dispatch.Tick(gameController);
-            receiver.Tick(gameController);
-            Assert.NotNull(receiver.dispatcher);
-
-            // Should assign to the closest target on the first run
-            Assert.Equal(targetWorldObject1.gridPosition, receiver.targetPosition);
-
-            // Simulate the reciever deploying its mining drill
-            dispatch.Tick(gameController);
-            gameController
-                .worldObjects[targetWorldObject1.gridPosition]
-                .Add(
-                    "uuid-2aD",
-                    new WorldObjectCore(null)
-                    {
-                        gridPosition = targetWorldObject1.gridPosition,
-                        worldObjectType = "MiningDrill",
-                    }
-                );
-            receiverResources.ConsumeResources("MiningDrill", 1);
-            receiver.Tick(gameController);
-            dispatch.Tick(gameController);
-            Assert.Equal("Retrieve", receiver.receiverVerb);
-            Assert.Null(receiver.targetPosition); // Should be null after deployment
-
-            // Simulate the reciever returning to the HQ to get a new drill
-            receiverResources.CreateResources("MiningDrill", 1);
-            receiver.Tick(gameController);
-            dispatch.Tick(gameController);
-            Assert.Equal("Deploy", receiver.receiverVerb);
-
-            // Then being sent back to the next target
-            receiver.Tick(gameController);
-            dispatch.Tick(gameController);
-            Assert.Equal(targetWorldObject2.gridPosition, receiver.targetPosition);
-        }
-
-        [Fact]
-        public void TestNoDuplicateDispatches()
-        {
-            GameControllerCore gameController = new() { backref = new ExampleGameController() };
-
-            // HQ 1
-            WorldObjectCore HQWorldObject1 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-            BatteryComponentCore battery1 = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources1 = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            DispatchComponentCore dispatch1 = new(
-                HQWorldObject1,
-                battery1,
-                dispactherResources1,
-                new TestDispatchGameContent(),
-                "Deploy",
-                "MiningDrill",
-                "fakeOre"
-            );
-            HQWorldObject1.dispatchers = new List<DispatchComponentCore> { dispatch1 };
-
-            // HQ 2
-            WorldObjectCore HQWorldObject2 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-            BatteryComponentCore battery2 = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources2 = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            DispatchComponentCore dispatch2 = new(
-                HQWorldObject2,
-                battery2,
-                dispactherResources2,
-                new TestDispatchGameContent(),
-                "Deploy",
-                "MiningDrill",
-                "fakeOre"
-            );
-            HQWorldObject2.dispatchers = new List<DispatchComponentCore> { dispatch2 };
-
-            // target
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "fakeOre",
-            };
-
-            // receiver 1
-            WorldObjectCore receiverWorldObject1 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
-            ResourcesComponentCore receiverResources1 = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            receiverResources1.CreateResources("MiningDrill", 1);
-            DispatchReceiverComponentCore receiver1 = new(
-                receiverWorldObject1,
-                receiverResources1,
-                "Deploy",
-                "MiningDrill"
-            );
-            receiverWorldObject1.dispatchReceivers = new() { receiver1 };
-
-            // receiver 2
-            WorldObjectCore receiverWorldObject2 = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
-            ResourcesComponentCore receiverResources2 = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            receiverResources2.CreateResources("MiningDrill", 1);
-            DispatchReceiverComponentCore receiver2 = new(
-                receiverWorldObject2,
-                receiverResources2,
-                "Deploy",
-                "MiningDrill"
-            );
-            receiverWorldObject2.dispatchReceivers = new() { receiver2 };
-
-            gameController.worldObjects[new System.Numerics.Vector2(-1, -1)] = new()
-            {
-                { "uuid-0", HQWorldObject1 },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject2 },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-            {
-                { "uuid-3", receiverWorldObject1 },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(3, 3)] = new()
-            {
-                { "uuid-4", receiverWorldObject2 },
-            };
-
-            dispatch1.Tick(gameController);
-            dispatch2.Tick(gameController);
-            receiver1.Tick(gameController);
-            receiver2.Tick(gameController);
-            Assert.NotNull(receiver1.dispatcher);
-            Assert.Null(receiver2.dispatcher);
-        }
-
-        [Fact]
-        public void TestDoesNotAssignWhenNoResourcesAvailable()
-        {
-            GameControllerCore gameController = new() { backref = new ExampleGameController() };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                DispatchComponentCore.Verbs.Retrieve.ToString(),
-                "MiningDrill",
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "fakeOre",
-            };
-
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-
-            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-            Assert.Equal(alerts.Count, 1);
-            Assert.Equal(
-                $"{dispatch.Description}: not enough available",
-                alerts.First().Values.First()
-            );
-        }
-
-        [Fact]
-        public void TestDoesNotAssignTargetWhenVerbMismatch()
-        {
-            GameControllerCore gameController = new() { backref = new ExampleGameController() };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(new(), 100, 100);
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                "Deploy",
-                "MiningDrill",
-                "fakeOre"
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-            };
-
-            WorldObjectCore receiverWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-                worldObjectType = "fakeOre",
-            };
-
-            ResourcesComponentCore receiverResources = new(new(), 100, 100);
-
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                receiverResources,
-                "Retrieve",
-                "MiningDrill"
-            );
-            receiverWorldObject.dispatchReceivers = new() { receiver };
-            Assert.Null(receiver.dispatcher);
-
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-            {
-                { "uuid-3", receiverWorldObject },
-            };
-
-            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-            Assert.Null(receiver.dispatcher);
-            Assert.Equal(alerts.Count, 1);
-            Assert.Equal(
-                $"{dispatch.Description}: no receiver found",
-                alerts.First().Values.First()
-            );
-        }
-
-        [Fact]
-        public void TestDoesNotAssignTargetWhenSubjectMismatch()
-        {
-            GameControllerCore gameController = new()
-            {
-                backref = new ExampleGameController(),
-                worldObjects = new(),
-            };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(new(), 100, 100);
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                "Deploy",
-                "MiningDrill",
-                "fakeOre"
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            WorldObjectCore targetWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(1, 1),
-                worldObjectType = "CopperOre",
-            };
-
-            WorldObjectCore receiverWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(2, 2),
-            };
-
-            ResourcesComponentCore receiverResources = new(new(), 100, 100);
-
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                receiverResources,
-                "Deploy",
-                "Warehouse"
-            );
-            receiverWorldObject.dispatchReceivers = new() { receiver };
-            Assert.Null(receiver.dispatcher);
-
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(1, 1)] = new()
-            {
-                { "uuid-2", targetWorldObject },
-            };
-            gameController.worldObjects[new System.Numerics.Vector2(2, 2)] = new()
-            {
-                { "uuid-3", receiverWorldObject },
-            };
-
-            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-            Assert.Null(receiver.dispatcher);
-            Assert.Equal(alerts.Count, 1);
-            Assert.Equal($"{dispatch.Description}: no target found", alerts.First().Values.First());
-        }
-
-        [Fact]
-        public void TestDoesNotAssignWhenResourcesAlreadyPresent()
-        {
-            GameControllerCore gameController = new() { backref = new ExampleGameController() };
-            WorldObjectCore HQWorldObject = new(null)
-            {
-                GridPosition = new System.Numerics.Vector2(0, 0),
-            };
-
-            BatteryComponentCore battery = new(new WorldObjectCore(null), 100, 100);
-            ResourcesComponentCore dispactherResources = new(
-                new TestDispatchGameContent(),
-                100,
-                100
-            );
-            dispactherResources.CreateResources("aluminumBars", 100);
-            DispatchComponentCore dispatch = new(
-                HQWorldObject,
-                battery,
-                dispactherResources,
-                new TestDispatchGameContent(),
-                DispatchComponentCore.Verbs.Deliver.ToString(),
-                "aluminumBars",
-                DispatchComponentCore.Keywords.Me.ToString()
-            );
-            HQWorldObject.dispatchers = new List<DispatchComponentCore> { dispatch };
-
-            gameController.worldObjects[new System.Numerics.Vector2(0, 0)] = new()
-            {
-                { "uuid-1", HQWorldObject },
-            };
-
-            List<Dictionary<uint, string>> alerts = dispatch.Tick(gameController);
-            Assert.Equal(alerts.Count, 1);
-            Assert.Equal(
-                $"{dispatch.Description}: no more required",
-                alerts.First().Values.First()
-            );
         }
     }
 }

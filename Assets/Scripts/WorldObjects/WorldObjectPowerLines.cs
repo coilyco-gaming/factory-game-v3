@@ -22,9 +22,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         {
             base.Instantiate(spawnQueueItem, gameContent);
             this.core.passThrough = true;
-            this.core.battery = new(this.core, capacity: this.totalBatteryCapacity);
+            this.core.battery = new(capacity: this.totalBatteryCapacity);
             this.core.powerLine = new PowerLineComponentCore(
-                this.core,
                 FactoryGameContent.Spawnables.PowerLines.ToString()
             );
         }
@@ -32,10 +31,13 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
         public override void Tick(GameController gameController)
         {
             base.Tick(gameController);
-            this.core.CreateAlert(gameController.core, this.core.battery.Tick(gameController.core));
             this.core.CreateAlert(
                 gameController.core,
-                this.core.powerLine.Tick(gameController.core)
+                this.core.battery.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
+                this.core.powerLine.Tick(gameController.core, this.core)
             );
         }
     }

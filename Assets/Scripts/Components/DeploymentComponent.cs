@@ -10,40 +10,36 @@ namespace Assets.Scripts.Components.Core
     [Serializable]
     public class DeploymentComponentCore
     {
-        private ResourcesComponentCore resources;
-        private DispatchReceiverComponentCore dispatchReceiver;
-        private WorldObjectCore worldObject;
-
-        public DeploymentComponentCore(
-            WorldObjectCore worldObject,
-            ResourcesComponentCore resources,
-            DispatchReceiverComponentCore dispatchReceiver
+        public List<Dictionary<uint, string>> Tick(
+            GameControllerCore gameController,
+            WorldObjectCore worldObject
         )
-        {
-            this.worldObject = worldObject;
-            this.resources = resources;
-            this.dispatchReceiver = dispatchReceiver;
-        }
-
-        public List<Dictionary<uint, string>> Tick(GameControllerCore gameController)
         {
             using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            activity.SetTag("WorldObjectType", this.worldObject.worldObjectType);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
 
             // If your job is deploy
-            if (this.dispatchReceiver.receiverVerb == DispatchComponentCore.Verbs.Deploy.ToString())
+            // TODO: worldObject.dispatchReceivers[0] sucks!!! do something else...
+            if (
+                worldObject.dispatchReceivers[0].receiverVerb
+                == DispatchComponentCore.Verbs.Deploy.ToString()
+            )
             {
                 // If you have no more of the target item, switch to retrieve
-                if (this.resources.resources[this.dispatchReceiver.receiverSubject] == 0)
+                if (
+                    worldObject.resources.resources[
+                        worldObject.dispatchReceivers[0].receiverSubject
+                    ] == 0
+                )
                 {
-                    this.dispatchReceiver.receiverVerb =
+                    worldObject.dispatchReceivers[0].receiverVerb =
                         DispatchComponentCore.Verbs.Retrieve.ToString();
                 }
                 // If you don't have a target position, exit early
-                if (this.dispatchReceiver.targetPosition == null)
+                if (worldObject.dispatchReceivers[0].targetPosition == null)
                 {
                     return new()
                     {
@@ -52,8 +48,8 @@ namespace Assets.Scripts.Components.Core
                 }
                 // If the target isn't adjacent, exit early
                 float distance = System.Numerics.Vector2.Distance(
-                    this.dispatchReceiver.worldObject.gridPosition,
-                    this.dispatchReceiver.targetPosition.Value
+                    worldObject.dispatchReceivers[0].worldObject.gridPosition,
+                    worldObject.dispatchReceivers[0].targetPosition.Value
                 );
                 if (distance > 1.5)
                 {
@@ -67,19 +63,26 @@ namespace Assets.Scripts.Components.Core
                 }
                 // If you have the target item, remove it from your resources
                 if (
-                    this.resources.resources.ContainsKey(this.dispatchReceiver.receiverSubject)
-                    && this.resources.resources[this.dispatchReceiver.receiverSubject] > 0
+                    worldObject.resources.resources.ContainsKey(
+                        worldObject.dispatchReceivers[0].receiverSubject
+                    )
+                    && worldObject.resources.resources[
+                        worldObject.dispatchReceivers[0].receiverSubject
+                    ] > 0
                 )
                 {
-                    this.resources.ConsumeResources(this.dispatchReceiver.receiverSubject, 1);
+                    worldObject.resources.ConsumeResources(
+                        worldObject.dispatchReceivers[0].receiverSubject,
+                        1
+                    );
 
                     // Then spawn the target item at the target position
                     gameController.queuedForSpawn.Add(
                         new SpawnQueueItem(
-                            this.dispatchReceiver.receiverSubject,
-                            (int)this.dispatchReceiver.targetPosition.Value.X,
-                            (int)this.dispatchReceiver.targetPosition.Value.Y,
-                            targetType: this.dispatchReceiver.dispatcher.receiverObject
+                            worldObject.dispatchReceivers[0].receiverSubject,
+                            (int)worldObject.dispatchReceivers[0].targetPosition.Value.X,
+                            (int)worldObject.dispatchReceivers[0].targetPosition.Value.Y,
+                            targetType: worldObject.dispatchReceivers[0].dispatcher.receiverObject
                         )
                     );
                 }
@@ -133,23 +136,21 @@ namespace Assets.Scripts.Components.Tests
                 backref = new ExampleGameController(),
                 worldObjects = new(),
             };
+            WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(
                 new FactoryGameContent(),
                 weightCapacity: 100,
                 volumeCapacity: 100
             );
+            worldObject.resources = resources;
             DispatchReceiverComponentCore dispatchReceiver = new(
                 new WorldObjectCore(null),
-                resources,
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "sawmill"
             );
-            DeploymentComponentCore deploy = new(
-                new WorldObjectCore(null),
-                resources,
-                dispatchReceiver
-            );
-            deploy.Tick(gameController);
+            worldObject.dispatchReceivers = new() { dispatchReceiver };
+            DeploymentComponentCore deploy = new();
+            deploy.Tick(gameController, worldObject);
             Assert.True(true);
             this.testOutput.WriteLine("tested true");
         }
