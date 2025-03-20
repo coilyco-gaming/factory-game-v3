@@ -84,16 +84,16 @@ namespace Assets.Scripts.Components.Core
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)
             {
-                return new()
-                {
-                    new()
-                    {
-                        {
-                            gameController.backref.TickCount,
-                            $"{this.Description}, assigned to {this.receiver.worldObject.guid}"
-                        },
-                    },
-                };
+                return new();
+                // {
+                //     new()
+                //     {
+                //         {
+                //             gameController.backref.TickCount,
+                //             $"{this.Description}, assigned to {this.receiver.worldObject.guid}"
+                //         },
+                //     },
+                // };
             }
 
             // If dispatch goal is deliver to me
@@ -106,16 +106,16 @@ namespace Assets.Scripts.Components.Core
                         * this.gameContent.Items[this.receiverSubject].StackSize
             )
             {
-                return new()
-                {
-                    new()
-                    {
-                        {
-                            gameController.backref.TickCount,
-                            $"{this.Description}, no more required"
-                        },
-                    },
-                };
+                return new();
+                // {
+                //     new()
+                //     {
+                //         {
+                //             gameController.backref.TickCount,
+                //             $"{this.Description}, no more required"
+                //         },
+                //     },
+                // };
             }
 
             // If dispatch goal is retrieve or collect from me

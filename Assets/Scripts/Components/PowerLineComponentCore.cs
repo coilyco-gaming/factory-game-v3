@@ -10,7 +10,7 @@ namespace Assets.Scripts.Components.Core
     public class PowerLineComponentCore
     {
         private string powerLineName;
-        private float powerLineSpawnPercent = 0.25f;
+        private float powerLineSpawnPercent = 0.50f;
         private uint powerLineSpawnCost = 1;
 
         public PowerLineComponentCore(string powerLineName = "")
@@ -54,17 +54,21 @@ namespace Assets.Scripts.Components.Core
 
             // TODO: more exit early conditions
 
-            // Find the nearest world object with a power component
+            // Find the nearest world object with a power component.
+            // And a battery with energy in it, not including yourself.
             WorldObjectCore closestPower = gameController
                 .worldObjects.SelectMany(worldObjects => worldObjects.Value)
-                .Where(worldObject => worldObject.Value?.power != null)
+                .Where(thisWorldObject => thisWorldObject.Value != worldObject) // Exclude self
+                .Where(thisWorldObject => thisWorldObject.Value?.power != null)
+                .Where(thisWorldObject => thisWorldObject.Value?.battery != null)
+                .Where(thisWorldObject => thisWorldObject.Value?.battery.Energy != 0)
                 .OrderBy(thisWorldObject =>
                     System.Numerics.Vector2.Distance(
                         thisWorldObject.Value.GridPosition,
                         worldObject.GridPosition
                     )
                 )
-                .Select(worldObject => worldObject.Value)
+                .Select(thisWorldObject => thisWorldObject.Value)
                 .FirstOrDefault();
 
             // This should never happen, but just in case

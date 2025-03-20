@@ -12,6 +12,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
+                Guid = this.core.guid,
                 Resources = this.core.resources.ResourceInfo,
             };
 

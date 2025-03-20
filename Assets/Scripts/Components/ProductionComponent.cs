@@ -101,7 +101,10 @@ namespace Assets.Scripts.Components.Core
                     this.currentCraftProgress += 1;
                     if (this.currentCraftProgress >= this.ProductItem.CraftTime)
                     {
-                        worldObject.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                        worldObject.resources.ForceCreateResources(
+                            this.ProductItem.Name,
+                            this.ProductItem.CraftOutputMultiplier
+                        );
                         this.currentCraftProgress = 0;
                     }
                 }
@@ -162,7 +165,10 @@ namespace Assets.Scripts.Components.Core
                     }
                     if (this.ProductItem.CraftTime == 1)
                     {
-                        worldObject.resources.ForceCreateResources(this.ProductItem.Name, 1);
+                        worldObject.resources.ForceCreateResources(
+                            this.ProductItem.Name,
+                            this.ProductItem.CraftOutputMultiplier
+                        );
                     }
                     else
                     {
@@ -292,6 +298,24 @@ namespace Assets.Scripts.Components.Tests
             };
     }
 
+    internal class TestMultiIOProduction : GameContent
+    {
+        public override Dictionary<string, Item> Items { get; } =
+            new()
+            {
+                { "wood", new Item("wood", stackSize: 100) },
+                {
+                    "planks",
+                    new Item(
+                        "planks",
+                        stackSize: 10,
+                        craftOutputMultiplier: 5,
+                        ingredients: new Dictionary<string, uint> { { "wood", 5 } }
+                    )
+                },
+            };
+    }
+
     public class ProductionComponentTest
     {
         private ITestOutputHelper testOutput;
@@ -331,6 +355,32 @@ namespace Assets.Scripts.Components.Tests
 
             Assert.Equal(0u, worldObject.resources.resources["wood"]);
             Assert.Equal(1u, worldObject.resources.resources["planks"]);
+        }
+
+        [Fact]
+        public void TestIORates()
+        {
+            GameControllerCore gameController = new()
+            {
+                backref = new ExampleGameController(),
+                worldObjects = new(),
+            };
+
+            WorldObjectCore worldObject = new(null);
+
+            ResourcesComponentCore resources = new(
+                new TestProductionGameContent(),
+                weightCapacity: 500,
+                volumeCapacity: 500
+            );
+            resources.CreateResources("wood", 20);
+            worldObject.resources = resources;
+            worldObject.battery = new(100, 100);
+
+            ProductionComponentCore production = new(new TestMultiIOProduction(), "planks");
+            production.Tick(gameController, worldObject);
+
+            Assert.Equal(5u, worldObject.resources.resources.GetValueOrDefault("planks", 0u));
         }
 
         [Fact]

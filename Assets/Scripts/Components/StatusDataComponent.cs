@@ -5,6 +5,7 @@ namespace Assets.Scripts.Components.Core
     public class StatusDataComponentCore
     {
         public string Name { get; set; } = null;
+        public string Guid { get; set; } = null;
         public string Energy { get; set; } = null;
         public List<string> Dispatchers { get; set; } = null;
         public List<string> DispatchHistory { get; set; } = null;

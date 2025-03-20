@@ -15,6 +15,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
+                Guid = this.core.guid,
                 Energy = this.core.battery.PercentEnergyStatus,
                 Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };

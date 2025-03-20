@@ -18,6 +18,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
+                Guid = this.core.guid,
                 Energy = this.core.battery.PercentEnergyStatus,
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)

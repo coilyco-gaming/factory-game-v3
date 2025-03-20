@@ -30,10 +30,11 @@ namespace Assets.Scripts.Unity
                     Products.IronBars.ToString(),
                     new Item(
                         Products.IronBars.ToString(),
+                        craftOutputMultiplier: 10,
                         stackSize: 100,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Resources.IronOre.ToString(), 1 },
+                            { Resources.IronOre.ToString(), 3 },
                         }
                     )
                 },
@@ -41,10 +42,11 @@ namespace Assets.Scripts.Unity
                     Products.CopperBars.ToString(),
                     new Item(
                         Products.CopperBars.ToString(),
+                        craftOutputMultiplier: 10,
                         stackSize: 100,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Resources.CopperOre.ToString(), 1 },
+                            { Resources.CopperOre.ToString(), 3 },
                         }
                     )
                 },
@@ -55,7 +57,7 @@ namespace Assets.Scripts.Unity
                         weight: 20,
                         volume: 5,
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.IronBars.ToString(), 4 },
@@ -68,7 +70,7 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Motors.ToString(),
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         {
                             { Products.IronBars.ToString(), 2 },
@@ -81,10 +83,10 @@ namespace Assets.Scripts.Unity
                     new Item(
                         Products.Circuits.ToString(),
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
-                            { Products.CopperBars.ToString(), 2 },
+                            { Products.CopperBars.ToString(), 1 },
                         }
                     )
                 },
@@ -95,7 +97,7 @@ namespace Assets.Scripts.Unity
                         weight: 10,
                         volume: 10,
                         craftTime: 5,
-                        stackSize: 10,
+                        stackSize: 20,
                         ingredients: new Dictionary<string, uint>
                         { //
                             { Products.IronBars.ToString(), 4 },
@@ -112,8 +114,8 @@ namespace Assets.Scripts.Unity
                         craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 8 },
-                            { Products.BuildingMaterials.ToString(), 4 },
+                            { Products.Frames.ToString(), 20 },
+                            { Products.BuildingMaterials.ToString(), 20 },
                         },
                         canSpawnGameObject: true
                     )
@@ -127,9 +129,10 @@ namespace Assets.Scripts.Unity
                         craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 8 },
-                            { Products.BuildingMaterials.ToString(), 4 },
-                            { Products.Motors.ToString(), 1 },
+                            { Products.Frames.ToString(), 20 },
+                            { Products.BuildingMaterials.ToString(), 10 },
+                            { Products.Motors.ToString(), 8 },
+                            { Products.Circuits.ToString(), 16 },
                         },
                         canSpawnGameObject: true
                     )
@@ -143,10 +146,10 @@ namespace Assets.Scripts.Unity
                         craftTime: 40,
                         ingredients: new Dictionary<string, uint>
                         {
-                            { Products.Frames.ToString(), 8 },
-                            { Products.BuildingMaterials.ToString(), 4 },
-                            { Products.Circuits.ToString(), 2 },
-                            { Products.Motors.ToString(), 2 },
+                            { Products.Frames.ToString(), 20 },
+                            { Products.BuildingMaterials.ToString(), 10 },
+                            { Products.Circuits.ToString(), 16 },
+                            { Products.Motors.ToString(), 16 },
                         },
                         canSpawnGameObject: true
                     )

@@ -245,19 +245,20 @@ namespace Assets.Scripts.FactoryGame
                         resources: new Dictionary<string, uint> { { "MiningDrill", 10 } }
                     ),
                     // Coal Plant Factory Chain
-                    new(type: "Factory", x: 4, y: 2, xyCentered: true, targetType: "CoalPlant"),
-                    new(type: "Factory", x: 5, y: 2, xyCentered: true, targetType: "Frames"),
-                    new(type: "Factory", x: 5, y: 3, xyCentered: true, targetType: "Motors"),
+                    new(type: "Factory", x: 5, y: 2, xyCentered: true, targetType: "CoalPlant"),
+                    new(type: "Factory", x: 5, y: 1, xyCentered: true, targetType: "Circuits"),
+                    new(type: "Factory", x: 6, y: 2, xyCentered: true, targetType: "Frames"),
+                    new(type: "Factory", x: 6, y: 3, xyCentered: true, targetType: "Motors"),
                     new(
                         type: "Factory",
-                        x: 5,
+                        x: 6,
                         y: 1,
                         xyCentered: true,
                         targetType: "BuildingMaterials"
                     ),
                     new(
                         type: "Foundry",
-                        x: 6,
+                        x: 7,
                         y: 2,
                         xyCentered: true,
                         targetType: "CopperBars",
@@ -265,7 +266,7 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(
                         type: "Foundry",
-                        x: 6,
+                        x: 7,
                         y: 1,
                         xyCentered: true,
                         targetType: "IronBars",
@@ -273,13 +274,21 @@ namespace Assets.Scripts.FactoryGame
                     ),
                     new(
                         type: "Foundry",
-                        x: 6,
+                        x: 7,
                         y: 3,
                         xyCentered: true,
                         targetType: "IronBars",
                         targetSubType: "IronOre"
                     ),
-                    new(type: "MiningDrill", x: 5, y: 0, xyCentered: true, targetType: "Stone"),
+                    new(
+                        type: "Foundry",
+                        x: 5,
+                        y: 0,
+                        xyCentered: true,
+                        targetType: "CopperBars",
+                        targetSubType: "CopperOre"
+                    ),
+                    new(type: "MiningDrill", x: 6, y: 0, xyCentered: true, targetType: "Stone"),
                     // Rightmost trucks (x=7)
                     new(
                         type: "Truck",
