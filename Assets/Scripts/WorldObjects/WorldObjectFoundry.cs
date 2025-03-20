@@ -18,7 +18,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
-                Guid = this.core.guid,
                 Energy = this.core.battery.PercentEnergyStatus,
                 Dispatchers = this
                     .core.dispatchers.Select(dispatcher => dispatcher.Description)
@@ -93,9 +92,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     )
                 );
             }
-            this.core.powerLine = new PowerLineComponentCore(
-                FactoryGameContent.Spawnables.PowerLines.ToString()
-            );
         }
 
         public override void Tick(GameController gameController)
@@ -123,10 +119,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                     inserter.Tick(gameController.core, this.core)
                 );
             }
-            this.core.CreateAlert(
-                gameController.core,
-                this.core.powerLine.Tick(gameController.core, this.core)
-            );
         }
     }
 }

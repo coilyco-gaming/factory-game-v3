@@ -140,14 +140,13 @@ namespace Assets.Scripts.Core
 
         public string CreateGuid()
         {
-            return System.Guid.NewGuid().ToString()[0..4];
+            return System.Guid.NewGuid().ToString();
         }
     }
 }
 
 namespace Assets.Scripts.Tests
 {
-    using System.Collections.Generic;
     using Assets.Scripts.Components.Tests;
     using Assets.Scripts.Core;
     using Microsoft.Extensions.Logging;

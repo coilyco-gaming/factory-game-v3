@@ -15,7 +15,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             new()
             {
                 Name = Util.HumanizedString(this.WorldObjectType),
-                Guid = this.core.guid,
                 Energy = this.core.battery.PercentEnergyStatus,
                 Alerts = this.core.alerts.Count == 0 ? null : this.core.alerts,
             };
@@ -41,15 +40,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameController.core,
                 this.core.powerLine.Tick(gameController.core, this.core)
             );
-
-            // Power lines degrade over time.
-            this.lifetime--;
-            if (this.lifetime <= 0)
-            {
-                gameController.QueueForDeletion(
-                    new DeletionQueueItem(this.core, this.GridPosition)
-                );
-            }
         }
     }
 }

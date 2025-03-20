@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using Assets.Scripts.Core;
 
 namespace Assets.Scripts.Components.Core
@@ -10,8 +11,7 @@ namespace Assets.Scripts.Components.Core
     public class PowerLineComponentCore
     {
         private string powerLineName;
-        private float powerLineSpawnPercent = 0.50f;
-        private uint powerLineSpawnCost = 1;
+        private bool powerLinesSpawned = false;
 
         public PowerLineComponentCore(string powerLineName = "")
         {
@@ -30,81 +30,78 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("tick", gameController.backref.TickCount);
             activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
-            // Only generate power lines when the battery is nearly empty
-            if (worldObject.battery.PercentEnergy < this.powerLineSpawnPercent)
+            if (this.powerLinesSpawned)
             {
+                // If we have already spawned power lines, we don't need to do it again
                 return new();
             }
 
-            // If you are here, you want to spawn a power line, but can't afford it.
-            if (worldObject.battery.Energy < this.powerLineSpawnCost)
-            {
-                return new List<Dictionary<uint, string>>
-                {
-                    new()
-                    {
-                        {
-                            gameController.backref.TickCount,
-                            "not enough energy to spawn power line"
-                        },
-                    },
-                };
-            }
-            worldObject.battery.Energy -= this.powerLineSpawnCost;
-
-            // TODO: more exit early conditions
-
             // Find the nearest world object with a power component.
             // And a battery with energy in it, not including yourself.
+            // This should me power plants route to other power plants.
             WorldObjectCore closestPower = gameController
                 .worldObjects.SelectMany(worldObjects => worldObjects.Value)
-                .Where(thisWorldObject => thisWorldObject.Value != worldObject) // Exclude self
-                .Where(thisWorldObject => thisWorldObject.Value?.power != null)
-                .Where(thisWorldObject => thisWorldObject.Value?.battery != null)
-                .Where(thisWorldObject => thisWorldObject.Value?.battery.Energy != 0)
+                .Select(thisWorldObject => thisWorldObject.Value)
+                .Where(thisWorldObject => thisWorldObject != worldObject) // Exclude self
+                .Where(thisWorldObject => thisWorldObject.battery != null) // Must have battery
+                .Where(thisWorldObject => thisWorldObject.battery.Energy > 0) // Must have energy
+                .Where(thisWorldObject => thisWorldObject.powerLine != null) // Must be a power line
                 .OrderBy(thisWorldObject =>
                     System.Numerics.Vector2.Distance(
-                        thisWorldObject.Value.GridPosition,
+                        thisWorldObject.GridPosition,
                         worldObject.GridPosition
                     )
                 )
-                .Select(thisWorldObject => thisWorldObject.Value)
                 .FirstOrDefault();
 
             // This should never happen, but just in case
             if (closestPower == null)
             {
-                return new List<Dictionary<uint, string>>
+                return new()
                 {
                     new() { { gameController.backref.TickCount, "no power source found" } },
                 };
             }
 
-            // Determine the closest tile that is pointed towards the power source
-            System.Numerics.Vector2 closestTile = GameControllerCore
-                .GetAdjacentPositions(worldObject.GridPosition)
-                .OrderBy(tile => System.Numerics.Vector2.Distance(tile, closestPower.GridPosition))
-                .First();
-
-            // Check if that tile has a power line component on it
-            bool hasPowerLine =
-                gameController
-                    .worldObjects.GetValueOrDefault(closestTile)
-                    ?.Any(worldObject => worldObject.Value.powerLine != null) ?? false;
-
-            // Alert if the tile does not have a power line component
-            if (!hasPowerLine)
+            float distance = float.MaxValue;
+            Vector2 currentPosition = worldObject.GridPosition;
+            while (distance > 1.5f)
             {
-                gameController.queuedForSpawn.Add(
-                    new SpawnQueueItem(this.powerLineName, (int)closestTile.X, (int)closestTile.Y)
-                );
+                // Determine the closest tile that is pointed towards the power source
+                System.Numerics.Vector2 closestTile = GameControllerCore
+                    .GetAdjacentPositions(currentPosition)
+                    .OrderBy(tile =>
+                        System.Numerics.Vector2.Distance(tile, closestPower.GridPosition)
+                    )
+                    .First();
 
-                return new List<Dictionary<uint, string>>
+                // Check if that tile has a power line component on it
+                bool hasPowerLine =
+                    gameController
+                        .worldObjects.GetValueOrDefault(closestTile)
+                        ?.Any(worldObject => worldObject.Value.powerLine != null) ?? false;
+
+                // If it does not have a power line, we need to spawn one
+                if (!hasPowerLine)
                 {
-                    new() { { gameController.backref.TickCount, "spawning power line" } },
-                };
+                    gameController.queuedForSpawn.Add(
+                        new SpawnQueueItem(
+                            this.powerLineName,
+                            (int)closestTile.X,
+                            (int)closestTile.Y
+                        )
+                    );
+                }
+
+                // Update the current position to the closest tile
+                currentPosition = closestTile;
+                distance = System.Numerics.Vector2.Distance(
+                    currentPosition,
+                    closestPower.GridPosition
+                );
             }
 
+            this.powerLinesSpawned = true;
             return new();
         }
     }

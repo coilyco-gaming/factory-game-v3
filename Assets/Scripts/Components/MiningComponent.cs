@@ -60,15 +60,9 @@ namespace Assets.Scripts.Components.Core
                 ?.Values.ToList();
 
             // If there are no objects on our tile, or only one object (us), return
-            if (objectsOnTile == null || objectsOnTile.Count < 2)
+            if (objectsOnTile.Count == 1)
             {
-                return new()
-                {
-                    new()
-                    {
-                        { gameController.backref.TickCount, "less then 2 objects on tile to mine" },
-                    },
-                };
+                return new() { new() { { gameController.backref.TickCount, "nothing to mine" } } };
             }
 
             // Get ore producing world object on our tile
