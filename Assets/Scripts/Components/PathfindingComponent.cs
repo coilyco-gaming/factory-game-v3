@@ -109,23 +109,31 @@ namespace Assets.Scripts.Components.Core
                 foreach (GridPos pos in resultPathList)
                 {
                     // Derive the position vector from the next node on the path
-
-                    path.Add(new System.Numerics.Vector2(pos.x, pos.y));
-                    int nextX = resultPathList[0].x;
-                    int nextY = resultPathList[0].y;
+                    int nextX = pos.x;
+                    int nextY = pos.y;
+                    System.Numerics.Vector2 position;
 
                     // The pathfinding algo is coded to "jump" when possible
                     // so we need to clip the movement if the next node is more than 1 away
-                    nextX = Math.Clamp(nextX, (int)start.X - 1, (int)start.X + 1);
-                    nextY = Math.Clamp(nextY, (int)start.Y - 1, (int)start.Y + 1);
+                    int clippedX = Math.Clamp(nextX, (int)start.X - 5, (int)start.X + 5);
+                    int clippedY = Math.Clamp(nextY, (int)start.Y - 5, (int)start.Y + 5);
 
-                    System.Numerics.Vector2 position = new(nextX, nextY);
+                    // If the clipped positions are at their max value, then break.
+                    // This is to simulate the "jumping" behavior only having
+                    // a certain max distance.
+                    if (clippedX == (int)start.X + 5 || clippedY == (int)start.Y + 5)
+                    {
+                        position = new(clippedX, clippedY);
+                        path.Add(position);
+                        break;
+                    }
+
+                    position = new(nextX, nextY);
                     path.Add(position);
                 }
             }
 
             return path;
-            ;
         }
 
         public static System.Numerics.Quaternion FacePosition(System.Numerics.Vector2 position)

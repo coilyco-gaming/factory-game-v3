@@ -6,6 +6,7 @@ namespace Assets.Scripts.Components.Core
     using System.Linq;
     using Assets.Scripts.Core;
     using EpPathFinding.cs;
+    using UnityEngine;
 
     [Serializable]
     public class MovementComponentCore
@@ -30,6 +31,7 @@ namespace Assets.Scripts.Components.Core
             )
             {
                 // We have no target position
+                this.pathIndex = 0;
                 return new()
                 {
                     new() { { gameController.backref.TickCount, "no target position" } },
@@ -48,6 +50,7 @@ namespace Assets.Scripts.Components.Core
             if (distance < 1.5d)
             {
                 // We are close enough
+                this.pathIndex = 0;
                 return new();
             }
 
@@ -66,7 +69,7 @@ namespace Assets.Scripts.Components.Core
                     .Any();
             }
 
-            if (obstacleInWay || this.path.Count == 0)
+            if (obstacleInWay || this.path.Count == 0 || this.pathIndex == this.path.Count - 1)
             {
                 // Get a movement vector to the next position on our path
                 List<System.Numerics.Vector2> path = PathfindingComponentCore.GetPosition(
@@ -88,7 +91,15 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Get the next position on our path by indexing into the path lsit
+
+            UnityEngine.Debug.Log($"Path: {string.Join(", ", this.path)}");
+            UnityEngine.Debug.Log($"PathIndex: {this.pathIndex}");
+            UnityEngine.Debug.Log($"start: {start}");
+            UnityEngine.Debug.Log($"destination: {end}");
+
             this.pathIndex++;
+            this.pathIndex =
+                this.pathIndex <= this.path.Count - 1 ? this.pathIndex : this.path.Count - 1;
             nextPosition = this.path[this.pathIndex];
 
             // Queue up movement
