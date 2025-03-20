@@ -26,6 +26,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             // Only generate power lines when the battery is empty
             if (worldObject.battery.Energy != 0)

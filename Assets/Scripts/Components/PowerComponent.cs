@@ -30,6 +30,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             if (worldObject.battery.PercentEnergy >= 1)
             {
@@ -285,10 +286,10 @@ namespace Assets.Scripts.Components.Tests
                 worldObjects = new(),
             };
 
-            WorldObjectCore core1 = WorldObject(gameController, 0, 100, gainRate: 10);
-            WorldObjectCore core2 = WorldObject(gameController, 0, 100, gainRate: 10);
-            WorldObjectCore core3 = WorldObject(gameController, 0, 100);
-            WorldObjectCore core4 = WorldObject(gameController, 0, 100);
+            WorldObjectCore core1 = this.WorldObject(gameController, 0, 100, gainRate: 10);
+            WorldObjectCore core2 = this.WorldObject(gameController, 0, 100, gainRate: 10);
+            WorldObjectCore core3 = this.WorldObject(gameController, 0, 100);
+            WorldObjectCore core4 = this.WorldObject(gameController, 0, 100);
 
             core1.power.Tick(gameController, core1);
             core2.power.Tick(gameController, core2);

@@ -20,6 +20,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             // If your job is deploy
             // TODO: worldObject.dispatchReceivers[0] sucks!!! do something else...

@@ -60,6 +60,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 gameContent,
                 this.core.targetType // < iron bar | copper bar >
             );
+            this.core.production.SetReservedCapacity(this.core.resources);
+            this.core.production.SetInserterResourceTypes(this.core.resourceInserters);
 
             this.core.dispatchers = new List<DispatchComponentCore>
             {

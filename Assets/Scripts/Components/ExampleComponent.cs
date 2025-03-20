@@ -19,6 +19,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
             return new();
         }
     }
@@ -39,6 +40,7 @@ namespace Assets.Scripts.Components.Tests
     internal class ExampleGameController : IGameController
     {
         public uint TickCount { get; set; } = 0;
+        public Activity WorldObjectTickActivity { get; set; } = new("example");
         public ActivitySource ActivitySource
         {
             get

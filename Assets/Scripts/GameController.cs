@@ -12,6 +12,7 @@ namespace Assets.Scripts.Core
         ActivitySource ActivitySource { get; set; }
         SpriteMapComponent Map { get; set; }
         Microsoft.Extensions.Logging.ILogger Logger { get; set; }
+        Activity WorldObjectTickActivity { get; set; }
 
         void QueueForMovement(MovementQueueItem movementQueueItem);
         void QueueForDeletion(DeletionQueueItem deletionQueueItem);
@@ -230,6 +231,7 @@ namespace Assets.Scripts.Unity
         public Microsoft.Extensions.Logging.ILogger Logger { get; set; }
         public virtual List<string> ExcludeWorldObjectTypeFromStatus => new();
         public uint TickCount { get; set; } = 0;
+        public Activity WorldObjectTickActivity { get; set; }
         public float lastTick = 0;
 
         // PROPERTIES //
@@ -305,21 +307,37 @@ namespace Assets.Scripts.Unity
                 {
                     foreach (WorldObjectCore worldObject in worldObjects.Values)
                     {
+                        // Start telemetry
                         if (
                             !this.ExcludeWorldObjectTypeFromStatus.Contains(
                                 worldObject.worldObjectType
                             )
                         )
                         {
-                            using Activity worldObjectTickActivity =
-                                this.ActivitySource.StartActivity("worldObjectTick");
-                            worldObjectTickActivity.SetTag(
+                            this.WorldObjectTickActivity = this.ActivitySource.StartActivity(
+                                "worldObjectTick"
+                            );
+                            this.WorldObjectTickActivity.SetTag(
                                 "WorldObjectType",
                                 worldObject.worldObjectType
                             );
-                            worldObjectTickActivity.SetTag("tick", this.TickCount);
+                            this.WorldObjectTickActivity.SetTag("tick", this.TickCount);
+                            this.WorldObjectTickActivity.SetParentId(tickActivity.Id);
+                            this.WorldObjectTickActivity.Start();
                         }
+
+                        // Perform business logic
                         worldObject.backref.Tick(this);
+
+                        // End telemetry
+                        if (
+                            !this.ExcludeWorldObjectTypeFromStatus.Contains(
+                                worldObject.worldObjectType
+                            )
+                        )
+                        {
+                            this.WorldObjectTickActivity.Stop();
+                        }
                     }
                 }
 
@@ -330,6 +348,8 @@ namespace Assets.Scripts.Unity
                 // Delete queued objects
                 if (this.core.queuedForDeletion != null)
                 {
+                    using Activity deleteActivity = this.ActivitySource.StartActivity("Delete");
+                    deleteActivity.SetTag("tick", this.TickCount);
                     foreach (DeletionQueueItem deletionQueueItem in this.core.queuedForDeletion)
                     {
                         this.Delete(deletionQueueItem);
@@ -342,6 +362,8 @@ namespace Assets.Scripts.Unity
                 // Move queued objects
                 if (this.core.queuedForMovement != null)
                 {
+                    using Activity moveActivity = this.ActivitySource.StartActivity("Move");
+                    moveActivity.SetTag("tick", this.TickCount);
                     foreach (MovementQueueItem movementQueueItem in this.core.queuedForMovement)
                     {
                         this.Move(movementQueueItem);
@@ -352,6 +374,8 @@ namespace Assets.Scripts.Unity
                 // Spawn queued objects
                 if (this.core.queuedForSpawn != null)
                 {
+                    using Activity spawnActivity = this.ActivitySource.StartActivity("Spawn");
+                    spawnActivity.SetTag("tick", this.TickCount);
                     foreach (SpawnQueueItem spawnQueueItem in this.core.queuedForSpawn)
                     {
                         this.Spawn(spawnQueueItem);

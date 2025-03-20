@@ -71,11 +71,12 @@ namespace Assets.Scripts.Components.Core
             WorldObjectCore worldObject
         )
         {
-            using Activity parentActivity = gameController.backref.ActivitySource.StartActivity(
+            using Activity activity = gameController.backref.ActivitySource.StartActivity(
                 this.GetType().Name
             );
-            parentActivity.SetTag("WorldObjectType", worldObject.worldObjectType);
-            parentActivity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetTag("WorldObjectType", worldObject.worldObjectType);
+            activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             // TODO: not this
             this.worldObject = worldObject;

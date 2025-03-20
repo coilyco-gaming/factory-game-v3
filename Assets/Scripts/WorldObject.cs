@@ -79,6 +79,18 @@ namespace Assets.Scripts.Core
                 );
 
 #if UNITY_6000
+                gameController.backref.WorldObjectTickActivity.AddEvent(
+                    new(
+                        "Log",
+                        DateTimeOffset.UtcNow.AddSeconds(Time.time),
+                        new()
+                        {
+                            { "WorldObjectType", this.worldObjectType },
+                            { "Tick", inputAlert.Keys.First() },
+                            { "Message", inputAlert.Values.First() },
+                        }
+                    )
+                );
                 UnityEngine.Debug.Log(
                     $"{this.worldObjectType}: {inputAlert.Keys.First()}: {inputAlert.Values.First()}"
                 );

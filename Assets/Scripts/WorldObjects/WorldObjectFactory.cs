@@ -58,6 +58,8 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             }
 
             this.core.production = new ProductionComponentCore(gameContent, this.core.targetType);
+            this.core.production.SetReservedCapacity(this.core.resources);
+            this.core.production.SetInserterResourceTypes(this.core.resourceInserters);
 
             this.core.dispatchers = new();
 

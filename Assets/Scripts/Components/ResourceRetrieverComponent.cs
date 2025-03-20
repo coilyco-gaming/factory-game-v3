@@ -35,6 +35,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             // TODO: worldObject.dispatchReceivers[0] is bad
             // Only get resources if we are in retrieve or collect mode

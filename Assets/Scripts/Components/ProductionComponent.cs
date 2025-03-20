@@ -45,7 +45,7 @@ namespace Assets.Scripts.Components.Core
         }
 
         // !!! TODO IMPORTANT: MAKE SURE TO CALL THESE IN THE WORLD OBJECT
-        public void SetReservedCapacity(ResourcesComponentCore resources, string product)
+        public void SetReservedCapacity(ResourcesComponentCore resources)
         {
             resources.reservedCapacity = this.ProductItem.Ingredients.ToDictionary(
                 pair => pair.Key,
@@ -55,14 +55,11 @@ namespace Assets.Scripts.Components.Core
         }
 
         // !!! TODO IMPORTANT: MAKE SURE TO CALL THESE IN THE WORLD OBJECT
-        public void SetInserterResourceTypes(
-            List<ResourceInserterComponentCore> inserters,
-            GameContent.Item product
-        )
+        public void SetInserterResourceTypes(List<ResourceInserterComponentCore> inserters)
         {
             inserters.ForEach(inserter =>
             {
-                inserter.resourceType = product.Ingredients.Keys.ToList()[
+                inserter.resourceType = this.ProductItem.Ingredients.Keys.ToList()[
                     inserters.IndexOf(inserter)
                 ];
             });
@@ -92,6 +89,7 @@ namespace Assets.Scripts.Components.Core
             );
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
+            activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
 
             // If we have already started a craft, continue it.
             if (this.currentCraftProgress > 0)
