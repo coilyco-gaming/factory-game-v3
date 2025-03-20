@@ -91,12 +91,6 @@ namespace Assets.Scripts.Components.Core
             }
 
             // Get the next position on our path by indexing into the path lsit
-
-            UnityEngine.Debug.Log($"Path: {string.Join(", ", this.path)}");
-            UnityEngine.Debug.Log($"PathIndex: {this.pathIndex}");
-            UnityEngine.Debug.Log($"start: {start}");
-            UnityEngine.Debug.Log($"destination: {end}");
-
             this.pathIndex++;
             this.pathIndex =
                 this.pathIndex <= this.path.Count - 1 ? this.pathIndex : this.path.Count - 1;

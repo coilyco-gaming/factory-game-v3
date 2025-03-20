@@ -66,16 +66,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     gameContent,
                     this.core,
-                    // Deploy...
-                    DispatchComponentCore.Verbs.Deploy.ToString(),
-                    // ...mining drill...
-                    FactoryGameContent.Spawnables.MiningDrill.ToString(),
-                    // ...to < iron ore | copper ore >.
-                    this.core.targetSubType
-                ),
-                new(
-                    gameContent,
-                    this.core,
                     // Collect...
                     DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< iron bar | copper bar >...

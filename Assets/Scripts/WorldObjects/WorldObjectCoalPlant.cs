@@ -56,16 +56,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 new(
                     gameContent,
                     this.core,
-                    // Deploy...
-                    DispatchComponentCore.Verbs.Deploy.ToString(),
-                    // ...mining drill...
-                    FactoryGameContent.Spawnables.MiningDrill.ToString(),
-                    // ...to coal.
-                    this.core.targetType
-                ),
-                new(
-                    gameContent,
-                    this.core,
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...

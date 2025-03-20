@@ -91,6 +91,10 @@ namespace Assets.Scripts.FactoryGame
             foreach (
                 SpawnQueueItem spawnQueueItem in new List<SpawnQueueItem>
                 {
+                    // Radars, left side (x=0)
+                    new(type: "Radar", x: 0, y: 0, xyCentered: true, targetType: "IronOre"),
+                    new(type: "Radar", x: 0, y: 1, xyCentered: true, targetType: "CopperOre"),
+                    new(type: "Radar", x: 0, y: 2, xyCentered: true, targetType: "Coal"),
                     // Leftmost trucks (x=-1)
                     new(
                         type: "Truck",
@@ -352,7 +356,11 @@ namespace Assets.Scripts.FactoryGame
                         this.PlayerComponent.GetGridPosition()
                     );
                 }
-                catch (Exception) { }
+                catch (Exception exc)
+                {
+                    Debug.Log("Error writing status UI left");
+                    Debug.Log(exc);
+                }
             }
         }
 
@@ -376,7 +384,11 @@ namespace Assets.Scripts.FactoryGame
                     // Display the status data in the UI
                     this.statusUIRightComponent.Display(this, worldObjects);
                 }
-                catch (Exception) { }
+                catch (Exception exc)
+                {
+                    Debug.Log("Error writing status UI right");
+                    Debug.Log(exc);
+                }
             }
         }
     }

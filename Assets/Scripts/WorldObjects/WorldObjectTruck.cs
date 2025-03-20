@@ -67,6 +67,10 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             base.Tick(gameController);
             this.core.CreateAlert(
                 gameController.core,
+                this.core.battery.Tick(gameController.core, this.core)
+            );
+            this.core.CreateAlert(
+                gameController.core,
                 this.core.movement.Tick(gameController.core, this.core)
             );
             foreach (DispatchReceiverComponentCore receiver in this.core.dispatchReceivers)
