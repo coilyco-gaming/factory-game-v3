@@ -31,7 +31,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 new(
                     gameContent,
-                    this.core,
                     // Deploy...
                     DispatchComponentCore.Verbs.Deploy.ToString(),
                     // ...mining drill...

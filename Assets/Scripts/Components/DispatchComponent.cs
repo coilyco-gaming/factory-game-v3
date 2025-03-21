@@ -5,7 +5,6 @@ namespace Assets.Scripts.Components.Core
     using System.Diagnostics;
     using System.Linq;
     using Assets.Scripts.Core;
-    using UnityEngine;
 
     [Serializable]
     public class DispatchComponentCore
@@ -26,10 +25,7 @@ namespace Assets.Scripts.Components.Core
         public string Description =>
             $"{this.receiverVerb} {this.DescriptionSubject} {this.DescriptionToOrFrom} {this.DescriptionObject}".ToLower();
 
-        public WorldObjectCore worldObject;
         public DispatchReceiverComponentCore receiver;
-        private BatteryComponentCore battery;
-        private ResourcesComponentCore resources;
         private GameContent gameContent;
         public string receiverVerb = "VERB";
         public string receiverSubject = "SUBJECT";
@@ -53,14 +49,12 @@ namespace Assets.Scripts.Components.Core
 
         public DispatchComponentCore(
             GameContent gameContent,
-            WorldObjectCore worldObject,
             string receiverVerb,
             string receiverSubject,
             string receiverObject
         )
         {
             this.gameContent = gameContent;
-            this.worldObject = worldObject;
             this.receiverVerb = receiverVerb;
             this.receiverSubject = receiverSubject;
             this.receiverObject = receiverObject;
@@ -77,9 +71,6 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
             activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
-
-            // TODO: not this
-            this.worldObject = worldObject;
 
             // If the dispatch has already been assigned, then skip
             if (this.receiver != null)
@@ -289,31 +280,30 @@ namespace Assets.Scripts.Components.Core
                 };
             }
 
-            // TODO: immobible recievers only match when they are adjacent
             // Get the first receiver awaiting a target
             DispatchReceiverComponentCore receiver = gameController
                 .worldObjects
                 // For all world objects
                 .SelectMany(worldObjects => worldObjects.Value)
-                .Where(worldObject =>
+                .Where(thisWorldObject =>
                     // Where the world object has dispatch receivers
-                    worldObject.Value.dispatchReceivers != null
-                )
-                // For all dispatch receivers
-                .SelectMany(worldObject => worldObject.Value.dispatchReceivers)
-                .Where(receiver =>
-                    // Where the receiver is not null and is awaiting a target
-                    receiver != null
-                    && receiver.dispatcher == null
-                    // Where the receiver Subject and verb match the dispatch
-                    && receiver.receiverSubject == this.receiverSubject
-                    && this.receiverVerb == receiver.receiverVerb
+                    thisWorldObject.Value.dispatchReceivers != null
                 )
                 // Order by distance to the current world object
-                .OrderBy(receiver =>
+                .OrderBy(thisWorldObject =>
                     System.Numerics.Vector2.Distance(
-                        receiver.worldObject.GridPosition,
+                        thisWorldObject.Value.GridPosition,
                         worldObject.GridPosition
+                    )
+                )
+                .SelectMany(thisWorldObject =>
+                    // For all dispatch receivers
+                    thisWorldObject.Value.dispatchReceivers.Where(receiver =>
+                        // Where the receiver is not already assigned to another dispatcher
+                        receiver.dispatcher == null
+                        // Where the receiver Subject and verb match the dispatch
+                        && receiver.receiverSubject == this.receiverSubject
+                        && receiver.receiverVerb == this.receiverVerb
                     )
                 )
                 .FirstOrDefault();
@@ -343,7 +333,6 @@ namespace Assets.Scripts.Components.Core
 namespace Assets.Scripts.Components.Tests
 {
     using System.Collections.Generic;
-    using System.Linq;
     using Assets.Scripts.Components.Core;
     using Assets.Scripts.Core;
     using Xunit;
@@ -394,7 +383,6 @@ namespace Assets.Scripts.Components.Tests
             worldObject.resources = resources;
             DispatchComponentCore dispatch = new(
                 new TestDispatchGameContent(),
-                worldObject,
                 "Deploy",
                 "MiningDrill",
                 "fakeOre"
@@ -422,7 +410,6 @@ namespace Assets.Scripts.Components.Tests
             HQWorldObject.resources = dispatcherResources;
             DispatchComponentCore dispatch = new(
                 new TestDispatchGameContent(),
-                HQWorldObject,
                 "Deploy",
                 "MiningDrill",
                 "fakeOre"
@@ -444,11 +431,7 @@ namespace Assets.Scripts.Components.Tests
             receiverResources.CreateResources("MiningDrill", 1);
             receiverWorldObject.resources = receiverResources;
 
-            DispatchReceiverComponentCore receiver = new(
-                receiverWorldObject,
-                "Deploy",
-                "MiningDrill"
-            );
+            DispatchReceiverComponentCore receiver = new("Deploy", "MiningDrill");
             receiverWorldObject.dispatchReceivers = new() { receiver };
             Assert.Null(receiver.dispatcher);
 

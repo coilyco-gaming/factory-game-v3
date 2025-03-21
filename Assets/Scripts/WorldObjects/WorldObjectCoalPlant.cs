@@ -57,7 +57,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             {
                 new(
                     gameContent,
-                    this.core,
                     // Deliver...
                     DispatchComponentCore.Verbs.Deliver.ToString(),
                     // ...coal...

@@ -51,7 +51,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 // TODO: adjacent stone mining drill if necessary
                 new(
                     gameContent,
-                    this.core,
                     // Collect...
                     DispatchComponentCore.Verbs.Collect.ToString(),
                     // ...< product >...

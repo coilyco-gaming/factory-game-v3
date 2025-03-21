@@ -70,7 +70,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.dispatchers.Add(
                     new(
                         gameContent,
-                        this.core,
                         // Retrieve...
                         DispatchComponentCore.Verbs.Retrieve.ToString(),
                         // ...< product >...
@@ -86,7 +85,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.dispatchers.Add(
                     new(
                         gameContent,
-                        this.core,
                         // Collect...
                         DispatchComponentCore.Verbs.Collect.ToString(),
                         // ...< product >...
@@ -102,7 +100,6 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 this.core.dispatchers.Add(
                     new(
                         gameContent,
-                        this.core,
                         // Deliver...
                         DispatchComponentCore.Verbs.Deliver.ToString(),
                         // ...< ingredient >...

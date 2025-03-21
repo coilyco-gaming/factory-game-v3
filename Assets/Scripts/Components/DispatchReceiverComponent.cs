@@ -9,14 +9,12 @@ namespace Assets.Scripts.Components.Core
     [Serializable]
     public class DispatchReceiverComponentCore
     {
-        public WorldObjectCore worldObject;
         public DispatchComponentCore dispatcher;
         public System.Numerics.Vector2? targetPosition = null;
         public Dictionary<
             DispatchComponentCore,
             Tuple<uint, System.Numerics.Vector2>
         > dispatchHistory = new();
-        private ResourcesComponentCore resources;
         private string DescriptionToOrFrom =>
             this.receiverVerb == DispatchComponentCore.Verbs.Retrieve.ToString()
             || this.receiverVerb == DispatchComponentCore.Verbs.Collect.ToString()
@@ -35,13 +33,8 @@ namespace Assets.Scripts.Components.Core
         public string receiverVerb;
         public string receiverSubject;
 
-        public DispatchReceiverComponentCore(
-            WorldObjectCore worldObject,
-            string receiverVerb = "",
-            string receiverSubject = ""
-        )
+        public DispatchReceiverComponentCore(string receiverVerb = "", string receiverSubject = "")
         {
-            this.worldObject = worldObject;
             this.receiverVerb = receiverVerb;
             this.receiverSubject = receiverSubject;
         }
@@ -71,9 +64,6 @@ namespace Assets.Scripts.Components.Core
             activity.SetTag("WorldObjectType", worldObject.worldObjectType);
             activity.SetTag("tick", gameController.backref.TickCount);
             activity.SetParentId(gameController.backref.WorldObjectTickActivity.Id);
-
-            // TODO: not this
-            this.worldObject = worldObject;
 
             bool hasTargetItem =
                 worldObject.resources.resources.GetValueOrDefault(this.receiverSubject, 0u) > 0;
@@ -188,7 +178,7 @@ namespace Assets.Scripts.Components.Tests
             WorldObjectCore worldObject = new(null);
             ResourcesComponentCore resources = new(new TestGameContent(), 100, 100);
             worldObject.resources = resources;
-            DispatchReceiverComponentCore receiver = new(worldObject, "FIGHT", "DINOSAURS");
+            DispatchReceiverComponentCore receiver = new("FIGHT", "DINOSAURS");
             receiver.Tick(gameController, worldObject);
             Assert.True(true);
         }
@@ -206,7 +196,6 @@ namespace Assets.Scripts.Components.Tests
             resources.resources["planks"] = 10;
             worldObject.resources = resources;
             DispatchReceiverComponentCore receiver = new(
-                worldObject,
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "planks"
             );

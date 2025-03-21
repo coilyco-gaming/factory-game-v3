@@ -23,7 +23,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
                 DispatchHistory = this
                     .core.dispatchReceivers.First()
                     .dispatchHistory.Select(kvp =>
-                        $"{kvp.Key.Description} via {kvp.Key.worldObject.gridPosition} at tick {kvp.Value.Item1} for target {kvp.Value.Item2}"
+                        $"{kvp.Key.Description} at tick {kvp.Value.Item1} for target {kvp.Value.Item2}"
                     )
                     .ToList(),
                 Resources = this.core.resources.ResourceInfo,
@@ -47,7 +47,7 @@ namespace Assets.Scripts.WorldObjects.FactoryGame
             // Mobile objects can only ever have 1 dispatch receiver
             this.core.dispatchReceivers = new List<DispatchReceiverComponentCore>
             {
-                new(this.core, this.core.targetType, this.core.targetSubType),
+                new(this.core.targetType, this.core.targetSubType),
             };
             this.core.deployments = new List<DeploymentComponentCore>();
             foreach (DispatchReceiverComponentCore dispatchReceiver in this.core.dispatchReceivers)

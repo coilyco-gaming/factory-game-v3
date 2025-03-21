@@ -60,7 +60,7 @@ namespace Assets.Scripts.Components.Core
                 ?.Values.ToList();
 
             // If there are no objects on our tile, or only one object (us), return
-            if (objectsOnTile.Count == 1)
+            if (objectsOnTile == null || objectsOnTile.Count == 1)
             {
                 return new() { new() { { gameController.backref.TickCount, "nothing to mine" } } };
             }

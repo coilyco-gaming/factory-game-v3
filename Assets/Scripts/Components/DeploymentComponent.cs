@@ -49,7 +49,7 @@ namespace Assets.Scripts.Components.Core
                 }
                 // If the target isn't adjacent, exit early
                 float distance = System.Numerics.Vector2.Distance(
-                    worldObject.dispatchReceivers[0].worldObject.gridPosition,
+                    worldObject.gridPosition,
                     worldObject.dispatchReceivers[0].targetPosition.Value
                 );
                 if (distance > 1.5)
@@ -145,7 +145,6 @@ namespace Assets.Scripts.Components.Tests
             );
             worldObject.resources = resources;
             DispatchReceiverComponentCore dispatchReceiver = new(
-                new WorldObjectCore(null),
                 DispatchComponentCore.Verbs.Retrieve.ToString(),
                 "sawmill"
             );
