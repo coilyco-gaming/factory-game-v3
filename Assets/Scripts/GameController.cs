@@ -203,13 +203,18 @@ namespace Assets.Scripts.Core
 namespace Assets.Scripts.Unity
 {
     using System;
+    using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using Assets.Scripts.Components.Unity;
     using Assets.Scripts.Core;
+    using Assets.Scripts.Core;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
     using Microsoft.Extensions.Logging;
     using OpenTelemetry;
     using OpenTelemetry.Exporter;
+    using OpenTelemetry.Logs;
     using OpenTelemetry.Logs;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
@@ -266,23 +271,26 @@ namespace Assets.Scripts.Unity
                 .Build();
 
             // Logs
-            using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddOpenTelemetry(logging =>
+            using IHost host = Host.CreateDefaultBuilder()
+                .ConfigureLogging(logging =>
                 {
-                    logging.IncludeFormattedMessage = true;
-                    logging.IncludeScopes = true;
-                    logging.SetResourceBuilder(resourceBuilder);
-                    logging.AddOtlpExporter(options =>
+                    logging.ClearProviders(); // Remove default providers
+                    logging.AddOpenTelemetry(options =>
                     {
-                        // options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
-                        // options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                        // options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                        options.SetResourceBuilder(resourceBuilder);
+                        options
+                            .AddOtlpExporter(options =>
+                            {
+                                options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
+                                options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                                options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                            })
+                            .SetResourceBuilder(resourceBuilder);
                     });
-                });
-            });
+                })
+                .Build();
 
-            this.Logger = loggerFactory.CreateLogger<GameController>();
+            this.Logger = host.Services.GetRequiredService<ILogger<GameController>>();
         }
 
         public virtual void Update()
