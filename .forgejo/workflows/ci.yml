@@ -8,7 +8,7 @@ on:
 jobs:
   gate:
     runs-on: docker
-    container: forgejo.coilysiren.me/coilyco-flight-deck/agentic-os:v0.195.0
+    container: forgejo.coilysiren.me/coilyco-flight-deck/agentic-os:v0.226.0
     steps:
       - uses: actions/checkout@v6
         with:
