@@ -82,7 +82,15 @@ namespace Assets.Scripts.Core
 
     public class GameControllerCore
     {
-        public static string openTelemetryAuthHeader = "x-honeycomb-team=FIh8cNdHLsvKmx20pa5SaB";
+        private const string DefaultOtlpLogsEndpoint = "https://api.honeycomb.io/v1/logs";
+        private const string DefaultOtlpTracesEndpoint = "https://api.honeycomb.io/v1/traces";
+        private const string OpenTelemetryHeadersEnvironmentVariable =
+            "FACTORY_GAME_OTEL_HEADERS";
+        private const string OpenTelemetryLogsEndpointEnvironmentVariable =
+            "FACTORY_GAME_OTEL_LOGS_ENDPOINT";
+        private const string OpenTelemetryTracesEndpointEnvironmentVariable =
+            "FACTORY_GAME_OTEL_TRACES_ENDPOINT";
+
         public static string openTelemetryDataset = "FactoryGameV2";
         public GameContent gameContent;
         public IGameController backref;
@@ -102,6 +110,38 @@ namespace Assets.Scripts.Core
         {
             public MisconfigurationException(string message)
                 : base(message) { }
+        }
+
+        public static string GetOpenTelemetryHeaders()
+        {
+            return GetEnvironmentSetting(OpenTelemetryHeadersEnvironmentVariable);
+        }
+
+        public static string GetOpenTelemetryLogsEndpoint()
+        {
+            return GetEnvironmentSetting(
+                OpenTelemetryLogsEndpointEnvironmentVariable,
+                DefaultOtlpLogsEndpoint
+            );
+        }
+
+        public static string GetOpenTelemetryTracesEndpoint()
+        {
+            return GetEnvironmentSetting(
+                OpenTelemetryTracesEndpointEnvironmentVariable,
+                DefaultOtlpTracesEndpoint
+            );
+        }
+
+        private static string GetEnvironmentSetting(string environmentVariableName, string fallback = null)
+        {
+            string value = Environment.GetEnvironmentVariable(environmentVariableName);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return fallback;
+            }
+
+            return value;
         }
 
         // FUNCTIONS //
@@ -264,9 +304,14 @@ namespace Assets.Scripts.Unity
                 .AddSource(GameControllerCore.openTelemetryDataset)
                 .AddOtlpExporter(options =>
                 {
-                    // options.Endpoint = new Uri("https://api.honeycomb.io/v1/traces");
-                    // options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                    // options.Headers = GameControllerCore.openTelemetryAuthHeader;
+                    options.Endpoint = new Uri(GameControllerCore.GetOpenTelemetryTracesEndpoint());
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+
+                    string headers = GameControllerCore.GetOpenTelemetryHeaders();
+                    if (!string.IsNullOrWhiteSpace(headers))
+                    {
+                        options.Headers = headers;
+                    }
                 })
                 .Build();
 
@@ -281,9 +326,16 @@ namespace Assets.Scripts.Unity
                         options
                             .AddOtlpExporter(options =>
                             {
-                                options.Endpoint = new Uri("https://api.honeycomb.io/v1/logs");
+                                options.Endpoint = new Uri(
+                                    GameControllerCore.GetOpenTelemetryLogsEndpoint()
+                                );
                                 options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                                options.Headers = GameControllerCore.openTelemetryAuthHeader;
+
+                                string headers = GameControllerCore.GetOpenTelemetryHeaders();
+                                if (!string.IsNullOrWhiteSpace(headers))
+                                {
+                                    options.Headers = headers;
+                                }
                             })
                             .SetResourceBuilder(resourceBuilder);
                     });
@@ -577,6 +629,53 @@ namespace Assets.Scripts.Unity
             // We assume that the GetGuid() is unique enough to not cause a collision here
             this.core.worldObjects[spawnQueueItem.gridPosition][worldObject.Guid] =
                 worldObject.core;
+        }
+    }
+}
+
+namespace Assets.Scripts.Core.Tests
+{
+    using System;
+    using Assets.Scripts.Core;
+    using Xunit;
+
+    public class GameControllerCoreTelemetryTest
+    {
+        private const string EnvironmentVariableName = "FACTORY_GAME_OTEL_HEADERS";
+
+        [Fact]
+        public void TestTelemetryHeadersComeFromEnvironment()
+        {
+            string previousValue = Environment.GetEnvironmentVariable(EnvironmentVariableName);
+            string expectedValue = "x-honeycomb-team=test-header";
+
+            try
+            {
+                Environment.SetEnvironmentVariable(EnvironmentVariableName, expectedValue);
+
+                Assert.Equal(expectedValue, GameControllerCore.GetOpenTelemetryHeaders());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(EnvironmentVariableName, previousValue);
+            }
+        }
+
+        [Fact]
+        public void TestTelemetryHeadersAreOptional()
+        {
+            string previousValue = Environment.GetEnvironmentVariable(EnvironmentVariableName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(EnvironmentVariableName, null);
+
+                Assert.Null(GameControllerCore.GetOpenTelemetryHeaders());
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(EnvironmentVariableName, previousValue);
+            }
         }
     }
 }
