@@ -9,7 +9,7 @@ jobs:
   gate:
     timeout-minutes: 12
     runs-on: docker
-    container: forgejo.coilysiren.me/coilyco-flight-deck/agentic-os:v0.227.0
+    container: forgejo.coilysiren.me/coilyco-flight-deck/agentic-os:v0.230.0
     steps:
       - uses: actions/checkout@v6
         with:
