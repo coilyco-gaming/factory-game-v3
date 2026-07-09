@@ -551,7 +551,9 @@ pub fn sample_game_state() -> GameState {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use factory_content::{ContentDatabase, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_BARS_SCENARIO};
+  use factory_content::{
+    ContentDatabase, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_BARS_SCENARIO, IRON_ORE,
+  };
 
   #[test]
   fn inventory_respects_capacity_and_reservations() {
