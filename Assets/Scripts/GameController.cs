@@ -82,7 +82,7 @@ namespace Assets.Scripts.Core
 
     public class GameControllerCore
     {
-        public static string openTelemetryAuthHeader = "x-honeycomb-team=FIh8cNdHLsvKmx20pa5SaB";
+        public static string openTelemetryAuthHeader = "EXAMPLE";
         public static string openTelemetryDataset = "FactoryGameV2";
         public GameContent gameContent;
         public IGameController backref;
