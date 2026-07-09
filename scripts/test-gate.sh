@@ -9,5 +9,5 @@ if ! command -v pre-commit >/dev/null 2>&1; then
   exit 127
 fi
 
-echo "ward: pre-commit run --all-files"
+echo "ward: pre-commit migration baseline run --all-files"
 timeout --kill-after=30s "${gate_timeout}" pre-commit run --all-files

@@ -6,5 +6,5 @@ commands:
     description: "Run the repo's pre-commit baseline with a bounded timeout."
 
 catalog:
-  description: "Factory-game-v3 migration baseline. Unity/C# reference surface on the way to Rust/Bevy, with current validation centered on the existing tests.csproj suite."
+  description: "Factory-game-v3 migration baseline. Unity/C# reference surface on the way to Rust/Bevy, with current validation centered on the pre-commit migration baseline."
   dependsOn: []

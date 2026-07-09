@@ -11,7 +11,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 ## Project shape
 
 - `Assets/` holds the retained Unity-era source, scenes, materials, plugins, and `.meta` files.
-- `tests.csproj` is the current executable test surface.
+- `tests.csproj` is a retained Unity-era reference project, not the active validation surface.
 - `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and `.ward/ward.yaml` are the repo-local baseline trio plus command surface.
 
 ## Repo boundaries
