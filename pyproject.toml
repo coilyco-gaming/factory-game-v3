@@ -1,0 +1,5 @@
+[tool.agentic-os.documentation-layout]
+excludes = ["Assets/"]
+
+[tool.agentic-os.code-comments]
+excludes = ["Assets/"]

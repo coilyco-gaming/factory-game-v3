@@ -1,0 +1,10 @@
+# Per-repo command allowlist. Add verbs here as the surface grows.
+
+commands:
+  test:
+    run: dotnet test tests.csproj
+    description: "Run the current C# xUnit surface for the Unity-era migration baseline."
+
+catalog:
+  description: "Factory-game-v3 migration baseline. Unity/C# reference surface on the way to Rust/Bevy, with current validation centered on the existing tests.csproj suite."
+  dependsOn: []
