@@ -6,8 +6,8 @@ What `factory-game-v3` currently ships. This repo is still in migration, so this
 
 - **Unity/C# migration reference state** - Unity project settings and editor/package scaffolding are gone, but the repo still holds the Unity-era gameplay reference surface while the Rust/Bevy rewrite is staged.
 - **Retained art and asset surface** - `Assets/Scenes/`, `Assets/Materials/`, `Assets/Plugins/`, `Assets/TextMesh Pro/`, and the remaining `.meta` files stay in place as migration references.
-- **Rust simulation workspace** - `Cargo.toml` now defines a pure Rust workspace with `factory_content`, `factory_sim`, and `factory_cli` for the first closed-loop migration slice. The workspace stays Bevy-free and models typed content IDs, resource containers, typed dispatch intents and assignments, tick stepping, and a headless runner. See [docs/factory-sim.md](factory-sim.md).
-- **Iron bars slice** - the starter scenario runs `IronOre -> IronBars` through a deterministic source, hauler, and factory loop with JSONL snapshots that now expose the dispatch protocol state for debugging.
+- **Rust simulation workspace** - `Cargo.toml` now defines a pure Rust workspace with `factory_content`, `factory_sim`, and `factory_cli` for the first closed-loop migration slice. The workspace stays Bevy-free and models typed content IDs, resource containers, typed dispatch intents and assignments, a small world topology, route-based hauler movement, tick stepping, and a headless runner. See [docs/factory-sim.md](factory-sim.md).
+- **Iron bars slice** - the starter scenario runs `IronOre -> IronBars` through a deterministic source, road, hauler, and factory loop with JSONL snapshots that expose dispatch, topology, and movement state for debugging.
 - **Current validation surface** - `ward exec test` runs the repo's pre-commit baseline plus the Rust workspace tests, and CI calls `bash scripts/test-gate.sh` directly for the same check. `tests.csproj` remains retained C# reference material only, not an active validator.
 
 ## See also

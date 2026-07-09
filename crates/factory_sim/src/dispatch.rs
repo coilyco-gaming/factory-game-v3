@@ -1,4 +1,4 @@
-use crate::Location;
+use crate::NodeId;
 use factory_content::ItemId;
 use serde::Serialize;
 use std::fmt;
@@ -30,12 +30,12 @@ pub enum DispatchPhase {
 pub struct DispatchIntent {
   pub verb: DispatchVerb,
   pub item: ItemId,
-  pub from: Location,
-  pub to: Location,
+  pub from: NodeId,
+  pub to: NodeId,
 }
 
 impl DispatchIntent {
-  pub fn collect(item: ItemId, from: Location, to: Location) -> Self {
+  pub fn collect(item: ItemId, from: NodeId, to: NodeId) -> Self {
     Self {
       verb: DispatchVerb::Collect,
       item,
@@ -44,7 +44,7 @@ impl DispatchIntent {
     }
   }
 
-  pub fn deliver(item: ItemId, from: Location, to: Location) -> Self {
+  pub fn deliver(item: ItemId, from: NodeId, to: NodeId) -> Self {
     Self {
       verb: DispatchVerb::Deliver,
       item,
@@ -57,13 +57,13 @@ impl DispatchIntent {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DispatchAssignment {
   pub item: ItemId,
-  pub source: Location,
-  pub destination: Location,
+  pub source: NodeId,
+  pub destination: NodeId,
   pub phase: DispatchPhase,
 }
 
 impl DispatchAssignment {
-  pub fn collect(item: ItemId, source: Location, destination: Location) -> Self {
+  pub fn collect(item: ItemId, source: NodeId, destination: NodeId) -> Self {
     Self {
       item,
       source,

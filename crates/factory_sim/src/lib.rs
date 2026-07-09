@@ -13,8 +13,9 @@ pub use dispatch::{
 pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
-  FactoryNode, FactorySnapshot, Hauler, HaulerSnapshot, Location, ScenarioSnapshot,
-  SourceNode, SourceSnapshot, TickSnapshot, TopologySnapshot, WorldState,
+  FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerSnapshot, NodeId,
+  ScenarioSnapshot, SourceNode, SourceSnapshot, TickSnapshot, Topology,
+  TopologyNode, TopologySnapshot, WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,9 +77,14 @@ impl GameState {
             .expect("starter source stockpile fits");
           stockpile
         }, scenario.source_item),
-        hauler: Hauler::new(Inventory::new(32, 32), Location::Source, scenario.hauler_capacity),
+        hauler: Hauler::new(
+          Inventory::new(32, 32),
+          NodeId::Source,
+          scenario.hauler_capacity,
+          NodeId::Source,
+        ),
         factory: FactoryNode::new(production, scenario.craft_input_buffer),
-        route: [Location::Source, Location::Factory],
+        topology: Topology::starter(),
         scenario,
       },
       content,
@@ -90,15 +96,15 @@ impl GameState {
   }
 
   fn refresh_dispatch_intents(&mut self) {
-    self.world.source.refresh_dispatch(Location::Factory);
-    self.world.factory.refresh_dispatch(Location::Source);
+    self.world.source.refresh_dispatch(NodeId::Factory);
+    self.world.factory.refresh_dispatch(NodeId::Source);
   }
 
   fn assign_dispatch(&mut self, events: &mut Vec<String>) {
     if !matches!(self.world.hauler.dispatch, DispatchReceiverState::Unassigned) {
       return;
     }
-    if self.world.hauler.position != Location::Source || !self.world.hauler.cargo.is_empty() {
+    if self.world.hauler.position != NodeId::Source || !self.world.hauler.cargo.is_empty() {
       return;
     }
     let source_intent = match &self.world.source.dispatch.intent {
@@ -133,7 +139,7 @@ impl GameState {
       DispatchReceiverState::Assigned(assignment) => assignment,
       DispatchReceiverState::Unassigned => return,
     };
-    if assignment.phase != DispatchPhase::Collect || position != Location::Source {
+    if assignment.phase != DispatchPhase::Collect || position != NodeId::Source {
       return;
     };
     let moved = self.world.source.stockpile.transfer_up_to(
@@ -160,7 +166,7 @@ impl GameState {
       DispatchReceiverState::Assigned(assignment) => assignment,
       DispatchReceiverState::Unassigned => return,
     };
-    if assignment.phase != DispatchPhase::Deliver || position != Location::Factory {
+    if assignment.phase != DispatchPhase::Deliver || position != NodeId::Factory {
       return;
     }
     let destination = assignment.destination;
@@ -185,8 +191,30 @@ impl GameState {
   }
 
   fn move_hauler(&mut self, events: &mut Vec<String>) {
-    self.world.hauler.position = self.world.hauler.position.other();
-    events.push(format!("move hauler to {}", self.world.hauler.position));
+    let target = match &self.world.hauler.dispatch {
+      DispatchReceiverState::Assigned(assignment) => match assignment.phase {
+        DispatchPhase::Collect => assignment.source,
+        DispatchPhase::Deliver => assignment.destination,
+      },
+      DispatchReceiverState::Unassigned => {
+        if self.world.hauler.cargo.is_empty() {
+          NodeId::Source
+        } else {
+          NodeId::Factory
+        }
+      }
+    };
+    self.world.hauler.set_target(target);
+    let current = self.world.hauler.position;
+    let next = self.world.topology.step_toward(current, target);
+    self.world.hauler.position = next;
+    self.world.hauler.set_route_index(&self.world.topology);
+    if next != current {
+      events.push(format!(
+        "move hauler {} -> {} toward {}",
+        current, next, target
+      ));
+    }
   }
 
   pub fn step(&mut self) -> TickSnapshot {
@@ -209,7 +237,8 @@ impl GameState {
         name: self.world.scenario.name.clone(),
       },
       topology: TopologySnapshot {
-        route: self.world.route,
+        nodes: self.world.topology.nodes,
+        route: self.world.topology.route,
       },
       source: SourceSnapshot {
         item: self.world.source.item,
@@ -218,6 +247,10 @@ impl GameState {
       },
       hauler: HaulerSnapshot {
         position: self.world.hauler.position,
+        position_grid: self.world.topology.position(self.world.hauler.position),
+        target: self.world.hauler.target,
+        target_grid: self.world.topology.position(self.world.hauler.target),
+        route_index: self.world.hauler.route_index,
         cargo: self.world.hauler.cargo.snapshot(),
         carry_limit: self.world.hauler.carry_limit,
         dispatch: self.world.hauler.dispatch.clone(),
@@ -277,24 +310,29 @@ mod tests {
         ..
       })
     ));
-    assert_eq!(Location::Factory, first.hauler.position);
+    assert_eq!(NodeId::Road, first.hauler.position);
     assert_eq!(3, first.hauler.cargo.items.get(IRON_ORE.as_str()).copied().unwrap_or(0));
+    assert_eq!(NodeId::Factory, first.hauler.target);
 
     let second = state.step();
-    assert!(matches!(second.hauler.dispatch, DispatchReceiverState::Unassigned));
-    assert_eq!(Location::Source, second.hauler.position);
-    assert_eq!(0, second.hauler.cargo.items.get(IRON_ORE.as_str()).copied().unwrap_or(0));
-    assert!(second.factory.craft.crafting);
-
-    let third = state.step();
     assert!(matches!(
-      third.hauler.dispatch,
+      second.hauler.dispatch,
       DispatchReceiverState::Assigned(DispatchAssignment {
         phase: DispatchPhase::Deliver,
         ..
       })
     ));
-    assert_eq!(Location::Factory, third.hauler.position);
+    assert_eq!(NodeId::Factory, second.hauler.position);
+    assert_eq!(3, second.hauler.cargo.items.get(IRON_ORE.as_str()).copied().unwrap_or(0));
+    assert_eq!(2, second.hauler.route_index);
+    assert!(!second.factory.craft.crafting);
+
+    let third = state.step();
+    assert!(matches!(third.hauler.dispatch, DispatchReceiverState::Unassigned));
+    assert_eq!(NodeId::Road, third.hauler.position);
+    assert_eq!(0, third.hauler.cargo.items.get(IRON_ORE.as_str()).copied().unwrap_or(0));
+    assert!(third.factory.craft.crafting);
+    assert_eq!(NodeId::Source, third.hauler.target);
   }
 
   #[test]
@@ -316,5 +354,78 @@ mod tests {
         .unwrap_or(0)
         > 0
     }));
+  }
+
+  #[test]
+  fn route_traversal_takes_multiple_ticks_before_delivery() {
+    let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+
+    let first = state.step();
+    assert_eq!(NodeId::Road, first.hauler.position);
+    assert!(first
+      .events
+      .iter()
+      .any(|event| event.contains("dispatch collect")));
+    assert!(!first.events.iter().any(|event| event.contains("dispatch deliver")));
+
+    let second = state.step();
+    assert_eq!(NodeId::Factory, second.hauler.position);
+    assert!(second
+      .events
+      .iter()
+      .all(|event| !event.contains("dispatch deliver")));
+
+    let third = state.step();
+    assert_eq!(NodeId::Road, third.hauler.position);
+    assert!(third
+      .events
+      .iter()
+      .any(|event| event.contains("dispatch deliver")));
+  }
+
+  #[test]
+  fn collect_and_deliver_require_the_correct_node() {
+    let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+    state.world.hauler.position = NodeId::Road;
+    state.world.hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
+      item: IRON_ORE,
+      source: NodeId::Source,
+      destination: NodeId::Factory,
+      phase: DispatchPhase::Collect,
+    });
+
+    let collect_snapshot = state.step();
+    assert_eq!(0, collect_snapshot.hauler.cargo.items.get(IRON_ORE.as_str()).copied().unwrap_or(0));
+    assert!(collect_snapshot
+      .events
+      .iter()
+      .all(|event| !event.contains("dispatch collect")));
+    assert_eq!(NodeId::Source, collect_snapshot.hauler.target);
+
+    state.world.hauler.position = NodeId::Road;
+    state.world.hauler.cargo.insert_exact(&ContentDatabase::starter(), IRON_ORE, 3).unwrap();
+    state.world.hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
+      item: IRON_ORE,
+      source: NodeId::Source,
+      destination: NodeId::Factory,
+      phase: DispatchPhase::Deliver,
+    });
+
+    let deliver_snapshot = state.step();
+    assert_eq!(
+      3,
+      deliver_snapshot
+        .hauler
+        .cargo
+        .items
+        .get(IRON_ORE.as_str())
+        .copied()
+        .unwrap_or(0)
+    );
+    assert!(deliver_snapshot
+      .events
+      .iter()
+      .all(|event| !event.contains("dispatch deliver")));
+    assert_eq!(NodeId::Factory, deliver_snapshot.hauler.target);
   }
 }

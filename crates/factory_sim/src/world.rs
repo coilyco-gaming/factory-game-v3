@@ -7,25 +7,85 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Location {
+pub enum NodeId {
   Source,
+  Road,
   Factory,
 }
 
-impl fmt::Display for Location {
+impl fmt::Display for NodeId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match self {
-      Self::Source => f.write_str("source"),
-      Self::Factory => f.write_str("factory"),
-    }
+    f.write_str(match self {
+      Self::Source => "source",
+      Self::Road => "road",
+      Self::Factory => "factory",
+    })
   }
 }
 
-impl Location {
-  pub fn other(self) -> Self {
-    match self {
-      Self::Source => Self::Factory,
-      Self::Factory => Self::Source,
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct GridPosition {
+  pub x: i32,
+  pub y: i32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct TopologyNode {
+  pub id: NodeId,
+  pub position: GridPosition,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Topology {
+  pub nodes: [TopologyNode; 3],
+  pub route: [NodeId; 3],
+}
+
+impl Topology {
+  pub fn starter() -> Self {
+    Self {
+      nodes: [
+        TopologyNode {
+          id: NodeId::Source,
+          position: GridPosition { x: 0, y: 0 },
+        },
+        TopologyNode {
+          id: NodeId::Road,
+          position: GridPosition { x: 1, y: 0 },
+        },
+        TopologyNode {
+          id: NodeId::Factory,
+          position: GridPosition { x: 2, y: 0 },
+        },
+      ],
+      route: [NodeId::Source, NodeId::Road, NodeId::Factory],
+    }
+  }
+
+  pub fn position(&self, node: NodeId) -> GridPosition {
+    self
+      .nodes
+      .iter()
+      .find(|candidate| candidate.id == node)
+      .map(|node| node.position)
+      .expect("topology contains requested node")
+  }
+
+  pub fn route_index(&self, node: NodeId) -> Option<usize> {
+    self.route.iter().position(|candidate| *candidate == node)
+  }
+
+  pub fn step_toward(&self, from: NodeId, target: NodeId) -> NodeId {
+    let from_index = self.route_index(from);
+    let target_index = self.route_index(target);
+    match (from_index, target_index) {
+      (Some(from_index), Some(target_index)) if from_index < target_index => {
+        self.route[from_index + 1]
+      }
+      (Some(from_index), Some(target_index)) if from_index > target_index => {
+        self.route[from_index - 1]
+      }
+      _ => from,
     }
   }
 }
@@ -46,9 +106,9 @@ impl SourceNode {
     }
   }
 
-  pub fn refresh_dispatch(&mut self, factory_location: Location) {
+  pub fn refresh_dispatch(&mut self, factory_location: NodeId) {
     self.dispatch.intent = (self.stockpile.count(self.item) > 0).then(|| {
-      DispatchIntent::collect(self.item, Location::Source, factory_location)
+      DispatchIntent::collect(self.item, NodeId::Source, factory_location)
     });
   }
 }
@@ -69,12 +129,12 @@ impl FactoryNode {
     }
   }
 
-  pub fn refresh_dispatch(&mut self, source_location: Location) {
+  pub fn refresh_dispatch(&mut self, source_location: NodeId) {
     let needed = self
       .input_buffer
       .saturating_sub(self.production.inventory.count(self.production.recipe.input_item));
     self.dispatch.intent = (needed > 0).then(|| {
-      DispatchIntent::deliver(self.production.recipe.input_item, source_location, Location::Factory)
+      DispatchIntent::deliver(self.production.recipe.input_item, source_location, NodeId::Factory)
     });
   }
 }
@@ -82,19 +142,31 @@ impl FactoryNode {
 #[derive(Clone, Debug)]
 pub struct Hauler {
   pub cargo: Inventory,
-  pub position: Location,
+  pub position: NodeId,
+  pub target: NodeId,
+  pub route_index: usize,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
 }
 
 impl Hauler {
-  pub fn new(cargo: Inventory, position: Location, carry_limit: u32) -> Self {
+  pub fn new(cargo: Inventory, position: NodeId, carry_limit: u32, target: NodeId) -> Self {
     Self {
       cargo,
       position,
+      target,
+      route_index: 0,
       carry_limit,
       dispatch: DispatchReceiverState::Unassigned,
     }
+  }
+
+  pub fn set_route_index(&mut self, topology: &Topology) {
+    self.route_index = topology.route_index(self.position).unwrap_or(self.route_index);
+  }
+
+  pub fn set_target(&mut self, target: NodeId) {
+    self.target = target;
   }
 
   pub fn assign(&mut self, assignment: DispatchAssignment) {
@@ -122,7 +194,11 @@ pub struct FactorySnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HaulerSnapshot {
-  pub position: Location,
+  pub position: NodeId,
+  pub position_grid: GridPosition,
+  pub target: NodeId,
+  pub target_grid: GridPosition,
+  pub route_index: usize,
   pub cargo: crate::resources::InventorySnapshot,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
@@ -130,7 +206,8 @@ pub struct HaulerSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TopologySnapshot {
-  pub route: [Location; 2],
+  pub nodes: [TopologyNode; 3],
+  pub route: [NodeId; 3],
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -157,5 +234,5 @@ pub struct WorldState {
   pub source: SourceNode,
   pub hauler: Hauler,
   pub factory: FactoryNode,
-  pub route: [Location; 2],
+  pub topology: Topology,
 }
