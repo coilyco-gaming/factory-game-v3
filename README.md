@@ -10,7 +10,13 @@ Run the lightweight migration baseline through ward:
 ward exec test
 ```
 
-That verb runs the repo's pre-commit baseline with a bounded timeout. CI calls the same bounded script directly because ward repo verbs require a tracked branch. The retained `tests.csproj` project is reference-only and is not part of the active gate.
+That verb runs the repo's pre-commit baseline and the Rust workspace tests with a bounded timeout. CI calls the same bounded script directly because ward repo verbs require a tracked branch. The retained `tests.csproj` project is reference-only and is not part of the active gate.
+
+The headless Rust slice can also run directly:
+
+```bash
+ward exec cargo-run -- run --scenario iron-bars --ticks 6
+```
 
 ## Inventory
 

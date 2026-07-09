@@ -1,0 +1,12 @@
+[package]
+name = "factory_cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+factory_content = { path = "../factory_content" }
+factory_sim = { path = "../factory_sim" }
+serde_json = "1"
+
+[dev-dependencies]

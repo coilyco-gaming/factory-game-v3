@@ -1,13 +1,14 @@
 # Features
 
-What `factory-game-v3` currently ships. This repo is still in migration, so this inventory describes the present Unity/C# reference surface and retained assets.
+What `factory-game-v3` currently ships. This repo is still in migration, so this inventory describes the current Unity/C# reference surface plus the first Rust migration slice.
 
 ## Inventory
 
-- **Unity/C# migration reference state** - Unity project settings and editor/package scaffolding are gone, but the repo still holds the current Unity-era gameplay reference surface while the Rust/Bevy rewrite is staged.
-- **Gameplay and domain code** - `Assets/Scripts/` contains the current core model, controller, world-object, and utility code that future Bevy work will replace or port.
+- **Unity/C# migration reference state** - Unity project settings and editor/package scaffolding are gone, but the repo still holds the Unity-era gameplay reference surface while the Rust/Bevy rewrite is staged.
 - **Retained art and asset surface** - `Assets/Scenes/`, `Assets/Materials/`, `Assets/Plugins/`, `Assets/TextMesh Pro/`, and the remaining `.meta` files stay in place as migration references.
-- **Current validation surface** - `ward exec test` runs the repo's pre-commit baseline with a bounded timeout, and CI calls `bash scripts/test-gate.sh` directly for the same check. `tests.csproj` remains as retained C# reference material only, not an active validator.
+- **Rust simulation workspace** - `Cargo.toml` now defines a pure Rust workspace with `factory_content`, `factory_sim`, and `factory_cli` for the first closed-loop migration slice. The workspace stays Bevy-free and models typed content IDs, resource containers, tick stepping, and a headless runner. See [docs/factory-sim.md](factory-sim.md).
+- **Iron bars slice** - the starter scenario runs `IronOre -> IronBars` through a deterministic source, hauler, and factory loop with JSONL snapshots for diffable output.
+- **Current validation surface** - `ward exec test` runs the repo's pre-commit baseline plus the Rust workspace tests, and CI calls `bash scripts/test-gate.sh` directly for the same check. `tests.csproj` remains retained C# reference material only, not an active validator.
 
 ## See also
 

@@ -11,3 +11,6 @@ fi
 
 echo "ward: pre-commit migration baseline run --all-files"
 timeout --kill-after=30s "${gate_timeout}" pre-commit run --all-files
+
+echo "ward: cargo test --workspace"
+cargo test --workspace

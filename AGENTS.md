@@ -12,6 +12,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 
 - `Assets/` holds the retained Unity-era source, scenes, materials, plugins, and `.meta` files.
 - `tests.csproj` is a retained Unity-era reference project, not the active validation surface.
+- `crates/` holds the active Rust workspace for the first migration slices, while Unity code remains as reference material.
 - `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and `.ward/ward.yaml` are the repo-local baseline trio plus command surface.
 
 ## Repo boundaries
@@ -29,7 +30,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 
 ## Validation
 
-- Run `ward exec test` for the repo baseline.
+- Run `ward exec test` for the repo baseline, including the Rust workspace.
 - Run `pre-commit run --all-files` before committing.
 - Keep [README.md](README.md), this file, and [docs/FEATURES.md](docs/FEATURES.md) in sync when the repo surface changes.
 

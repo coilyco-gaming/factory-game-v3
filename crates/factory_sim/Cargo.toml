@@ -1,0 +1,11 @@
+[package]
+name = "factory_sim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+factory_content = { path = "../factory_content" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+factory_content = { path = "../factory_content" }

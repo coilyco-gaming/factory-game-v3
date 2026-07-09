@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "crates/factory_content",
+  "crates/factory_sim",
+  "crates/factory_cli",
+]
+resolver = "2"
