@@ -10,7 +10,7 @@ Run the current test surface through ward:
 ward exec test
 ```
 
-That verb restores `tests.csproj` first, then runs the existing xUnit surface with bounded phase timeouts.
+That verb runs the repo's pre-commit baseline with a bounded timeout.
 
 ## Inventory
 
