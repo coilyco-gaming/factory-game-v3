@@ -18,7 +18,7 @@ See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and m
 
 ## See also
 
-- [AGENTS.md](/workspace/factory-game-v3/AGENTS.md)
-- [docs/FEATURES.md](/workspace/factory-game-v3/docs/FEATURES.md)
-- [.ward/ward.yaml](/workspace/factory-game-v3/.ward/ward.yaml)
-- [docs/features-release-tooling.md](/workspace/factory-game-v3/docs/features-release-tooling.md)
+- [AGENTS.md](AGENTS.md)
+- [docs/FEATURES.md](docs/FEATURES.md)
+- [.ward/ward.yaml](.ward/ward.yaml)
+- [docs/features-release-tooling.md](docs/features-release-tooling.md)
