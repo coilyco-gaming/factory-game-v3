@@ -2,8 +2,8 @@
 
 commands:
   test:
-    run: dotnet test tests.csproj
-    description: "Run the current C# xUnit surface for the Unity-era migration baseline."
+    run: bash scripts/test-gate.sh
+    description: "Restore and test the current C# xUnit surface with bounded phase timeouts."
 
 catalog:
   description: "Factory-game-v3 migration baseline. Unity/C# reference surface on the way to Rust/Bevy, with current validation centered on the existing tests.csproj suite."

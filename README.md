@@ -10,7 +10,7 @@ Run the current test surface through ward:
 ward exec test
 ```
 
-That verb wraps the existing `tests.csproj` xUnit suite.
+That verb restores `tests.csproj` first, then runs the existing xUnit surface with bounded phase timeouts.
 
 ## Inventory
 

@@ -23,7 +23,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 ## Commands
 
 - Route dev commands through ward.
-- `ward exec test` is the current repo verb. It runs the existing `tests.csproj` test surface.
+- `ward exec test` is the current repo verb. It restores and runs the existing `tests.csproj` test surface with bounded phase timeouts.
 - Add new verbs to [`.ward/ward.yaml`](.ward/ward.yaml) before using them.
 - Do not route work through bare `dotnet` in docs or agent instructions.
 
