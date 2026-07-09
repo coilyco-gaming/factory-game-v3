@@ -218,10 +218,9 @@ namespace Assets.Scripts.Unity
     using OpenTelemetry.Logs;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
-    using Sirenix.OdinInspector;
     using UnityEngine;
 
-    public class GameController : SerializedMonoBehaviour, IGameController
+    public class GameController : MonoBehaviour, IGameController
     {
         public GameControllerCore core;
 
