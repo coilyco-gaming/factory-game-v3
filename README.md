@@ -10,7 +10,7 @@ Run the current test surface through ward:
 ward exec test
 ```
 
-That verb runs the repo's pre-commit baseline with a bounded timeout.
+That verb runs the repo's pre-commit baseline with a bounded timeout. CI calls the same bounded script directly because ward repo verbs require a tracked branch.
 
 ## Inventory
 

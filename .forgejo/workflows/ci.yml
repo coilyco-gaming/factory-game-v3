@@ -15,4 +15,4 @@ jobs:
         with:
           lfs: true
 
-      - run: ward exec test
+      - run: bash scripts/test-gate.sh
