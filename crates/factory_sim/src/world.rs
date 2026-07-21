@@ -1,4 +1,5 @@
 use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, DispatchReceiverState};
+use crate::mining::MiningExtractor;
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ItemId, ScenarioDefinition};
@@ -94,14 +95,16 @@ impl Topology {
 pub struct SourceNode {
   pub stockpile: Inventory,
   pub item: ItemId,
+  pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
 }
 
 impl SourceNode {
-  pub fn new(stockpile: Inventory, item: ItemId) -> Self {
+  pub fn new(stockpile: Inventory, item: ItemId, mining: MiningExtractor) -> Self {
     Self {
       stockpile,
       item,
+      mining,
       dispatch: DispatchBoard::new(),
     }
   }
@@ -182,6 +185,7 @@ impl Hauler {
 pub struct SourceSnapshot {
   pub item: ItemId,
   pub stockpile: crate::resources::InventorySnapshot,
+  pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
 }
 

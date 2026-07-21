@@ -46,6 +46,7 @@ pub const IRON_ORE: ItemId = ItemId::new("iron_ore");
 pub const IRON_BARS: ItemId = ItemId::new("iron_bars");
 pub const COPPER_ORE: ItemId = ItemId::new("copper_ore");
 pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
+pub const STONE: ItemId = ItemId::new("stone");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
 
@@ -59,6 +60,7 @@ pub struct ItemDefinition {
   pub craft_time: u32,
   pub craft_output: u32,
   pub ingredients: BTreeMap<ItemId, u32>,
+  pub create_from_nothing: bool,
 }
 
 impl ItemDefinition {
@@ -81,7 +83,13 @@ impl ItemDefinition {
       craft_time,
       craft_output,
       ingredients,
+      create_from_nothing: false,
     }
+  }
+
+  pub fn with_create_from_nothing(mut self) -> Self {
+    self.create_from_nothing = true;
+    self
   }
 }
 
@@ -91,7 +99,8 @@ pub struct ScenarioDefinition {
   pub name: String,
   pub source_item: ItemId,
   pub product_item: ItemId,
-  pub source_stockpile: u32,
+  pub source_deposit: u32,
+  pub mining_speed: u32,
   pub hauler_capacity: u32,
   pub craft_input_buffer: u32,
   pub craft_output_buffer: u32,
@@ -103,7 +112,8 @@ impl ScenarioDefinition {
     name: impl Into<String>,
     source_item: ItemId,
     product_item: ItemId,
-    source_stockpile: u32,
+    source_deposit: u32,
+    mining_speed: u32,
     hauler_capacity: u32,
     craft_input_buffer: u32,
     craft_output_buffer: u32,
@@ -113,7 +123,8 @@ impl ScenarioDefinition {
       name: name.into(),
       source_item,
       product_item,
-      source_stockpile,
+      source_deposit,
+      mining_speed,
       hauler_capacity,
       craft_input_buffer,
       craft_output_buffer,
@@ -169,6 +180,12 @@ impl ContentDatabase {
       ),
     );
 
+    items.insert(
+      STONE,
+      ItemDefinition::new(STONE, "Stone", 1, 1, 100, 0, 1, BTreeMap::new())
+        .with_create_from_nothing(),
+    );
+
     let mut scenarios = BTreeMap::new();
     scenarios.insert(
       IRON_BARS_SCENARIO,
@@ -178,6 +195,7 @@ impl ContentDatabase {
         IRON_ORE,
         IRON_BARS,
         9,
+        3,
         3,
         6,
         20,

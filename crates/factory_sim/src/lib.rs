@@ -1,4 +1,5 @@
 mod dispatch;
+mod mining;
 mod production;
 mod resources;
 mod world;
@@ -10,6 +11,7 @@ pub use dispatch::{
   DispatchAssignment, DispatchBoard, DispatchIntent, DispatchPhase, DispatchReceiverState,
   DispatchVerb,
 };
+pub use mining::{Deposit, MiningExtractor};
 pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
@@ -70,13 +72,16 @@ impl GameState {
     Ok(Self {
       world: WorldState {
         tick: 0,
-        source: SourceNode::new({
-          let mut stockpile = Inventory::new(1024, 1024);
-          stockpile
-            .insert_exact(&content, scenario.source_item, scenario.source_stockpile)
-            .expect("starter source stockpile fits");
-          stockpile
-        }, scenario.source_item),
+        source: SourceNode::new(
+          Inventory::new(1024, 1024),
+          scenario.source_item,
+          MiningExtractor::for_item(
+            &content,
+            scenario.source_item,
+            scenario.mining_speed,
+            scenario.source_deposit,
+          ),
+        ),
         hauler: Hauler::new(
           Inventory::new(32, 32),
           NodeId::Source,
@@ -93,6 +98,22 @@ impl GameState {
 
   pub fn starter_iron_bars() -> Self {
     Self::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).expect("starter scenario is valid")
+  }
+
+  fn advance_mining(&mut self, events: &mut Vec<String>) {
+    let source = &mut self.world.source;
+    let mined = source.mining.advance(&self.content, &mut source.stockpile);
+    if mined > 0 {
+      match source.mining.deposit {
+        Deposit::Finite(remaining) => events.push(format!(
+          "mine {} +{} deposit {}",
+          source.mining.item, mined, remaining
+        )),
+        Deposit::Manifest => {
+          events.push(format!("mine {} +{} manifest", source.mining.item, mined))
+        }
+      }
+    }
   }
 
   fn refresh_dispatch_intents(&mut self) {
@@ -220,6 +241,7 @@ impl GameState {
   pub fn step(&mut self) -> TickSnapshot {
     self.world.tick += 1;
     let mut events = Vec::new();
+    self.advance_mining(&mut events);
     self.refresh_dispatch_intents();
     self.assign_dispatch(&mut events);
     self.collect(&mut events);
@@ -243,6 +265,7 @@ impl GameState {
       source: SourceSnapshot {
         item: self.world.source.item,
         stockpile: self.world.source.stockpile.snapshot(),
+        mining: self.world.source.mining.clone(),
         dispatch: self.world.source.dispatch.clone(),
       },
       hauler: HaulerSnapshot {
@@ -277,7 +300,7 @@ pub fn sample_game_state() -> GameState {
 mod tests {
   use super::*;
   use factory_content::{
-    ContentDatabase, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_BARS_SCENARIO, IRON_ORE,
+    ContentDatabase, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_BARS_SCENARIO, IRON_ORE, STONE,
   };
 
   #[test]
@@ -296,6 +319,46 @@ mod tests {
     assert_eq!(0, inventory.count(IRON_ORE));
     assert_eq!(2, target.count(IRON_ORE));
     assert_eq!(0, target.insert_up_to(&content, COPPER_BARS, 1));
+  }
+
+  #[test]
+  fn mining_depletes_a_finite_deposit_and_stops() {
+    let content = ContentDatabase::starter();
+    let mut extractor = MiningExtractor::for_item(&content, IRON_ORE, 4, 10);
+    let mut stockpile = Inventory::new(1024, 1024);
+
+    assert_eq!(4, extractor.advance(&content, &mut stockpile));
+    assert_eq!(4, extractor.advance(&content, &mut stockpile));
+    assert_eq!(2, extractor.advance(&content, &mut stockpile));
+    assert_eq!(0, extractor.advance(&content, &mut stockpile));
+    assert_eq!(Deposit::Finite(0), extractor.deposit);
+    assert_eq!(10, stockpile.count(IRON_ORE));
+  }
+
+  #[test]
+  fn mining_manifest_items_create_from_nothing() {
+    let content = ContentDatabase::starter();
+    let mut extractor = MiningExtractor::for_item(&content, STONE, 2, 0);
+    let mut stockpile = Inventory::new(3, 3);
+
+    assert_eq!(Deposit::Manifest, extractor.deposit);
+    assert_eq!(2, extractor.advance(&content, &mut stockpile));
+    assert_eq!(1, extractor.advance(&content, &mut stockpile));
+    assert_eq!(0, extractor.advance(&content, &mut stockpile));
+    assert_eq!(3, stockpile.count(STONE));
+  }
+
+  #[test]
+  fn source_deposit_depletes_in_the_iron_bars_scenario() {
+    let mut state = GameState::starter_iron_bars();
+    let snapshots: Vec<_> = (0..6).map(|_| state.step()).collect();
+
+    assert_eq!(Deposit::Finite(6), snapshots[0].source.mining.deposit);
+    assert_eq!(Deposit::Finite(0), snapshots[2].source.mining.deposit);
+    assert!(snapshots[0].events.iter().any(|event| event.starts_with("mine")));
+    assert!(snapshots[3..]
+      .iter()
+      .all(|snapshot| snapshot.events.iter().all(|event| !event.starts_with("mine"))));
   }
 
   #[test]
