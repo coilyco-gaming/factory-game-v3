@@ -3,24 +3,29 @@ use crate::mining::MiningExtractor;
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ItemId, ScenarioDefinition};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum NodeId {
-  Source,
+  Source(u8),
   Road,
   Factory,
 }
 
 impl fmt::Display for NodeId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    f.write_str(match self {
-      Self::Source => "source",
-      Self::Road => "road",
-      Self::Factory => "factory",
-    })
+    match self {
+      Self::Source(index) => write!(f, "source-{index}"),
+      Self::Road => f.write_str("road"),
+      Self::Factory => f.write_str("factory"),
+    }
+  }
+}
+
+impl Serialize for NodeId {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.collect_str(self)
   }
 }
 
@@ -36,31 +41,34 @@ pub struct TopologyNode {
   pub position: GridPosition,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+// Hub topology: every source and the factory hang off the single road
+// node, so any trip is at most two hops and routing needs no search.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Topology {
-  pub nodes: [TopologyNode; 3],
-  pub route: [NodeId; 3],
+  pub nodes: Vec<TopologyNode>,
 }
 
 impl Topology {
-  pub fn starter() -> Self {
-    Self {
-      nodes: [
-        TopologyNode {
-          id: NodeId::Source,
-          position: GridPosition { x: 0, y: 0 },
+  pub fn for_sources(source_count: u8) -> Self {
+    let mut nodes = Vec::with_capacity(usize::from(source_count) + 2);
+    for index in 0..source_count {
+      nodes.push(TopologyNode {
+        id: NodeId::Source(index),
+        position: GridPosition {
+          x: 0,
+          y: i32::from(index),
         },
-        TopologyNode {
-          id: NodeId::Road,
-          position: GridPosition { x: 1, y: 0 },
-        },
-        TopologyNode {
-          id: NodeId::Factory,
-          position: GridPosition { x: 2, y: 0 },
-        },
-      ],
-      route: [NodeId::Source, NodeId::Road, NodeId::Factory],
+      });
     }
+    nodes.push(TopologyNode {
+      id: NodeId::Road,
+      position: GridPosition { x: 1, y: 0 },
+    });
+    nodes.push(TopologyNode {
+      id: NodeId::Factory,
+      position: GridPosition { x: 2, y: 0 },
+    });
+    Self { nodes }
   }
 
   pub fn position(&self, node: NodeId) -> GridPosition {
@@ -72,27 +80,20 @@ impl Topology {
       .expect("topology contains requested node")
   }
 
-  pub fn route_index(&self, node: NodeId) -> Option<usize> {
-    self.route.iter().position(|candidate| *candidate == node)
-  }
-
   pub fn step_toward(&self, from: NodeId, target: NodeId) -> NodeId {
-    let from_index = self.route_index(from);
-    let target_index = self.route_index(target);
-    match (from_index, target_index) {
-      (Some(from_index), Some(target_index)) if from_index < target_index => {
-        self.route[from_index + 1]
-      }
-      (Some(from_index), Some(target_index)) if from_index > target_index => {
-        self.route[from_index - 1]
-      }
-      _ => from,
+    if from == target {
+      from
+    } else if from == NodeId::Road {
+      target
+    } else {
+      NodeId::Road
     }
   }
 }
 
 #[derive(Clone, Debug)]
 pub struct SourceNode {
+  pub node: NodeId,
   pub stockpile: Inventory,
   pub item: ItemId,
   pub mining: MiningExtractor,
@@ -100,8 +101,9 @@ pub struct SourceNode {
 }
 
 impl SourceNode {
-  pub fn new(stockpile: Inventory, item: ItemId, mining: MiningExtractor) -> Self {
+  pub fn new(node: NodeId, stockpile: Inventory, item: ItemId, mining: MiningExtractor) -> Self {
     Self {
+      node,
       stockpile,
       item,
       mining,
@@ -110,9 +112,8 @@ impl SourceNode {
   }
 
   pub fn refresh_dispatch(&mut self, factory_location: NodeId) {
-    self.dispatch.intent = (self.stockpile.count(self.item) > 0).then(|| {
-      DispatchIntent::collect(self.item, NodeId::Source, factory_location)
-    });
+    self.dispatch.intent = (self.stockpile.count(self.item) > 0)
+      .then(|| DispatchIntent::collect(self.item, self.node, factory_location));
   }
 }
 
@@ -132,40 +133,36 @@ impl FactoryNode {
     }
   }
 
-  pub fn refresh_dispatch(&mut self, source_location: NodeId) {
+  pub fn refresh_dispatch(&mut self) {
     let needed = self
       .input_buffer
       .saturating_sub(self.production.inventory.count(self.production.recipe.input_item));
     self.dispatch.intent = (needed > 0).then(|| {
-      DispatchIntent::deliver(self.production.recipe.input_item, source_location, NodeId::Factory)
+      DispatchIntent::deliver(self.production.recipe.input_item, NodeId::Road, NodeId::Factory)
     });
   }
 }
 
 #[derive(Clone, Debug)]
 pub struct Hauler {
+  pub id: u8,
   pub cargo: Inventory,
   pub position: NodeId,
   pub target: NodeId,
-  pub route_index: usize,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
 }
 
 impl Hauler {
-  pub fn new(cargo: Inventory, position: NodeId, carry_limit: u32, target: NodeId) -> Self {
+  pub fn new(id: u8, cargo: Inventory, position: NodeId, carry_limit: u32) -> Self {
     Self {
+      id,
       cargo,
       position,
-      target,
-      route_index: 0,
+      target: position,
       carry_limit,
       dispatch: DispatchReceiverState::Unassigned,
     }
-  }
-
-  pub fn set_route_index(&mut self, topology: &Topology) {
-    self.route_index = topology.route_index(self.position).unwrap_or(self.route_index);
   }
 
   pub fn set_target(&mut self, target: NodeId) {
@@ -183,6 +180,7 @@ impl Hauler {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct SourceSnapshot {
+  pub node: NodeId,
   pub item: ItemId,
   pub stockpile: crate::resources::InventorySnapshot,
   pub mining: MiningExtractor,
@@ -198,11 +196,11 @@ pub struct FactorySnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HaulerSnapshot {
+  pub id: u8,
   pub position: NodeId,
   pub position_grid: GridPosition,
   pub target: NodeId,
   pub target_grid: GridPosition,
-  pub route_index: usize,
   pub cargo: crate::resources::InventorySnapshot,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
@@ -210,8 +208,7 @@ pub struct HaulerSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct TopologySnapshot {
-  pub nodes: [TopologyNode; 3],
-  pub route: [NodeId; 3],
+  pub nodes: Vec<TopologyNode>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -225,8 +222,8 @@ pub struct TickSnapshot {
   pub tick: u64,
   pub scenario: ScenarioSnapshot,
   pub topology: TopologySnapshot,
-  pub source: SourceSnapshot,
-  pub hauler: HaulerSnapshot,
+  pub sources: Vec<SourceSnapshot>,
+  pub haulers: Vec<HaulerSnapshot>,
   pub factory: FactorySnapshot,
   pub events: Vec<String>,
 }
@@ -235,8 +232,8 @@ pub struct TickSnapshot {
 pub struct WorldState {
   pub tick: u64,
   pub scenario: ScenarioDefinition,
-  pub source: SourceNode,
-  pub hauler: Hauler,
+  pub sources: Vec<SourceNode>,
+  pub haulers: Vec<Hauler>,
   pub factory: FactoryNode,
   pub topology: Topology,
 }

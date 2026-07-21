@@ -49,6 +49,7 @@ pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
 pub const STONE: ItemId = ItemId::new("stone");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
+pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-fleet");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -94,42 +95,22 @@ impl ItemDefinition {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct SourceSpec {
+  pub item: ItemId,
+  pub deposit: u32,
+  pub mining_speed: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ScenarioDefinition {
   pub id: ScenarioId,
   pub name: String,
-  pub source_item: ItemId,
+  pub sources: Vec<SourceSpec>,
   pub product_item: ItemId,
-  pub source_deposit: u32,
-  pub mining_speed: u32,
+  pub hauler_count: u32,
   pub hauler_capacity: u32,
   pub craft_input_buffer: u32,
   pub craft_output_buffer: u32,
-}
-
-impl ScenarioDefinition {
-  pub fn new(
-    id: ScenarioId,
-    name: impl Into<String>,
-    source_item: ItemId,
-    product_item: ItemId,
-    source_deposit: u32,
-    mining_speed: u32,
-    hauler_capacity: u32,
-    craft_input_buffer: u32,
-    craft_output_buffer: u32,
-  ) -> Self {
-    Self {
-      id,
-      name: name.into(),
-      source_item,
-      product_item,
-      source_deposit,
-      mining_speed,
-      hauler_capacity,
-      craft_input_buffer,
-      craft_output_buffer,
-    }
-  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -189,17 +170,37 @@ impl ContentDatabase {
     let mut scenarios = BTreeMap::new();
     scenarios.insert(
       IRON_BARS_SCENARIO,
-      ScenarioDefinition::new(
-        IRON_BARS_SCENARIO,
-        "Iron Bars",
-        IRON_ORE,
-        IRON_BARS,
-        9,
-        3,
-        3,
-        6,
-        20,
-      ),
+      ScenarioDefinition {
+        id: IRON_BARS_SCENARIO,
+        name: "Iron Bars".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 9,
+          mining_speed: 3,
+        }],
+        product_item: IRON_BARS,
+        hauler_count: 1,
+        hauler_capacity: 3,
+        craft_input_buffer: 6,
+        craft_output_buffer: 20,
+      },
+    );
+    scenarios.insert(
+      IRON_BARS_FLEET_SCENARIO,
+      ScenarioDefinition {
+        id: IRON_BARS_FLEET_SCENARIO,
+        name: "Iron Bars Fleet".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 24,
+          mining_speed: 6,
+        }],
+        product_item: IRON_BARS,
+        hauler_count: 3,
+        hauler_capacity: 3,
+        craft_input_buffer: 6,
+        craft_output_buffer: 20,
+      },
     );
 
     Self { items, scenarios }

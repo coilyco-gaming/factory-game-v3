@@ -32,9 +32,10 @@ fn run() -> Result<(), String> {
   let cli = Cli::parse();
   match cli.command {
     Command::Run { scenario, ticks } => {
-      let scenario_id = parse_scenario(&scenario)?;
-      let mut state = GameState::new(ContentDatabase::starter(), scenario_id)
-        .map_err(|error| error.to_string())?;
+      let content = ContentDatabase::starter();
+      let scenario_id = parse_scenario(&content, &scenario)?;
+      let mut state =
+        GameState::new(content, scenario_id).map_err(|error| error.to_string())?;
       let mut stdout = io::BufWriter::new(io::stdout().lock());
       for _ in 0..ticks {
         let snapshot = state.step();
@@ -57,9 +58,11 @@ struct SummaryLine {
   summary: RunMetricsSnapshot,
 }
 
-fn parse_scenario(value: &str) -> Result<ScenarioId, String> {
-  match value {
-    "iron-bars" => Ok(IRON_BARS_SCENARIO),
-    other => Err(format!("unknown scenario: {other}")),
-  }
+fn parse_scenario(content: &ContentDatabase, value: &str) -> Result<ScenarioId, String> {
+  content
+    .scenarios
+    .keys()
+    .find(|id| id.as_str() == value)
+    .copied()
+    .ok_or_else(|| format!("unknown scenario: {value}"))
 }
