@@ -20,6 +20,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 - Keep the repo aligned to the Unity-to-Rust/Bevy transition.
 - Preserve the current `Assets/` tree unless an issue explicitly says to remove or rewrite it.
 - Do not touch `.gitattributes` or binary asset policy here unless the work explicitly includes the LFS migration from issue #4.
+- Factory-game and galaxy generation are separate apps: no galaxy-generation code, concepts, or shared runtime here. See [docs/app-boundary.md](docs/app-boundary.md).
 
 ## Commands
 
