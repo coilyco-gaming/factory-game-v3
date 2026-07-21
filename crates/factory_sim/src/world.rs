@@ -112,8 +112,10 @@ impl SourceNode {
   }
 
   pub fn refresh_dispatch(&mut self, factory_location: NodeId) {
-    self.dispatch.intent = (self.stockpile.count(self.item) > 0)
-      .then(|| DispatchIntent::collect(self.item, self.node, factory_location));
+    self.dispatch.intents = (self.stockpile.count(self.item) > 0)
+      .then(|| DispatchIntent::collect(self.item, self.node, factory_location))
+      .into_iter()
+      .collect();
   }
 }
 
@@ -134,12 +136,16 @@ impl FactoryNode {
   }
 
   pub fn refresh_dispatch(&mut self) {
-    let needed = self
-      .input_buffer
-      .saturating_sub(self.production.inventory.count(self.production.recipe.input_item));
-    self.dispatch.intent = (needed > 0).then(|| {
-      DispatchIntent::deliver(self.production.recipe.input_item, NodeId::Road, NodeId::Factory)
-    });
+    let input_buffer = self.input_buffer;
+    let inventory = &self.production.inventory;
+    self.dispatch.intents = self
+      .production
+      .recipe
+      .inputs
+      .keys()
+      .filter(|item| input_buffer.saturating_sub(inventory.count(**item)) > 0)
+      .map(|item| DispatchIntent::deliver(*item, NodeId::Road, NodeId::Factory))
+      .collect();
   }
 }
 

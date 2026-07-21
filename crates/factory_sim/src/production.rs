@@ -1,11 +1,11 @@
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId};
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug)]
 pub struct RecipeRuntime {
-  pub input_item: ItemId,
-  pub input_quantity: u32,
+  pub inputs: BTreeMap<ItemId, u32>,
   pub output_item: ItemId,
   pub output_quantity: u32,
   pub craft_time: u32,
@@ -21,9 +21,8 @@ pub struct FactoryProduction {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct CraftSnapshot {
-  pub input_item: ItemId,
+  pub inputs: BTreeMap<String, u32>,
   pub output_item: ItemId,
-  pub input_quantity: u32,
   pub output_quantity: u32,
   pub craft_time: u32,
   pub craft_progress: u32,
@@ -38,6 +37,14 @@ impl FactoryProduction {
       craft_progress: 0,
       crafting: false,
     }
+  }
+
+  fn inputs_ready(&self) -> bool {
+    self
+      .recipe
+      .inputs
+      .iter()
+      .all(|(item, quantity)| self.inventory.count(*item) >= *quantity)
   }
 
   pub fn advance(&mut self, content: &ContentDatabase, events: &mut Vec<String>) -> u32 {
@@ -66,15 +73,14 @@ impl FactoryProduction {
       }
     }
 
-    if !completed_this_tick
-      && !self.crafting
-      && self.inventory.count(self.recipe.input_item) >= self.recipe.input_quantity
-    {
-      if self
-        .inventory
-        .remove_exact(self.recipe.input_item, self.recipe.input_quantity)
-        .is_ok()
-      {
+    if !completed_this_tick && !self.crafting && self.inputs_ready() {
+      let consumed_all = self
+        .recipe
+        .inputs
+        .clone()
+        .iter()
+        .all(|(item, quantity)| self.inventory.remove_exact(*item, *quantity).is_ok());
+      if consumed_all {
         self.crafting = true;
         self.craft_progress = 0;
         events.push(format!("craft {} started", self.recipe.output_item));
@@ -85,9 +91,13 @@ impl FactoryProduction {
 
   pub fn craft_snapshot(&self) -> CraftSnapshot {
     CraftSnapshot {
-      input_item: self.recipe.input_item,
+      inputs: self
+        .recipe
+        .inputs
+        .iter()
+        .map(|(item, quantity)| (item.to_string(), *quantity))
+        .collect(),
       output_item: self.recipe.output_item,
-      input_quantity: self.recipe.input_quantity,
       output_quantity: self.recipe.output_quantity,
       craft_time: self.recipe.craft_time,
       craft_progress: self.craft_progress,

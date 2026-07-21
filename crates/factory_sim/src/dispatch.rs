@@ -75,12 +75,12 @@ impl DispatchAssignment {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct DispatchBoard {
-  pub intent: Option<DispatchIntent>,
+  pub intents: Vec<DispatchIntent>,
 }
 
 impl DispatchBoard {
   pub fn new() -> Self {
-    Self { intent: None }
+    Self { intents: Vec::new() }
   }
 }
 

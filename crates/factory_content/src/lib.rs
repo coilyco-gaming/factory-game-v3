@@ -47,9 +47,11 @@ pub const IRON_BARS: ItemId = ItemId::new("iron_bars");
 pub const COPPER_ORE: ItemId = ItemId::new("copper_ore");
 pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
 pub const STONE: ItemId = ItemId::new("stone");
+pub const BUILDING_MATERIALS: ItemId = ItemId::new("building_materials");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
 pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-fleet");
+pub const BUILDING_MATERIALS_SCENARIO: ScenarioId = ScenarioId::new("building-materials");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -167,6 +169,20 @@ impl ContentDatabase {
         .with_create_from_nothing(),
     );
 
+    items.insert(
+      BUILDING_MATERIALS,
+      ItemDefinition::new(
+        BUILDING_MATERIALS,
+        "Building Materials",
+        1,
+        1,
+        100,
+        2,
+        4,
+        BTreeMap::from([(IRON_ORE, 2), (STONE, 2)]),
+      ),
+    );
+
     let mut scenarios = BTreeMap::new();
     scenarios.insert(
       IRON_BARS_SCENARIO,
@@ -199,6 +215,30 @@ impl ContentDatabase {
         hauler_count: 3,
         hauler_capacity: 3,
         craft_input_buffer: 6,
+        craft_output_buffer: 20,
+      },
+    );
+    scenarios.insert(
+      BUILDING_MATERIALS_SCENARIO,
+      ScenarioDefinition {
+        id: BUILDING_MATERIALS_SCENARIO,
+        name: "Building Materials".into(),
+        sources: vec![
+          SourceSpec {
+            item: IRON_ORE,
+            deposit: 12,
+            mining_speed: 2,
+          },
+          SourceSpec {
+            item: STONE,
+            deposit: 0,
+            mining_speed: 2,
+          },
+        ],
+        product_item: BUILDING_MATERIALS,
+        hauler_count: 2,
+        hauler_capacity: 2,
+        craft_input_buffer: 4,
         craft_output_buffer: 20,
       },
     );

@@ -37,7 +37,7 @@ impl fmt::Display for SimulationError {
         write!(f, "scenario {id} must define at least one source")
       }
       Self::RecipeMissingIngredients(id) => {
-        write!(f, "recipe for {id} must have exactly one ingredient")
+        write!(f, "recipe for {id} must have at least one ingredient")
       }
     }
   }
@@ -62,20 +62,20 @@ impl GameState {
       return Err(SimulationError::ScenarioMissingSources(scenario_id));
     }
     let product = content.item(scenario.product_item).clone();
-    if product.ingredients.len() != 1 {
+    if product.ingredients.is_empty() {
       return Err(SimulationError::RecipeMissingIngredients(product.id));
     }
-    let (&input_item, &input_quantity) = product.ingredients.iter().next().unwrap();
     let recipe = RecipeRuntime {
-      input_item,
-      input_quantity,
+      inputs: product.ingredients.clone(),
       output_item: product.id,
       output_quantity: product.craft_output,
       craft_time: product.craft_time.max(1),
     };
 
     let mut factory_inventory = Inventory::new(32, 32);
-    factory_inventory.reserve(recipe.input_item, scenario.craft_input_buffer);
+    for input_item in recipe.inputs.keys() {
+      factory_inventory.reserve(*input_item, scenario.craft_input_buffer);
+    }
     factory_inventory.reserve(recipe.output_item, scenario.craft_output_buffer);
     let production = FactoryProduction::new(factory_inventory, recipe);
 
@@ -150,10 +150,20 @@ impl GameState {
   // Demand minus in-flight cargo goes to unassigned haulers in index
   // order (collect phase counts at carry limit): never double-served.
   fn assign_dispatch(&mut self, events: &mut Vec<String>) {
-    let item = match &self.world.factory.dispatch.intent {
-      Some(intent) => intent.item,
-      None => return,
-    };
+    let items: Vec<ItemId> = self
+      .world
+      .factory
+      .dispatch
+      .intents
+      .iter()
+      .map(|intent| intent.item)
+      .collect();
+    for item in items {
+      self.assign_dispatch_for_item(item, events);
+    }
+  }
+
+  fn assign_dispatch_for_item(&mut self, item: ItemId, events: &mut Vec<String>) {
     let mut need = self
       .world
       .factory
@@ -182,10 +192,10 @@ impl GameState {
       let source_node = self.world.sources.iter().find_map(|source| {
         source
           .dispatch
-          .intent
-          .as_ref()
-          .filter(|intent| intent.item == item)
-          .map(|_| source.node)
+          .intents
+          .iter()
+          .any(|intent| intent.item == item)
+          .then_some(source.node)
       });
       let source_node = match source_node {
         Some(node) => node,
@@ -395,8 +405,8 @@ pub fn sample_game_state() -> GameState {
 mod tests {
   use super::*;
   use factory_content::{
-    ContentDatabase, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
-    IRON_BARS_SCENARIO, IRON_ORE, STONE,
+    ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COPPER_BARS, COPPER_ORE,
+    IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE, STONE,
   };
 
   #[test]
@@ -647,6 +657,56 @@ mod tests {
       .iter()
       .all(|event| !event.contains("dispatch deliver")));
     assert_eq!(NodeId::Factory, deliver_snapshot.haulers[0].target);
+  }
+
+  #[test]
+  fn factory_advertises_one_intent_per_missing_input() {
+    let mut state =
+      GameState::new(ContentDatabase::starter(), BUILDING_MATERIALS_SCENARIO).unwrap();
+
+    let first = state.step();
+    let intent_items: Vec<&str> = first
+      .factory
+      .dispatch
+      .intents
+      .iter()
+      .map(|intent| intent.item.as_str())
+      .collect();
+    assert_eq!(vec![IRON_ORE.as_str(), STONE.as_str()], intent_items);
+  }
+
+  #[test]
+  fn building_materials_loop_services_both_source_types() {
+    let mut first =
+      GameState::new(ContentDatabase::starter(), BUILDING_MATERIALS_SCENARIO).unwrap();
+    let mut second =
+      GameState::new(ContentDatabase::starter(), BUILDING_MATERIALS_SCENARIO).unwrap();
+
+    let first_run: Vec<_> = (0..20).map(|_| first.step()).collect();
+    let second_run: Vec<_> = (0..20).map(|_| second.step()).collect();
+    assert_eq!(first_run, second_run);
+
+    let metrics = first.metrics();
+    assert!(metrics.mined.get(IRON_ORE.as_str()).copied().unwrap_or(0) > 0);
+    assert!(metrics.mined.get(STONE.as_str()).copied().unwrap_or(0) > 0);
+    assert!(
+      metrics
+        .crafted
+        .get(BUILDING_MATERIALS.as_str())
+        .copied()
+        .unwrap_or(0)
+        > 0
+    );
+    assert!(first_run.iter().any(|snapshot| {
+      snapshot
+        .factory
+        .inventory
+        .items
+        .get(BUILDING_MATERIALS.as_str())
+        .copied()
+        .unwrap_or(0)
+        > 0
+    }));
   }
 
   #[test]

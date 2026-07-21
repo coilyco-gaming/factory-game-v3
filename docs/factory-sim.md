@@ -14,12 +14,13 @@ The world generalizes to N sources and N haulers around one factory:
 
 - each source node has its own extractor: a finite deposit mined into its stockpile at a fixed per-tick speed until it runs dry, or a manifest item (`create_from_nothing`) created each tick, capacity-bounded
 - haulers have a fixed carry limit and explicit collect or deliver assignment state, and can be assigned from any position
-- the factory has reserved input/output capacity and visible dispatch intent generation
+- recipes may have multiple ingredients: crafting starts only when every input is stocked and consumes all of them
+- the factory has reserved input capacity per ingredient and advertises one dispatch intent per under-buffered input, in item-id order
 - the topology is hub-shaped: every source and the factory hang off one road node, so any trip is at most two hops and routing needs no search
 - dispatch arbitration is deterministic: factory demand minus in-flight cargo is handed to unassigned empty haulers in index order (collect-phase haulers count at carry limit), so demand is never double-served
 - deterministic mine, intent-refresh, assign, collect, deliver, craft-progress, and move steps
 
-Starter scenarios: `iron-bars` (one source, one hauler) and `iron-bars-fleet` (one richer source, three haulers competing over a six-unit input buffer - only two are needed per wave).
+Starter scenarios: `iron-bars` (one source, one hauler), `iron-bars-fleet` (one richer source, three haulers competing over a six-unit input buffer - only two are needed per wave), and `building-materials` (a finite iron ore source plus a manifest stone source feeding a two-ingredient recipe with two haulers).
 
 The first recipe is intentionally small. It exercises the container and production flow without adding pathfinding or rendering.
 
