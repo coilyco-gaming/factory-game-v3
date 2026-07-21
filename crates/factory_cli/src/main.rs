@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use factory_content::{ContentDatabase, ScenarioId, IRON_BARS_SCENARIO};
-use factory_sim::GameState;
+use factory_sim::{GameState, RunMetricsSnapshot};
+use serde::Serialize;
 use std::io::{self, Write};
 
 #[derive(Parser, Debug)]
@@ -40,10 +41,20 @@ fn run() -> Result<(), String> {
         serde_json::to_writer(&mut stdout, &snapshot).map_err(|error| error.to_string())?;
         stdout.write_all(b"\n").map_err(|error| error.to_string())?;
       }
+      let summary = SummaryLine {
+        summary: state.metrics(),
+      };
+      serde_json::to_writer(&mut stdout, &summary).map_err(|error| error.to_string())?;
+      stdout.write_all(b"\n").map_err(|error| error.to_string())?;
       stdout.flush().map_err(|error| error.to_string())?;
       Ok(())
     }
   }
+}
+
+#[derive(Serialize)]
+struct SummaryLine {
+  summary: RunMetricsSnapshot,
 }
 
 fn parse_scenario(value: &str) -> Result<ScenarioId, String> {

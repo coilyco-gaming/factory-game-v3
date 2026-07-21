@@ -26,4 +26,6 @@ The first recipe is intentionally small. It exercises the container and producti
 ward exec cargo-run -- run --scenario iron-bars --ticks 6
 ```
 
-The CLI prints JSON lines. Each line contains the tick number, the current topology, source, hauler, and factory snapshots, the typed dispatch protocol state, and the events emitted during that tick.
+The CLI prints JSON lines. Each tick line contains the tick number, the current topology, source, hauler, and factory snapshots, the typed dispatch protocol state, and the events emitted during that tick.
+
+After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, per-item mined and crafted counts, dispatches assigned, units collected and delivered, and idle ticks (ticks that emitted no events). The distinguishing `summary` key keeps tick lines and the summary mechanically separable.

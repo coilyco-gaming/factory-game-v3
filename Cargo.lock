@@ -105,6 +105,7 @@ dependencies = [
  "clap",
  "factory_content",
  "factory_sim",
+ "serde",
  "serde_json",
 ]
 

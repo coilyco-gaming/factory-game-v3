@@ -40,8 +40,9 @@ impl FactoryProduction {
     }
   }
 
-  pub fn advance(&mut self, content: &ContentDatabase, events: &mut Vec<String>) {
+  pub fn advance(&mut self, content: &ContentDatabase, events: &mut Vec<String>) -> u32 {
     let mut completed_this_tick = false;
+    let mut produced_this_tick = 0;
     if self.crafting {
       self.craft_progress += 1;
       events.push(format!(
@@ -57,6 +58,7 @@ impl FactoryProduction {
         self.crafting = false;
         self.craft_progress = 0;
         completed_this_tick = true;
+        produced_this_tick = produced;
         events.push(format!(
           "craft {} completed produced {}",
           self.recipe.output_item, produced
@@ -78,6 +80,7 @@ impl FactoryProduction {
         events.push(format!("craft {} started", self.recipe.output_item));
       }
     }
+    produced_this_tick
   }
 
   pub fn craft_snapshot(&self) -> CraftSnapshot {

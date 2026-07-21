@@ -1,4 +1,5 @@
 mod dispatch;
+mod metrics;
 mod mining;
 mod production;
 mod resources;
@@ -11,6 +12,7 @@ pub use dispatch::{
   DispatchAssignment, DispatchBoard, DispatchIntent, DispatchPhase, DispatchReceiverState,
   DispatchVerb,
 };
+pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
 pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
@@ -42,6 +44,7 @@ impl std::error::Error for SimulationError {}
 pub struct GameState {
   pub world: WorldState,
   content: ContentDatabase,
+  metrics: RunMetrics,
 }
 
 impl GameState {
@@ -93,6 +96,7 @@ impl GameState {
         scenario,
       },
       content,
+      metrics: RunMetrics::default(),
     })
   }
 
@@ -103,6 +107,7 @@ impl GameState {
   fn advance_mining(&mut self, events: &mut Vec<String>) {
     let source = &mut self.world.source;
     let mined = source.mining.advance(&self.content, &mut source.stockpile);
+    self.metrics.record_mined(source.mining.item, mined);
     if mined > 0 {
       match source.mining.deposit {
         Deposit::Finite(remaining) => events.push(format!(
@@ -145,6 +150,7 @@ impl GameState {
       source_intent.to,
     );
     self.world.hauler.assign(assignment);
+    self.metrics.dispatches_assigned += 1;
     events.push(format!(
       "dispatch assigned {} {} {} -> {}",
       DispatchVerb::Collect,
@@ -169,6 +175,7 @@ impl GameState {
       assignment.item,
       self.world.hauler.carry_limit,
     );
+    self.metrics.units_collected += moved;
     if moved > 0 {
       self.world.hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
         phase: DispatchPhase::Deliver,
@@ -198,6 +205,7 @@ impl GameState {
       assignment.item,
       carried,
     );
+    self.metrics.units_delivered += delivered;
     if delivered > 0 {
       self.world.hauler.clear_assignment();
       events.push(format!("dispatch deliver {} to {}", delivered, destination));
@@ -205,10 +213,13 @@ impl GameState {
   }
 
   fn advance_production(&mut self, events: &mut Vec<String>) {
-    self.world
+    let produced = self
+      .world
       .factory
       .production
       .advance(&self.content, events);
+    let output_item = self.world.factory.production.recipe.output_item;
+    self.metrics.record_crafted(output_item, produced);
   }
 
   fn move_hauler(&mut self, events: &mut Vec<String>) {
@@ -248,7 +259,15 @@ impl GameState {
     self.deliver(&mut events);
     self.advance_production(&mut events);
     self.move_hauler(&mut events);
+    self.metrics.ticks = self.world.tick;
+    if events.is_empty() {
+      self.metrics.idle_ticks += 1;
+    }
     self.snapshot(events)
+  }
+
+  pub fn metrics(&self) -> RunMetricsSnapshot {
+    self.metrics.snapshot()
   }
 
   pub fn snapshot(&self, events: Vec<String>) -> TickSnapshot {
@@ -359,6 +378,37 @@ mod tests {
     assert!(snapshots[3..]
       .iter()
       .all(|snapshot| snapshot.events.iter().all(|event| !event.starts_with("mine"))));
+  }
+
+  #[test]
+  fn run_metrics_summarize_a_fixed_iron_bars_run() {
+    let mut state = GameState::starter_iron_bars();
+    for _ in 0..6 {
+      state.step();
+    }
+    let metrics = state.metrics();
+
+    assert_eq!(6, metrics.ticks);
+    assert_eq!(9, metrics.mined.get(IRON_ORE.as_str()).copied().unwrap_or(0));
+    assert_eq!(
+      10,
+      metrics.crafted.get(IRON_BARS.as_str()).copied().unwrap_or(0)
+    );
+    assert_eq!(2, metrics.dispatches_assigned);
+    assert_eq!(6, metrics.units_collected);
+    assert_eq!(3, metrics.units_delivered);
+    assert_eq!(0, metrics.idle_ticks);
+  }
+
+  #[test]
+  fn run_metrics_are_deterministic_across_runs() {
+    let mut first = GameState::starter_iron_bars();
+    let mut second = GameState::starter_iron_bars();
+    for _ in 0..12 {
+      first.step();
+      second.step();
+    }
+    assert_eq!(first.metrics(), second.metrics());
   }
 
   #[test]
