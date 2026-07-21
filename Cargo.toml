@@ -3,5 +3,12 @@ members = [
   "crates/factory_content",
   "crates/factory_sim",
   "crates/factory_cli",
+  "crates/factory_shell",
 ]
 resolver = "2"
+
+# Keep wasm bundles lean without slowing the dev loop.
+[profile.release]
+opt-level = "s"
+lto = "thin"
+strip = "debuginfo"

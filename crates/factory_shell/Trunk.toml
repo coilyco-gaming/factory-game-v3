@@ -1,0 +1,6 @@
+# Trunk packaging for the factory_shell Bevy/Wasm app (issue #18).
+# Run trunk from this crate directory (scripts/shell-web.sh does) - from the
+# workspace root it finds the virtual manifest and fails.
+[build]
+dist = "dist"
+release = true

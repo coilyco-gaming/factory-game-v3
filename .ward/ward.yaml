@@ -10,6 +10,15 @@ commands:
   cargo-run:
     run: cargo run -p factory_cli --
     description: "Run the headless Rust scenario runner."
+  shell-run:
+    run: cargo run -p factory_shell
+    description: "Run the native Bevy app shell in a window."
+  shell-build-web:
+    run: bash scripts/shell-web.sh build
+    description: "Build the Wasm/static web bundle for the app shell via trunk."
+  shell-serve:
+    run: bash scripts/shell-web.sh serve
+    description: "Serve the app shell in the browser with trunk hot reload."
 
 catalog:
   description: "Factory-game-v3 migration baseline. Unity/C# reference surface on the way to Rust/Bevy, with current validation centered on the pre-commit baseline plus the Rust workspace."

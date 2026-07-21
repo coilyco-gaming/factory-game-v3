@@ -1,0 +1,9 @@
+[package]
+name = "factory_shell"
+version = "0.1.0"
+edition = "2021"
+
+# Deployable Bevy app shell only (issue #18): no dependency on the
+# simulation crates. Sim integration is deferred to the #16 viewer.
+[dependencies]
+bevy = "0.19"
