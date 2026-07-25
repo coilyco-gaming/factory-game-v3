@@ -43,6 +43,13 @@ viewer presentation policy only.
 
 ## Controls
 
+The screen-space control deck works with a mouse or touch in native and web
+builds. It provides play or pause, single-step, reset, speed, automatic cycle,
+and direct buttons for every starter scenario. Active scenario and toggle
+buttons stay highlighted.
+
+The keyboard mirrors the same typed actions:
+
 - `Space` toggles play and pause.
 - `N` pauses and advances one deterministic tick.
 - `R` resets the scenario.

@@ -21,6 +21,11 @@ const DEMO_SCENARIOS: [ScenarioId; 3] = [
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
+const BUTTON_NORMAL: Color = Color::srgb(0.14, 0.17, 0.22);
+const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
+const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
+const BUTTON_PRESSED: Color = Color::srgb(0.85, 0.52, 0.25);
+const BUTTON_BORDER: Color = Color::srgb(0.34, 0.39, 0.48);
 
 fn main() {
   App::new()
@@ -41,11 +46,13 @@ fn main() {
       Update,
       (
         handle_controls,
+        handle_control_buttons,
         advance_simulation,
         rebuild_projection,
         project_snapshot,
         animate_haulers,
         update_text,
+        style_control_buttons,
       )
         .chain(),
     )
@@ -118,8 +125,28 @@ impl SimHost {
     self.idle_streak = 0;
   }
 
-  fn next_scenario(&mut self, reason: &str) {
-    self.scenario_index = (self.scenario_index + 1) % DEMO_SCENARIOS.len();
+  fn apply_control(&mut self, action: ControlAction) {
+    match action {
+      ControlAction::TogglePause => {
+        self.paused = !self.paused;
+        self.accumulated_seconds = 0.0;
+      }
+      ControlAction::Step => {
+        self.paused = true;
+        self.step_once();
+        self.accumulated_seconds = 0.0;
+      }
+      ControlAction::Reset => self.reset(),
+      ControlAction::ToggleSpeed => self.toggle_speed(),
+      ControlAction::ToggleAutoCycle => self.toggle_auto_cycle(),
+      ControlAction::SelectScenario(index) => {
+        self.select_scenario(index, "scenario selected");
+      }
+    }
+  }
+
+  fn select_scenario(&mut self, index: usize, reason: &str) {
+    self.scenario_index = index % DEMO_SCENARIOS.len();
     self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     let scenario_name = self.snapshot.scenario.name.clone();
@@ -130,6 +157,10 @@ impl SimHost {
     self.accumulated_seconds = 0.0;
     self.idle_streak = 0;
     self.scene_revision += 1;
+  }
+
+  fn next_scenario(&mut self, reason: &str) {
+    self.select_scenario(self.scenario_index + 1, reason);
   }
 }
 
@@ -163,6 +194,31 @@ struct HudText;
 #[derive(Component)]
 struct EventText;
 
+#[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
+enum ControlAction {
+  TogglePause,
+  Step,
+  Reset,
+  ToggleSpeed,
+  ToggleAutoCycle,
+  SelectScenario(usize),
+}
+
+impl ControlAction {
+  fn is_selected(self, host: &SimHost) -> bool {
+    match self {
+      Self::TogglePause => host.paused,
+      Self::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
+      Self::ToggleAutoCycle => host.auto_cycle,
+      Self::SelectScenario(index) => host.scenario_index == index,
+      Self::Step | Self::Reset => false,
+    }
+  }
+}
+
+#[derive(Component)]
+struct ControlButton(ControlAction);
+
 fn setup(
   mut commands: Commands,
   host: Res<SimHost>,
@@ -190,9 +246,98 @@ fn setup(
       ..default()
     },
     TextColor(Color::srgb(0.72, 0.76, 0.82)),
-    Transform::from_xyz(315.0, -180.0, 4.0),
+    Transform::from_xyz(315.0, -105.0, 4.0),
     EventText,
   ));
+  spawn_control_deck(&mut commands);
+}
+
+fn spawn_control_deck(commands: &mut Commands) {
+  commands
+    .spawn((
+      Node {
+        position_type: PositionType::Absolute,
+        right: px(18),
+        bottom: px(18),
+        width: px(452),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(7),
+        padding: UiRect::all(px(10)),
+        border: UiRect::all(px(1)),
+        ..default()
+      },
+      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.94)),
+      BorderColor::all(BUTTON_BORDER),
+      GlobalZIndex(100),
+    ))
+    .with_children(|panel| {
+      panel.spawn((
+        Text::new("CONTROL DECK"),
+        TextFont {
+          font_size: FontSize::Px(13.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.72, 0.76, 0.82)),
+      ));
+      spawn_control_row(
+        panel,
+        &[
+          (ControlAction::TogglePause, "PLAY / PAUSE"),
+          (ControlAction::Step, "STEP"),
+          (ControlAction::Reset, "RESET"),
+          (ControlAction::ToggleSpeed, "SPEED"),
+          (ControlAction::ToggleAutoCycle, "AUTO"),
+        ],
+      );
+      spawn_control_row(
+        panel,
+        &[
+          (ControlAction::SelectScenario(0), "IRON"),
+          (ControlAction::SelectScenario(1), "FLEET"),
+          (ControlAction::SelectScenario(2), "MATERIALS"),
+        ],
+      );
+    });
+}
+
+fn spawn_control_row(
+  parent: &mut ChildSpawnerCommands,
+  buttons: &[(ControlAction, &'static str)],
+) {
+  parent
+    .spawn(Node {
+      width: percent(100),
+      height: px(34),
+      column_gap: px(6),
+      ..default()
+    })
+    .with_children(|row| {
+      for (action, label) in buttons {
+        row.spawn((
+          Button,
+          ControlButton(*action),
+          Node {
+            height: percent(100),
+            flex_grow: 1.0,
+            border: UiRect::all(px(1)),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: UiRect::axes(px(7), px(3)),
+            ..default()
+          },
+          BackgroundColor(BUTTON_NORMAL),
+          BorderColor::all(BUTTON_BORDER),
+          children![(
+            Text::new(*label),
+            TextFont {
+              font_size: FontSize::Px(12.0),
+              ..default()
+            },
+            TextColor(Color::srgb(0.92, 0.94, 0.97)),
+          )],
+        ));
+      }
+    });
 }
 
 fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
@@ -274,26 +419,30 @@ fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
 }
 
 fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
-  if keys.just_pressed(KeyCode::Space) {
-    host.paused = !host.paused;
-    host.accumulated_seconds = 0.0;
+  for (key, action) in [
+    (KeyCode::Space, ControlAction::TogglePause),
+    (KeyCode::KeyN, ControlAction::Step),
+    (KeyCode::KeyR, ControlAction::Reset),
+    (KeyCode::KeyF, ControlAction::ToggleSpeed),
+    (KeyCode::KeyC, ControlAction::SelectScenario(
+      (host.scenario_index + 1) % DEMO_SCENARIOS.len(),
+    )),
+    (KeyCode::KeyL, ControlAction::ToggleAutoCycle),
+  ] {
+    if keys.just_pressed(key) {
+      host.apply_control(action);
+    }
   }
-  if keys.just_pressed(KeyCode::KeyN) {
-    host.paused = true;
-    host.step_once();
-    host.accumulated_seconds = 0.0;
-  }
-  if keys.just_pressed(KeyCode::KeyR) {
-    host.reset();
-  }
-  if keys.just_pressed(KeyCode::KeyF) {
-    host.toggle_speed();
-  }
-  if keys.just_pressed(KeyCode::KeyC) {
-    host.next_scenario("manual selection");
-  }
-  if keys.just_pressed(KeyCode::KeyL) {
-    host.toggle_auto_cycle();
+}
+
+fn handle_control_buttons(
+  buttons: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
+  mut host: ResMut<SimHost>,
+) {
+  for (interaction, button) in &buttons {
+    if *interaction == Interaction::Pressed {
+      host.apply_control(button.0);
+    }
   }
 }
 
@@ -371,6 +520,31 @@ fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Tran
   }
 }
 
+fn style_control_buttons(
+  host: Res<SimHost>,
+  mut buttons: Query<(
+    &Interaction,
+    &ControlButton,
+    &mut BackgroundColor,
+    &mut BorderColor,
+  )>,
+) {
+  for (interaction, button, mut background, mut border) in &mut buttons {
+    let selected = button.0.is_selected(&host);
+    background.0 = match interaction {
+      Interaction::Pressed => BUTTON_PRESSED,
+      Interaction::Hovered => BUTTON_HOVERED,
+      Interaction::None if selected => BUTTON_ACTIVE,
+      Interaction::None => BUTTON_NORMAL,
+    };
+    *border = BorderColor::all(if selected {
+      BUTTON_ACTIVE
+    } else {
+      BUTTON_BORDER
+    });
+  }
+}
+
 fn update_text(
   host: Res<SimHost>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
@@ -407,8 +581,7 @@ fn update_text(
     "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
      mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\n\
      showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
-     CONTROLS\nSpace  play / pause\nN      single step\nR      reset\nF      2x / 8x speed\n\
-     C      next scenario\nL      auto cycle",
+     click the control deck below\nkeyboard: Space N R F C L",
     host.snapshot.scenario.name,
     host.snapshot.tick,
     status,
@@ -554,6 +727,54 @@ mod tests {
     assert_eq!(0, host.snapshot.tick);
     assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
     assert_eq!(0.0, host.accumulated_seconds);
+  }
+
+  #[test]
+  fn control_actions_share_one_host_state_machine() {
+    let mut host = SimHost::new();
+
+    host.apply_control(ControlAction::TogglePause);
+    assert!(host.paused);
+    assert!(ControlAction::TogglePause.is_selected(&host));
+
+    host.apply_control(ControlAction::Step);
+    assert_eq!(1, host.snapshot.tick);
+    assert!(host.paused);
+
+    host.apply_control(ControlAction::ToggleSpeed);
+    assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
+    assert!(ControlAction::ToggleSpeed.is_selected(&host));
+
+    host.apply_control(ControlAction::ToggleAutoCycle);
+    assert!(!host.auto_cycle);
+    assert!(!ControlAction::ToggleAutoCycle.is_selected(&host));
+
+    host.apply_control(ControlAction::SelectScenario(2));
+    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
+    assert!(ControlAction::SelectScenario(2).is_selected(&host));
+    assert_eq!(1, host.scene_revision);
+
+    host.apply_control(ControlAction::Reset);
+    assert_eq!(0, host.snapshot.tick);
+    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
+  }
+
+  #[test]
+  fn pressed_button_routes_through_the_shared_control_action() {
+    let mut app = App::new();
+    app.insert_resource(SimHost::new());
+    app.add_systems(Update, handle_control_buttons);
+    app.world_mut().spawn((
+      Button,
+      Interaction::Pressed,
+      ControlButton(ControlAction::SelectScenario(1)),
+    ));
+
+    app.update();
+
+    let host = app.world().resource::<SimHost>();
+    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(1, host.scene_revision);
   }
 
   #[test]
