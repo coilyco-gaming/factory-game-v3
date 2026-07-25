@@ -18,6 +18,19 @@ The headless Rust slice can also run directly:
 ward exec cargo-run -- run --scenario iron-bars --ticks 6
 ```
 
+## Deployment
+
+Source CI builds the repo-root Dockerfile and publishes
+`factory-game-v3:<git-sha>` to the in-cluster registry on every push to `main`.
+The image packages the Trunk-built Wasm bundle behind unprivileged nginx.
+`coilyco-bridge/deploy` owns the public chart and rollout.
+
+Validate the image locally through Ward:
+
+```bash
+ward exec image-build
+```
+
 ## Inventory
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.

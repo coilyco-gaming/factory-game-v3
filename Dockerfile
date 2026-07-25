@@ -47,8 +47,8 @@ RUN touch crates/*/src/*.rs \
 # -----------------------------------------------------------------------------
 # Self-contained serving image on the coilyco-bridge/deploy static-site
 # precedent: nginx-unprivileged, uid 101, listens on 8080,
-# TLS terminated upstream by traefik + cert-manager. Built at rollout by the
-# deploy repo over this repo's git context.
+# TLS terminated upstream by traefik + cert-manager. Source CI publishes the
+# git-sha image. The deploy repo owns rollout.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf

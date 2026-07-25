@@ -27,9 +27,9 @@ The repo-root [`Dockerfile`](../Dockerfile) follows the established static-site
 deployment pattern. A Rust builder stage runs the trunk build, then an
 unprivileged nginx stage serves `dist/` on 8080 with the wasm MIME, immutable
 caching for trunk's hashed bundles, a revalidated `index.html`, and `/healthz`
-([`nginx.conf`](../nginx.conf)). The deploy repo builds this image at rollout
-from the repo's git context. There is no image publish job here. The eventual
-public surface is `factory-game.coilysiren.me`.
+([`nginx.conf`](../nginx.conf)). Forgejo Actions publishes the git-sha image to
+the in-cluster registry. The deploy repo owns rollout and the public
+`factory.coilysiren.me` surface.
 
 Wasm-opt stays off (`data-wasm-opt="0"` in `index.html`) until bundle size
 matters. When it turns on, use upstream binaryen because Debian's build has an

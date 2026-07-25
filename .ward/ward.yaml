@@ -16,6 +16,9 @@ commands:
   shell-build-web:
     run: bash scripts/shell-web.sh build
     description: "Build the Wasm/static viewer bundle via trunk."
+  image-build:
+    run: docker build -t factory-game-v3:local .
+    description: "Build the deployable factory-game-v3 web image."
   shell-serve:
     run: bash scripts/shell-web.sh serve
     description: "Serve the simulation viewer with trunk hot reload."

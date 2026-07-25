@@ -31,6 +31,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 ## Validation
 
 - Run `ward exec test` for the repo baseline, including the Rust workspace.
+- Run `ward exec image-build` when changing the web image or publish workflow.
 - Run `pre-commit run --all-files` before committing.
 - Keep [README.md](README.md), this file, and [docs/FEATURES.md](docs/FEATURES.md) in sync when the repo surface changes.
 
@@ -48,9 +49,9 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 
 ## Release
 
-- This repo is not shipping the Bevy rewrite yet.
-- The current task is baseline adoption only.
-- Land baseline and workflow changes together so the repo stays internally consistent.
+- Source CI publishes the Bevy/Wasm web image by git sha.
+- `coilyco-bridge/deploy` owns rollout and the public ingress.
+- Land image and workflow changes together so the deploy contract stays complete.
 
 ## Agent rules
 
