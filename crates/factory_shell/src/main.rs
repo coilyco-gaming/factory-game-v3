@@ -17,9 +17,9 @@ const MAX_RECENT_EVENTS: usize = 8;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
-const COMPLETION_BURST_PARTICLES: usize = 12;
-const MAX_COMPLETION_PARTICLES: usize = 48;
-const COMPLETION_BURST_LIFETIME: f32 = 0.9;
+const OUTPUT_CHIP_COUNT: usize = 5;
+const MAX_OUTPUT_CHIPS: usize = 15;
+const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
 const DEMO_SCENARIOS: [ScenarioId; 3] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
@@ -49,8 +49,8 @@ const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
 const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
 const CRAFT_GAUGE_BACKGROUND: Color = Color::srgb(0.10, 0.16, 0.14);
 const CRAFT_GAUGE_FILL: Color = Color::srgb(0.58, 0.96, 0.62);
-const COMPLETION_BURST_WARM: Color = Color::srgb(1.0, 0.76, 0.28);
-const COMPLETION_BURST_COOL: Color = Color::srgb(0.48, 0.88, 1.0);
+const OUTPUT_CHIP_STONE: Color = Color::srgb(0.62, 0.58, 0.48);
+const OUTPUT_CHIP_STEEL: Color = Color::srgb(0.48, 0.55, 0.58);
 
 fn main() {
   App::new()
@@ -78,9 +78,9 @@ fn main() {
         project_snapshot,
         project_activity,
         project_craft_gauge,
-        emit_completion_burst,
+        emit_output_chips,
         animate_activity,
-        animate_completion_particles,
+        animate_output_chips,
         animate_haulers,
         update_text,
         style_control_buttons,
@@ -274,7 +274,7 @@ struct CraftGaugeFill {
 }
 
 #[derive(Component)]
-struct CompletionParticle {
+struct OutputChip {
   velocity: Vec2,
   remaining: f32,
 }
@@ -785,11 +785,11 @@ fn project_craft_gauge(
   }
 }
 
-fn emit_completion_burst(
+fn emit_output_chips(
   mut commands: Commands,
   host: Res<SimHost>,
   mut feedback: ResMut<ProductionFeedback>,
-  particles: Query<(), With<CompletionParticle>>,
+  chips: Query<(), With<OutputChip>>,
 ) {
   if !host.is_changed() {
     return;
@@ -817,23 +817,20 @@ fn emit_completion_burst(
   else {
     return;
   };
-  let particle_count = COMPLETION_BURST_PARTICLES
-    .min(MAX_COMPLETION_PARTICLES.saturating_sub(particles.iter().count()));
-  for index in 0..particle_count {
-    let angle = std::f32::consts::TAU * index as f32 / COMPLETION_BURST_PARTICLES as f32;
-    let speed = 90.0 + (index % 3) as f32 * 24.0;
-    let velocity = Vec2::from_angle(angle) * speed;
+  let chip_count = OUTPUT_CHIP_COUNT.min(MAX_OUTPUT_CHIPS.saturating_sub(chips.iter().count()));
+  for index in 0..chip_count {
+    let offset = output_chip_offset(index);
     let color = if index % 2 == 0 {
-      COMPLETION_BURST_WARM
+      OUTPUT_CHIP_STONE
     } else {
-      COMPLETION_BURST_COOL
+      OUTPUT_CHIP_STEEL
     };
     commands.spawn((
-      Sprite::from_color(color, Vec2::splat(7.0 + (index % 3) as f32)),
-      Transform::from_xyz(factory.x, factory.y, 4.0),
-      CompletionParticle {
-        velocity,
-        remaining: COMPLETION_BURST_LIFETIME,
+      Sprite::from_color(color, Vec2::new(12.0, 5.0)),
+      Transform::from_xyz(factory.x + offset.x, factory.y + offset.y, 4.0),
+      OutputChip {
+        velocity: output_chip_velocity(index),
+        remaining: OUTPUT_CHIP_LIFETIME,
       },
       ProjectionEntity,
     ));
@@ -875,23 +872,21 @@ fn animate_activity(
   }
 }
 
-fn animate_completion_particles(
+fn animate_output_chips(
   mut commands: Commands,
   time: Res<Time>,
-  mut particles: Query<(Entity, &mut CompletionParticle, &mut Transform)>,
+  mut chips: Query<(Entity, &mut OutputChip, &mut Transform)>,
 ) {
   let delta = time.delta_secs();
-  for (entity, mut particle, mut transform) in &mut particles {
-    particle.remaining -= delta;
-    if particle.remaining <= 0.0 {
+  for (entity, mut chip, mut transform) in &mut chips {
+    chip.remaining -= delta;
+    if chip.remaining <= 0.0 {
       commands.entity(entity).despawn();
       continue;
     }
-    particle.velocity.y -= 95.0 * delta;
-    transform.translation.x += particle.velocity.x * delta;
-    transform.translation.y += particle.velocity.y * delta;
-    transform.rotate_z(4.0 * delta);
-    transform.scale = Vec3::splat((particle.remaining / COMPLETION_BURST_LIFETIME).max(0.1));
+    transform.translation.x += chip.velocity.x * delta;
+    transform.translation.y += chip.velocity.y * delta;
+    transform.scale = Vec3::splat((chip.remaining / OUTPUT_CHIP_LIFETIME).max(0.25));
   }
 }
 
@@ -1059,6 +1054,16 @@ fn crafted_output_delta(
     .iter()
     .map(|(item, quantity)| quantity.saturating_sub(previous.get(item).copied().unwrap_or(0)))
     .sum()
+}
+
+fn output_chip_offset(index: usize) -> Vec2 {
+  let centered = index as f32 - (OUTPUT_CHIP_COUNT - 1) as f32 / 2.0;
+  Vec2::new(centered * 10.0, -8.0 + (index % 2) as f32 * 5.0)
+}
+
+fn output_chip_velocity(index: usize) -> Vec2 {
+  let centered = index as f32 - (OUTPUT_CHIP_COUNT - 1) as f32 / 2.0;
+  Vec2::new(centered * 2.0, 26.0 + (index % 2) as f32 * 6.0)
 }
 
 fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
@@ -1434,6 +1439,20 @@ mod tests {
 
     assert_eq!(4, crafted_output_delta(&previous, &current));
     assert_eq!(0, crafted_output_delta(&current, &BTreeMap::new()));
+  }
+
+  #[test]
+  fn output_chip_pattern_is_compact_and_directional() {
+    let velocities = (0..OUTPUT_CHIP_COUNT)
+      .map(output_chip_velocity)
+      .collect::<Vec<_>>();
+    let offsets = (0..OUTPUT_CHIP_COUNT)
+      .map(output_chip_offset)
+      .collect::<Vec<_>>();
+
+    assert!(velocities.iter().all(|velocity| velocity.y > 0.0));
+    assert!(velocities.iter().all(|velocity| velocity.x.abs() <= 4.0));
+    assert!(offsets.iter().all(|offset| offset.x.abs() <= 20.0));
   }
 
   #[test]
