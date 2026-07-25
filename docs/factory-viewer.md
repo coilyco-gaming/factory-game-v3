@@ -16,12 +16,14 @@ production, metrics, and tick ordering. The viewer owns only:
 
 Bevy frames and simulation ticks use separate clocks. The viewer advances the
 simulation in whole ticks at a bounded cadence and projects the latest
-snapshot after each update. It does not interpolate or mutate simulation state
+snapshot after each update. Bevy smoothly interpolates only the visual hauler
+projection between snapshots. That animation never mutates simulation state
 through Bevy entities.
 
-## First viewer slice
+## Showcase
 
-The initial viewer runs the `iron-bars` scenario and displays:
+The viewer rotates through the `iron-bars`, `iron-bars-fleet`, and
+`building-materials` scenarios. Each scene displays:
 
 - source, road, and factory topology nodes
 - hauler position, cargo, and dispatch phase
@@ -29,8 +31,15 @@ The initial viewer runs the `iron-bars` scenario and displays:
 - factory craft progress
 - current tick, run metrics, and recent events
 
-The scene uses generated primitives and Bevy text. It does not depend on
-retained Unity assets or Git LFS objects.
+The scene rebuilds its generated primitives when the scenario changes. Hauler
+sprites move smoothly between the discrete positions in each authoritative
+snapshot. The presentation does not depend on retained Unity assets or Git
+LFS objects.
+
+Automatic cycling advances to the next scenario after eight consecutive quiet
+ticks. This gives the native and browser viewers a continuous demonstration
+without changing deterministic simulation state. The quiet-tick threshold is
+viewer presentation policy only.
 
 ## Controls
 
@@ -38,6 +47,8 @@ retained Unity assets or Git LFS objects.
 - `N` pauses and advances one deterministic tick.
 - `R` resets the scenario.
 - `F` toggles between 2 and 8 ticks per second.
+- `C` advances to the next scenario.
+- `L` toggles automatic scenario cycling.
 
 ## Development
 
@@ -49,6 +60,6 @@ retained Unity assets or Git LFS objects.
 
 ## Deferred
 
-Scenario selection, movement interpolation, camera controls, production art,
-recording playback, and gameplay editing remain outside the first viewer
-slice. The viewer is an observability surface before it becomes a game client.
+Scenario editing, camera controls, production art, recording playback, and
+gameplay editing remain deferred. The viewer is an observability surface
+before it becomes a game client.

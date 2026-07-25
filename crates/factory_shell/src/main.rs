@@ -1,13 +1,23 @@
 use bevy::prelude::*;
-use factory_content::{ContentDatabase, IRON_BARS_SCENARIO};
+use factory_content::{
+  ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, IRON_BARS_FLEET_SCENARIO,
+  IRON_BARS_SCENARIO,
+};
 use factory_sim::{
-  DispatchPhase, DispatchReceiverState, GameState, GridPosition, NodeId, TickSnapshot,
+  DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
+  TickSnapshot,
 };
 use std::collections::BTreeMap;
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
+const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
+const DEMO_SCENARIOS: [ScenarioId; 3] = [
+  IRON_BARS_SCENARIO,
+  IRON_BARS_FLEET_SCENARIO,
+  BUILDING_MATERIALS_SCENARIO,
+];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
@@ -25,13 +35,16 @@ fn main() {
     }))
     .insert_resource(ClearColor(Color::srgb(0.06, 0.07, 0.09)))
     .insert_resource(SimHost::new())
+    .init_resource::<ProjectionScene>()
     .add_systems(Startup, setup)
     .add_systems(
       Update,
       (
         handle_controls,
         advance_simulation,
+        rebuild_projection,
         project_snapshot,
+        animate_haulers,
         update_text,
       )
         .chain(),
@@ -46,11 +59,16 @@ struct SimHost {
   paused: bool,
   ticks_per_second: f32,
   accumulated_seconds: f32,
+  scenario_index: usize,
+  auto_cycle: bool,
+  idle_streak: u16,
+  completed_scenarios: u32,
+  scene_revision: u64,
 }
 
 impl SimHost {
   fn new() -> Self {
-    let game = starter_game();
+    let game = scenario_game(DEMO_SCENARIOS[0]);
     let snapshot = game.snapshot(Vec::new());
     Self {
       game,
@@ -58,17 +76,32 @@ impl SimHost {
       paused: false,
       ticks_per_second: NORMAL_TICKS_PER_SECOND,
       accumulated_seconds: 0.0,
+      scenario_index: 0,
+      auto_cycle: true,
+      idle_streak: 0,
+      completed_scenarios: 0,
+      scene_revision: 0,
     }
   }
 
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
+    self.idle_streak = if self.snapshot.events.is_empty() {
+      self.idle_streak.saturating_add(1)
+    } else {
+      0
+    };
+    if self.auto_cycle && self.idle_streak >= AUTO_ADVANCE_IDLE_TICKS {
+      self.completed_scenarios += 1;
+      self.next_scenario("showcase advanced");
+    }
   }
 
   fn reset(&mut self) {
-    self.game = starter_game();
+    self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     self.accumulated_seconds = 0.0;
+    self.idle_streak = 0;
   }
 
   fn toggle_speed(&mut self) {
@@ -79,15 +112,38 @@ impl SimHost {
     };
     self.accumulated_seconds = 0.0;
   }
+
+  fn toggle_auto_cycle(&mut self) {
+    self.auto_cycle = !self.auto_cycle;
+    self.idle_streak = 0;
+  }
+
+  fn next_scenario(&mut self, reason: &str) {
+    self.scenario_index = (self.scenario_index + 1) % DEMO_SCENARIOS.len();
+    self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
+    self.snapshot = self.game.snapshot(Vec::new());
+    let scenario_name = self.snapshot.scenario.name.clone();
+    self
+      .snapshot
+      .events
+      .push(format!("{reason}: {scenario_name}"));
+    self.accumulated_seconds = 0.0;
+    self.idle_streak = 0;
+    self.scene_revision += 1;
+  }
 }
 
-fn starter_game() -> GameState {
-  GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO)
-    .expect("starter iron-bars scenario is valid")
+fn scenario_game(scenario: ScenarioId) -> GameState {
+  GameState::new(ContentDatabase::starter(), scenario).expect("showcase scenario is valid")
+}
+
+#[derive(Resource, Default)]
+struct ProjectionScene {
+  revision: u64,
 }
 
 #[derive(Component)]
-struct NodeVisual(NodeId);
+struct ProjectionEntity;
 
 #[derive(Component)]
 struct NodeLabel(NodeId);
@@ -99,57 +155,23 @@ struct HaulerVisual(u8);
 struct HaulerLabel(u8);
 
 #[derive(Component)]
+struct HaulerTarget(Vec2);
+
+#[derive(Component)]
 struct HudText;
 
 #[derive(Component)]
 struct EventText;
 
-fn setup(mut commands: Commands, host: Res<SimHost>) {
+fn setup(
+  mut commands: Commands,
+  host: Res<SimHost>,
+  mut projection_scene: ResMut<ProjectionScene>,
+) {
   commands.spawn(Camera2d);
 
-  spawn_connections(&mut commands, &host.snapshot);
-  for node in &host.snapshot.topology.nodes {
-    let position = grid_to_world(node.position);
-    let (color, size) = match node.id {
-      NodeId::Source(_) => (Color::srgb(0.85, 0.52, 0.25), Vec2::new(124.0, 74.0)),
-      NodeId::Road => (Color::srgb(0.30, 0.34, 0.40), Vec2::new(100.0, 34.0)),
-      NodeId::Factory => (Color::srgb(0.30, 0.66, 0.47), Vec2::new(132.0, 82.0)),
-    };
-    commands.spawn((
-      Sprite::from_color(color, size),
-      Transform::from_xyz(position.x, position.y, 1.0),
-      NodeVisual(node.id),
-    ));
-    commands.spawn((
-      Text2d::new(node.id.to_string()),
-      TextFont {
-        font_size: FontSize::Px(17.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.96, 0.96, 0.94)),
-      Transform::from_xyz(position.x, position.y + 58.0, 3.0),
-      NodeLabel(node.id),
-    ));
-  }
-
-  for hauler in &host.snapshot.haulers {
-    let position = grid_to_world(hauler.position_grid);
-    commands.spawn((
-      Sprite::from_color(Color::srgb(0.50, 0.63, 0.88), Vec2::splat(28.0)),
-      Transform::from_xyz(position.x, position.y - 54.0, 2.0),
-      HaulerVisual(hauler.id),
-    ));
-    commands.spawn((
-      Text2d::new(format!("hauler-{}", hauler.id)),
-      TextFont {
-        font_size: FontSize::Px(14.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.72, 0.80, 0.96)),
-      Transform::from_xyz(position.x, position.y - 82.0, 3.0),
-      HaulerLabel(hauler.id),
-    ));
-  }
+  spawn_projection(&mut commands, &host.snapshot);
+  projection_scene.revision = host.scene_revision;
 
   commands.spawn((
     Text2d::new(""),
@@ -171,6 +193,57 @@ fn setup(mut commands: Commands, host: Res<SimHost>) {
     Transform::from_xyz(315.0, -180.0, 4.0),
     EventText,
   ));
+}
+
+fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
+  spawn_connections(commands, snapshot);
+  for node in &snapshot.topology.nodes {
+    let position = grid_to_world(node.position);
+    let (color, size) = match node.id {
+      NodeId::Source(_) => (Color::srgb(0.85, 0.52, 0.25), Vec2::new(124.0, 74.0)),
+      NodeId::Road => (Color::srgb(0.30, 0.34, 0.40), Vec2::new(100.0, 34.0)),
+      NodeId::Factory => (Color::srgb(0.30, 0.66, 0.47), Vec2::new(132.0, 82.0)),
+    };
+    commands.spawn((
+      Sprite::from_color(color, size),
+      Transform::from_xyz(position.x, position.y, 1.0),
+      ProjectionEntity,
+    ));
+    commands.spawn((
+      Text2d::new(node_label_value(snapshot, node.id)),
+      TextFont {
+        font_size: FontSize::Px(17.0),
+        ..default()
+      },
+      TextColor(Color::srgb(0.96, 0.96, 0.94)),
+      Transform::from_xyz(position.x, position.y + 58.0, 3.0),
+      NodeLabel(node.id),
+      ProjectionEntity,
+    ));
+  }
+
+  for hauler in &snapshot.haulers {
+    let position = hauler_world_position(hauler);
+    commands.spawn((
+      Sprite::from_color(Color::srgb(0.50, 0.63, 0.88), Vec2::splat(28.0)),
+      Transform::from_xyz(position.x, position.y, 2.0),
+      HaulerVisual(hauler.id),
+      HaulerTarget(position),
+      ProjectionEntity,
+    ));
+    commands.spawn((
+      Text2d::new(hauler_label_value(hauler)),
+      TextFont {
+        font_size: FontSize::Px(14.0),
+        ..default()
+      },
+      TextColor(Color::srgb(0.72, 0.80, 0.96)),
+      Transform::from_xyz(position.x, position.y - 28.0, 3.0),
+      HaulerLabel(hauler.id),
+      HaulerTarget(Vec2::new(position.x, position.y - 28.0)),
+      ProjectionEntity,
+    ));
+  }
 }
 
 fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
@@ -195,6 +268,7 @@ fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
       Sprite::from_color(Color::srgb(0.20, 0.23, 0.28), Vec2::new(delta.length(), 5.0)),
       Transform::from_xyz(midpoint.x, midpoint.y, 0.0)
         .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
+      ProjectionEntity,
     ));
   }
 }
@@ -215,6 +289,12 @@ fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
   if keys.just_pressed(KeyCode::KeyF) {
     host.toggle_speed();
   }
+  if keys.just_pressed(KeyCode::KeyC) {
+    host.next_scenario("manual selection");
+  }
+  if keys.just_pressed(KeyCode::KeyL) {
+    host.toggle_auto_cycle();
+  }
 }
 
 fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
@@ -232,40 +312,62 @@ fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
   }
 }
 
+fn rebuild_projection(
+  mut commands: Commands,
+  host: Res<SimHost>,
+  mut projection_scene: ResMut<ProjectionScene>,
+  entities: Query<Entity, With<ProjectionEntity>>,
+) {
+  if projection_scene.revision == host.scene_revision {
+    return;
+  }
+
+  for entity in &entities {
+    commands.entity(entity).despawn();
+  }
+  spawn_projection(&mut commands, &host.snapshot);
+  projection_scene.revision = host.scene_revision;
+}
+
 fn project_snapshot(
   host: Res<SimHost>,
-  mut node_visuals: Query<(&NodeVisual, &mut Transform), Without<HaulerVisual>>,
-  mut hauler_visuals: Query<(&HaulerVisual, &mut Transform), Without<NodeVisual>>,
+  mut hauler_visuals: Query<(&HaulerVisual, &mut HaulerTarget), Without<HaulerLabel>>,
+  mut hauler_labels: Query<(&HaulerLabel, &mut HaulerTarget), Without<HaulerVisual>>,
 ) {
   if !host.is_changed() {
     return;
   }
 
-  for (visual, mut transform) in &mut node_visuals {
-    if let Some(node) = host
-      .snapshot
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == visual.0)
-    {
-      let position = grid_to_world(node.position);
-      transform.translation.x = position.x;
-      transform.translation.y = position.y;
-    }
-  }
-
-  for (visual, mut transform) in &mut hauler_visuals {
+  for (visual, mut target) in &mut hauler_visuals {
     if let Some(hauler) = host
       .snapshot
       .haulers
       .iter()
       .find(|hauler| hauler.id == visual.0)
     {
-      let position = grid_to_world(hauler.position_grid);
-      transform.translation.x = position.x;
-      transform.translation.y = position.y - 54.0 - f32::from(hauler.id) * 30.0;
+      target.0 = hauler_world_position(hauler);
     }
+  }
+
+  for (label, mut target) in &mut hauler_labels {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == label.0)
+    {
+      let position = hauler_world_position(hauler);
+      target.0 = Vec2::new(position.x, position.y - 28.0);
+    }
+  }
+}
+
+fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Transform)>) {
+  let blend = 1.0 - (-10.0 * time.delta_secs()).exp();
+  for (target, mut transform) in &mut haulers {
+    let position = transform.translation.truncate().lerp(target.0, blend);
+    transform.translation.x = position.x;
+    transform.translation.y = position.y;
   }
 }
 
@@ -273,7 +375,7 @@ fn update_text(
   host: Res<SimHost>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
   mut hauler_labels: Query<
-    (&HaulerLabel, &mut Text2d, &mut Transform),
+    (&HaulerLabel, &mut Text2d),
     (Without<NodeLabel>, Without<HudText>, Without<EventText>),
   >,
   mut hud: Query<&mut Text2d, (With<HudText>, Without<EventText>)>,
@@ -284,61 +386,29 @@ fn update_text(
   }
 
   for (label, mut text) in &mut node_labels {
-    let value = match label.0 {
-      NodeId::Source(_) => host
-        .snapshot
-        .sources
-        .iter()
-        .find(|source| source.node == label.0)
-        .map(|source| {
-          format!(
-            "{}\nstock: {}",
-            source.node,
-            format_items(&source.stockpile.items)
-          )
-        })
-        .unwrap_or_else(|| label.0.to_string()),
-      NodeId::Road => "road".into(),
-      NodeId::Factory => format!(
-        "factory\ninventory: {}\ncraft: {}/{} {}",
-        format_items(&host.snapshot.factory.inventory.items),
-        host.snapshot.factory.craft.craft_progress,
-        host.snapshot.factory.craft.craft_time,
-        if host.snapshot.factory.craft.crafting {
-          "active"
-        } else {
-          "idle"
-        }
-      ),
-    };
-    *text = Text2d::new(value);
+    *text = Text2d::new(node_label_value(&host.snapshot, label.0));
   }
 
-  for (label, mut text, mut transform) in &mut hauler_labels {
+  for (label, mut text) in &mut hauler_labels {
     if let Some(hauler) = host
       .snapshot
       .haulers
       .iter()
       .find(|hauler| hauler.id == label.0)
     {
-      let position = grid_to_world(hauler.position_grid);
-      transform.translation.x = position.x;
-      transform.translation.y = position.y - 82.0 - f32::from(hauler.id) * 30.0;
-      *text = Text2d::new(format!(
-        "hauler-{} | {} | {}",
-        hauler.id,
-        dispatch_text(&hauler.dispatch),
-        format_items(&hauler.cargo.items)
-      ));
+      *text = Text2d::new(hauler_label_value(hauler));
     }
   }
 
   let metrics = host.game.metrics();
   let status = if host.paused { "paused" } else { "running" };
+  let cycle_status = if host.auto_cycle { "auto" } else { "locked" };
   let hud_value = format!(
     "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
      mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\n\
-     CONTROLS\nSpace  play / pause\nN      single step\nR      reset\nF      2x / 8x speed",
+     showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
+     CONTROLS\nSpace  play / pause\nN      single step\nR      reset\nF      2x / 8x speed\n\
+     C      next scenario\nL      auto cycle",
     host.snapshot.scenario.name,
     host.snapshot.tick,
     status,
@@ -347,6 +417,10 @@ fn update_text(
     format_items(&metrics.crafted),
     metrics.dispatches_assigned,
     metrics.idle_ticks,
+    cycle_status,
+    host.idle_streak,
+    AUTO_ADVANCE_IDLE_TICKS,
+    host.completed_scenarios,
   );
   for mut text in &mut hud {
     *text = Text2d::new(hud_value.clone());
@@ -381,6 +455,52 @@ fn grid_to_world(position: GridPosition) -> Vec2 {
   )
 }
 
+fn hauler_world_position(hauler: &HaulerSnapshot) -> Vec2 {
+  let position = grid_to_world(hauler.position_grid);
+  Vec2::new(
+    position.x,
+    position.y - 54.0 - f32::from(hauler.id) * 30.0,
+  )
+}
+
+fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
+  match node {
+    NodeId::Source(_) => snapshot
+      .sources
+      .iter()
+      .find(|source| source.node == node)
+      .map(|source| {
+        format!(
+          "{}\nstock: {}",
+          source.node,
+          format_items(&source.stockpile.items)
+        )
+      })
+      .unwrap_or_else(|| node.to_string()),
+    NodeId::Road => "road".into(),
+    NodeId::Factory => format!(
+      "factory\ninventory: {}\ncraft: {}/{} {}",
+      format_items(&snapshot.factory.inventory.items),
+      snapshot.factory.craft.craft_progress,
+      snapshot.factory.craft.craft_time,
+      if snapshot.factory.craft.crafting {
+        "active"
+      } else {
+        "idle"
+      }
+    ),
+  }
+}
+
+fn hauler_label_value(hauler: &HaulerSnapshot) -> String {
+  format!(
+    "hauler-{} | {} | {}",
+    hauler.id,
+    dispatch_text(&hauler.dispatch),
+    format_items(&hauler.cargo.items)
+  )
+}
+
 fn format_items(items: &BTreeMap<String, u32>) -> String {
   if items.is_empty() {
     return "empty".into();
@@ -412,7 +532,7 @@ mod tests {
   #[test]
   fn sim_host_steps_match_direct_simulation_bytes() {
     let mut host = SimHost::new();
-    let mut direct = starter_game();
+    let mut direct = scenario_game(IRON_BARS_SCENARIO);
 
     for _ in 0..6 {
       host.step_once();
@@ -434,5 +554,36 @@ mod tests {
     assert_eq!(0, host.snapshot.tick);
     assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
     assert_eq!(0.0, host.accumulated_seconds);
+  }
+
+  #[test]
+  fn scenario_selection_follows_the_showcase_order_and_wraps() {
+    let mut host = SimHost::new();
+
+    assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
+    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
+    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
+    assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(3, host.scene_revision);
+  }
+
+  #[test]
+  fn completed_scenario_advances_automatically() {
+    let mut host = SimHost::new();
+
+    for _ in 0..256 {
+      host.step_once();
+      if host.snapshot.scenario.id != IRON_BARS_SCENARIO {
+        break;
+      }
+    }
+
+    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(1, host.completed_scenarios);
+    assert_eq!(0, host.snapshot.tick);
+    assert_eq!(0, host.idle_streak);
   }
 }
