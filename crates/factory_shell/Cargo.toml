@@ -3,7 +3,12 @@ name = "factory_shell"
 version = "0.1.0"
 edition = "2021"
 
-# Deployable Bevy app shell only (issue #18): no dependency on the
-# simulation crates. Sim integration is deferred to the #16 viewer.
+# Deployable Bevy viewer. Simulation authority stays in factory_sim, while
+# this crate projects immutable snapshots into native and Wasm surfaces.
 [dependencies]
 bevy = "0.19"
+factory_content = { path = "../factory_content" }
+factory_sim = { path = "../factory_sim" }
+
+[dev-dependencies]
+serde_json = "1"

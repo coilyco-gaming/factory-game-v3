@@ -2548,6 +2548,9 @@ name = "factory_shell"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "factory_content",
+ "factory_sim",
+ "serde_json",
 ]
 
 [[package]]

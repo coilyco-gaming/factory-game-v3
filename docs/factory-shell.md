@@ -1,18 +1,20 @@
-# Bevy/Wasm app shell
+# Bevy/Wasm app surface
 
-`crates/factory_shell` is the deployable web app shell (issue #18). It proves
-the Rust/Bevy/Wasm packaging path and nothing more: a minimal Bevy scene
-(title text, status text, an orbiting marker) that builds native and for
-`wasm32-unknown-unknown`. It deliberately has **no dependency** on
-`factory_sim`, `factory_content`, or `factory_cli` - sim integration belongs
-to the future viewer specced in issue #16, and the factory/galaxy split in
-[app-boundary.md](app-boundary.md) applies.
+`crates/factory_shell` is the single deployable native and web application.
+Issue #18 established the Rust/Bevy/Wasm packaging path. The viewer milestone
+then replaced the placeholder scene with the snapshot projection described in
+[factory-viewer.md](factory-viewer.md).
+
+The crate depends on `factory_sim` and `factory_content`, but Bevy remains a
+client of the simulation. `GameState` owns every rule and deterministic tick.
+The application renders immutable `TickSnapshot` values and never mutates
+`WorldState` directly.
 
 ## Run
 
-- `ward exec shell-run` - native window.
-- `ward exec shell-serve` - browser with trunk hot reload.
-- `ward exec shell-build-web` - release Wasm bundle in
+- `ward exec shell-run` - native simulation viewer.
+- `ward exec shell-serve` - browser viewer with trunk hot reload.
+- `ward exec shell-build-web` - Wasm viewer bundle in
   `crates/factory_shell/dist/`.
 
 Local quirk: if a Homebrew Rust shadows rustup on PATH, the wasm build fails
@@ -21,14 +23,14 @@ toolchain, so put `~/.cargo/bin` first (`PATH="$HOME/.cargo/bin:$PATH"`).
 
 ## Deploy shape
 
-The repo-root [`Dockerfile`](../Dockerfile) follows the coilyco-bridge/deploy
-static-site precedent (atlas, galaxy-gen): a Rust builder stage runs the
-trunk build, then an unprivileged nginx stage serves `dist/` on 8080 with the
-wasm MIME, immutable caching for trunk's hashed bundles, a revalidated
-`index.html`, and `/healthz` ([`nginx.conf`](../nginx.conf)). The deploy repo
-builds this image at rollout from the repo's git context - there is no image
-publish job here. The eventual public surface is `factory-game.coilysiren.me`.
+The repo-root [`Dockerfile`](../Dockerfile) follows the established static-site
+deployment pattern. A Rust builder stage runs the trunk build, then an
+unprivileged nginx stage serves `dist/` on 8080 with the wasm MIME, immutable
+caching for trunk's hashed bundles, a revalidated `index.html`, and `/healthz`
+([`nginx.conf`](../nginx.conf)). The deploy repo builds this image at rollout
+from the repo's git context. There is no image publish job here. The eventual
+public surface is `factory-game.coilysiren.me`.
 
 Wasm-opt stays off (`data-wasm-opt="0"` in `index.html`) until bundle size
-matters; when it turns on, use upstream binaryen, not Debian's - see the
-galaxy-gen Dockerfile for the instantiation bug that pin avoids.
+matters. When it turns on, use upstream binaryen because Debian's build has an
+instantiation bug documented by the static-site precedent.
