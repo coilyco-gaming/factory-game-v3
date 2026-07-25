@@ -14,6 +14,8 @@ const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
 const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
 const MAX_RECENT_EVENTS: usize = 8;
+const ROUTE_DASH_COUNT: usize = 5;
+const ROUTE_DASH_SPEED: f32 = 0.42;
 const DEMO_SCENARIOS: [ScenarioId; 3] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
@@ -35,9 +37,12 @@ const NODE_FACTORY_DEMAND: Color = Color::srgb(0.24, 0.69, 0.65);
 const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
 const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
+const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
 const HAULER_IDLE: Color = Color::srgb(0.38, 0.45, 0.58);
 const HAULER_COLLECTING: Color = Color::srgb(0.95, 0.60, 0.24);
 const HAULER_DELIVERING: Color = Color::srgb(0.38, 0.72, 0.98);
+const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
+const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
 
 fn main() {
   App::new()
@@ -63,6 +68,7 @@ fn main() {
         rebuild_projection,
         project_snapshot,
         project_activity,
+        animate_activity,
         animate_haulers,
         update_text,
         style_control_buttons,
@@ -227,10 +233,21 @@ struct HaulerVisual(u8);
 struct RouteVisual(NodeId);
 
 #[derive(Component)]
+struct RouteDash {
+  node: NodeId,
+  outer: Vec2,
+  road: Vec2,
+  offset: f32,
+}
+
+#[derive(Component)]
 struct HaulerLabel(u8);
 
 #[derive(Component)]
 struct HaulerTarget(Vec2);
+
+#[derive(Component)]
+struct CargoBadge(u8);
 
 #[derive(Component)]
 struct HudText;
@@ -422,6 +439,16 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       ProjectionEntity,
     ));
     commands.spawn((
+      Sprite::from_color(
+        cargo_badge_color(hauler),
+        Vec2::splat(cargo_badge_size(hauler)),
+      ),
+      Transform::from_xyz(position.x, position.y, 2.5),
+      CargoBadge(hauler.id),
+      HaulerTarget(position),
+      ProjectionEntity,
+    ));
+    commands.spawn((
       Text2d::new(hauler_label_value(hauler)),
       TextFont {
         font_size: FontSize::Px(14.0),
@@ -461,6 +488,23 @@ fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
       RouteVisual(node.id),
       ProjectionEntity,
     ));
+    for index in 0..ROUTE_DASH_COUNT {
+      let offset = index as f32 / ROUTE_DASH_COUNT as f32;
+      let dash_position = position.lerp(road_position, offset);
+      commands.spawn((
+        Sprite::from_color(ROUTE_DASH, Vec2::new(20.0, 3.0)),
+        Transform::from_xyz(dash_position.x, dash_position.y, 0.5)
+          .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
+        Visibility::Hidden,
+        RouteDash {
+          node: node.id,
+          outer: position,
+          road: road_position,
+          offset,
+        },
+        ProjectionEntity,
+      ));
+    }
   }
 }
 
@@ -526,8 +570,18 @@ fn rebuild_projection(
 
 fn project_snapshot(
   host: Res<SimHost>,
-  mut hauler_visuals: Query<(&HaulerVisual, &mut HaulerTarget), Without<HaulerLabel>>,
-  mut hauler_labels: Query<(&HaulerLabel, &mut HaulerTarget), Without<HaulerVisual>>,
+  mut hauler_visuals: Query<
+    (&HaulerVisual, &mut HaulerTarget),
+    (Without<HaulerLabel>, Without<CargoBadge>),
+  >,
+  mut hauler_labels: Query<
+    (&HaulerLabel, &mut HaulerTarget),
+    (Without<HaulerVisual>, Without<CargoBadge>),
+  >,
+  mut cargo_badges: Query<
+    (&CargoBadge, &mut HaulerTarget),
+    (Without<HaulerVisual>, Without<HaulerLabel>),
+  >,
 ) {
   if !host.is_changed() {
     return;
@@ -555,21 +609,52 @@ fn project_snapshot(
       target.0 = Vec2::new(position.x, position.y - 28.0);
     }
   }
+
+  for (badge, mut target) in &mut cargo_badges {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == badge.0)
+    {
+      target.0 = hauler_world_position(hauler);
+    }
+  }
 }
 
 fn project_activity(
   host: Res<SimHost>,
   mut nodes: Query<
     (&NodeVisual, &mut Sprite),
-    (Without<HaulerVisual>, Without<RouteVisual>),
+    (
+      Without<HaulerVisual>,
+      Without<RouteVisual>,
+      Without<CargoBadge>,
+    ),
   >,
   mut routes: Query<
     (&RouteVisual, &mut Sprite),
-    (Without<NodeVisual>, Without<HaulerVisual>),
+    (
+      Without<NodeVisual>,
+      Without<HaulerVisual>,
+      Without<CargoBadge>,
+    ),
   >,
   mut haulers: Query<
     (&HaulerVisual, &mut Sprite),
-    (Without<NodeVisual>, Without<RouteVisual>),
+    (
+      Without<NodeVisual>,
+      Without<RouteVisual>,
+      Without<CargoBadge>,
+    ),
+  >,
+  mut cargo_badges: Query<
+    (&CargoBadge, &mut Sprite),
+    (
+      Without<NodeVisual>,
+      Without<RouteVisual>,
+      Without<HaulerVisual>,
+    ),
   >,
 ) {
   if !host.is_changed() {
@@ -592,6 +677,52 @@ fn project_activity(
       sprite.color = hauler_color(hauler);
       sprite.custom_size = Some(Vec2::splat(hauler_size(hauler)));
     }
+  }
+  for (badge, mut sprite) in &mut cargo_badges {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == badge.0)
+    {
+      sprite.color = cargo_badge_color(hauler);
+      sprite.custom_size = Some(Vec2::splat(cargo_badge_size(hauler)));
+    }
+  }
+}
+
+fn animate_activity(
+  time: Res<Time>,
+  host: Res<SimHost>,
+  mut nodes: Query<(&NodeVisual, &mut Transform), Without<RouteDash>>,
+  mut route_dashes: Query<
+    (&RouteDash, &mut Transform, &mut Visibility),
+    Without<NodeVisual>,
+  >,
+) {
+  let elapsed = time.elapsed_secs();
+  let pulse = 1.0 + 0.045 * (elapsed * 5.0).sin().max(0.0);
+  for (visual, mut transform) in &mut nodes {
+    transform.scale = if node_activity(&host.snapshot, visual.0) == NodeActivity::Idle {
+      Vec3::ONE
+    } else {
+      Vec3::splat(pulse)
+    };
+  }
+
+  for (dash, mut transform, mut visibility) in &mut route_dashes {
+    let Some(direction) = route_direction(&host.snapshot, dash.node) else {
+      *visibility = Visibility::Hidden;
+      continue;
+    };
+    *visibility = Visibility::Visible;
+    let phase = (elapsed * ROUTE_DASH_SPEED + dash.offset) % 1.0;
+    let position = match direction {
+      RouteDirection::TowardRoad => dash.outer.lerp(dash.road, phase),
+      RouteDirection::AwayFromRoad => dash.road.lerp(dash.outer, phase),
+    };
+    transform.translation.x = position.x;
+    transform.translation.y = position.y;
   }
 }
 
@@ -731,6 +862,18 @@ enum HaulerActivity {
   Delivering,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RouteDirection {
+  TowardRoad,
+  AwayFromRoad,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CargoBadgeState {
+  Empty,
+  Loaded(u32),
+}
+
 fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
   match node {
     NodeId::Source(_) => snapshot
@@ -790,15 +933,50 @@ fn hauler_size(hauler: &HaulerSnapshot) -> f32 {
   }
 }
 
-fn route_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
-  if snapshot.haulers.iter().any(|hauler| {
-    matches!(
-      &hauler.dispatch,
+fn cargo_badge_state(hauler: &HaulerSnapshot) -> CargoBadgeState {
+  let units = hauler.cargo.items.values().sum();
+  if units == 0 {
+    CargoBadgeState::Empty
+  } else {
+    CargoBadgeState::Loaded(units)
+  }
+}
+
+fn cargo_badge_color(hauler: &HaulerSnapshot) -> Color {
+  match cargo_badge_state(hauler) {
+    CargoBadgeState::Empty => CARGO_EMPTY,
+    CargoBadgeState::Loaded(_) => CARGO_LOADED,
+  }
+}
+
+fn cargo_badge_size(hauler: &HaulerSnapshot) -> f32 {
+  match cargo_badge_state(hauler) {
+    CargoBadgeState::Empty => 7.0,
+    CargoBadgeState::Loaded(units) => 9.0 + units.min(4) as f32,
+  }
+}
+
+fn route_direction(snapshot: &TickSnapshot, node: NodeId) -> Option<RouteDirection> {
+  snapshot
+    .haulers
+    .iter()
+    .find_map(|hauler| match &hauler.dispatch {
       DispatchReceiverState::Assigned(assignment)
-        if (assignment.phase == DispatchPhase::Collect && assignment.source == node)
-          || (assignment.phase == DispatchPhase::Deliver && assignment.destination == node)
-    )
-  }) {
+        if assignment.phase == DispatchPhase::Collect && assignment.source == node =>
+      {
+        Some(RouteDirection::TowardRoad)
+      }
+      DispatchReceiverState::Assigned(assignment)
+        if assignment.phase == DispatchPhase::Deliver && assignment.destination == node =>
+      {
+        Some(RouteDirection::AwayFromRoad)
+      }
+      _ => None,
+    })
+}
+
+fn route_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
+  if route_direction(snapshot, node).is_some() {
     ROUTE_ACTIVE
   } else {
     ROUTE_IDLE
@@ -1008,6 +1186,46 @@ mod tests {
     assert!(saw_collecting);
     assert!(saw_delivering);
     assert!(saw_crafting);
+  }
+
+  #[test]
+  fn route_direction_tracks_collect_and_delivery_phases() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    let source = host.snapshot.sources[0].node;
+    let mut saw_toward_road = false;
+    let mut saw_away_from_road = false;
+
+    for _ in 0..64 {
+      host.step_once();
+      saw_toward_road |=
+        route_direction(&host.snapshot, source) == Some(RouteDirection::TowardRoad);
+      saw_away_from_road |=
+        route_direction(&host.snapshot, NodeId::Factory) == Some(RouteDirection::AwayFromRoad);
+    }
+
+    assert!(saw_toward_road);
+    assert!(saw_away_from_road);
+  }
+
+  #[test]
+  fn cargo_badge_state_tracks_authoritative_inventory() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    assert_eq!(
+      CargoBadgeState::Empty,
+      cargo_badge_state(&host.snapshot.haulers[0])
+    );
+
+    let loaded = (0..64).find_map(|_| {
+      host.step_once();
+      host.snapshot.haulers.iter().find_map(|hauler| {
+        let state = cargo_badge_state(hauler);
+        (state != CargoBadgeState::Empty).then_some(state)
+      })
+    });
+
+    assert!(matches!(loaded, Some(CargoBadgeState::Loaded(units)) if units > 0));
   }
 
   #[test]

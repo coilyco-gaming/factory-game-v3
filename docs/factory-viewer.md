@@ -36,12 +36,12 @@ sprites move smoothly between the discrete positions in each authoritative
 snapshot. The presentation does not depend on retained Unity assets or Git
 LFS objects.
 
-Material-flow telemetry makes each phase visible without changing the
-simulation. Source nodes brighten when stock is ready, the factory changes
-color while demanding inputs or crafting, and active route segments light up.
-Haulers use distinct collecting and delivery colors, and loaded haulers grow
-slightly. The rolling activity feed keeps the latest eight authoritative
-events across scenario changes.
+Material-flow telemetry brightens stocked sources and changes the factory color
+while it demands inputs or crafts. Active nodes pulse, and bright route dashes
+travel toward the road during collection and away during delivery. Haulers use
+phase colors plus a cargo badge that grows and brightens when loaded. The latest
+eight events persist across scenarios. These frame-time effects move smoothly
+between discrete ticks and never write back into simulation state.
 
 Automatic cycling advances to the next scenario after eight consecutive quiet
 ticks. This gives the native and browser viewers a continuous demonstration
