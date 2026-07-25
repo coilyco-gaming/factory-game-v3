@@ -7,12 +7,13 @@ use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
   TickSnapshot,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
 const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
+const MAX_RECENT_EVENTS: usize = 8;
 const DEMO_SCENARIOS: [ScenarioId; 3] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
@@ -26,6 +27,17 @@ const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
 const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
 const BUTTON_PRESSED: Color = Color::srgb(0.85, 0.52, 0.25);
 const BUTTON_BORDER: Color = Color::srgb(0.34, 0.39, 0.48);
+const NODE_SOURCE_IDLE: Color = Color::srgb(0.56, 0.36, 0.22);
+const NODE_SOURCE_READY: Color = Color::srgb(0.96, 0.64, 0.24);
+const NODE_ROAD: Color = Color::srgb(0.30, 0.34, 0.40);
+const NODE_FACTORY_IDLE: Color = Color::srgb(0.23, 0.47, 0.36);
+const NODE_FACTORY_DEMAND: Color = Color::srgb(0.24, 0.69, 0.65);
+const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
+const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
+const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
+const HAULER_IDLE: Color = Color::srgb(0.38, 0.45, 0.58);
+const HAULER_COLLECTING: Color = Color::srgb(0.95, 0.60, 0.24);
+const HAULER_DELIVERING: Color = Color::srgb(0.38, 0.72, 0.98);
 
 fn main() {
   App::new()
@@ -50,6 +62,7 @@ fn main() {
         advance_simulation,
         rebuild_projection,
         project_snapshot,
+        project_activity,
         animate_haulers,
         update_text,
         style_control_buttons,
@@ -71,12 +84,14 @@ struct SimHost {
   idle_streak: u16,
   completed_scenarios: u32,
   scene_revision: u64,
+  recent_events: VecDeque<String>,
 }
 
 impl SimHost {
   fn new() -> Self {
     let game = scenario_game(DEMO_SCENARIOS[0]);
     let snapshot = game.snapshot(Vec::new());
+    let scenario_name = snapshot.scenario.name.clone();
     Self {
       game,
       snapshot,
@@ -88,11 +103,13 @@ impl SimHost {
       idle_streak: 0,
       completed_scenarios: 0,
       scene_revision: 0,
+      recent_events: VecDeque::from([format!("t000 showcase started: {scenario_name}")]),
     }
   }
 
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
+    self.record_snapshot_events();
     self.idle_streak = if self.snapshot.events.is_empty() {
       self.idle_streak.saturating_add(1)
     } else {
@@ -107,6 +124,11 @@ impl SimHost {
   fn reset(&mut self) {
     self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
     self.snapshot = self.game.snapshot(Vec::new());
+    self
+      .snapshot
+      .events
+      .push(format!("scenario reset: {}", self.snapshot.scenario.name));
+    self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
     self.idle_streak = 0;
   }
@@ -154,9 +176,25 @@ impl SimHost {
       .snapshot
       .events
       .push(format!("{reason}: {scenario_name}"));
+    self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
     self.idle_streak = 0;
     self.scene_revision += 1;
+  }
+
+  fn record_snapshot_events(&mut self) {
+    let entries = self
+      .snapshot
+      .events
+      .iter()
+      .map(|event| format!("t{:03} {event}", self.snapshot.tick))
+      .collect::<Vec<_>>();
+    for entry in entries {
+      self.recent_events.push_back(entry);
+      if self.recent_events.len() > MAX_RECENT_EVENTS {
+        self.recent_events.pop_front();
+      }
+    }
   }
 
   fn next_scenario(&mut self, reason: &str) {
@@ -177,10 +215,16 @@ struct ProjectionScene {
 struct ProjectionEntity;
 
 #[derive(Component)]
+struct NodeVisual(NodeId);
+
+#[derive(Component)]
 struct NodeLabel(NodeId);
 
 #[derive(Component)]
 struct HaulerVisual(u8);
+
+#[derive(Component)]
+struct RouteVisual(NodeId);
 
 #[derive(Component)]
 struct HaulerLabel(u8);
@@ -344,14 +388,15 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   spawn_connections(commands, snapshot);
   for node in &snapshot.topology.nodes {
     let position = grid_to_world(node.position);
-    let (color, size) = match node.id {
-      NodeId::Source(_) => (Color::srgb(0.85, 0.52, 0.25), Vec2::new(124.0, 74.0)),
-      NodeId::Road => (Color::srgb(0.30, 0.34, 0.40), Vec2::new(100.0, 34.0)),
-      NodeId::Factory => (Color::srgb(0.30, 0.66, 0.47), Vec2::new(132.0, 82.0)),
+    let size = match node.id {
+      NodeId::Source(_) => Vec2::new(124.0, 74.0),
+      NodeId::Road => Vec2::new(100.0, 34.0),
+      NodeId::Factory => Vec2::new(132.0, 82.0),
     };
     commands.spawn((
-      Sprite::from_color(color, size),
+      Sprite::from_color(node_color(snapshot, node.id), size),
       Transform::from_xyz(position.x, position.y, 1.0),
+      NodeVisual(node.id),
       ProjectionEntity,
     ));
     commands.spawn((
@@ -370,7 +415,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   for hauler in &snapshot.haulers {
     let position = hauler_world_position(hauler);
     commands.spawn((
-      Sprite::from_color(Color::srgb(0.50, 0.63, 0.88), Vec2::splat(28.0)),
+      Sprite::from_color(hauler_color(hauler), Vec2::splat(hauler_size(hauler))),
       Transform::from_xyz(position.x, position.y, 2.0),
       HaulerVisual(hauler.id),
       HaulerTarget(position),
@@ -410,9 +455,10 @@ fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
     let delta = road_position - position;
     let midpoint = position + delta / 2.0;
     commands.spawn((
-      Sprite::from_color(Color::srgb(0.20, 0.23, 0.28), Vec2::new(delta.length(), 5.0)),
+      Sprite::from_color(route_color(snapshot, node.id), Vec2::new(delta.length(), 5.0)),
       Transform::from_xyz(midpoint.x, midpoint.y, 0.0)
         .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
+      RouteVisual(node.id),
       ProjectionEntity,
     ));
   }
@@ -511,6 +557,44 @@ fn project_snapshot(
   }
 }
 
+fn project_activity(
+  host: Res<SimHost>,
+  mut nodes: Query<
+    (&NodeVisual, &mut Sprite),
+    (Without<HaulerVisual>, Without<RouteVisual>),
+  >,
+  mut routes: Query<
+    (&RouteVisual, &mut Sprite),
+    (Without<NodeVisual>, Without<HaulerVisual>),
+  >,
+  mut haulers: Query<
+    (&HaulerVisual, &mut Sprite),
+    (Without<NodeVisual>, Without<RouteVisual>),
+  >,
+) {
+  if !host.is_changed() {
+    return;
+  }
+
+  for (visual, mut sprite) in &mut nodes {
+    sprite.color = node_color(&host.snapshot, visual.0);
+  }
+  for (visual, mut sprite) in &mut routes {
+    sprite.color = route_color(&host.snapshot, visual.0);
+  }
+  for (visual, mut sprite) in &mut haulers {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == visual.0)
+    {
+      sprite.color = hauler_color(hauler);
+      sprite.custom_size = Some(Vec2::splat(hauler_size(hauler)));
+    }
+  }
+}
+
 fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Transform)>) {
   let blend = 1.0 - (-10.0 * time.delta_secs()).exp();
   for (target, mut transform) in &mut haulers {
@@ -599,18 +683,14 @@ fn update_text(
     *text = Text2d::new(hud_value.clone());
   }
 
-  let event_value = if host.snapshot.events.is_empty() {
+  let event_value = if host.recent_events.is_empty() {
     "EVENTS\nwaiting for first tick".into()
   } else {
     format!(
       "EVENTS\n{}",
       host
-        .snapshot
-        .events
+        .recent_events
         .iter()
-        .rev()
-        .take(6)
-        .rev()
         .cloned()
         .collect::<Vec<_>>()
         .join("\n")
@@ -634,6 +714,95 @@ fn hauler_world_position(hauler: &HaulerSnapshot) -> Vec2 {
     position.x,
     position.y - 54.0 - f32::from(hauler.id) * 30.0,
   )
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum NodeActivity {
+  Idle,
+  Ready,
+  Demanding,
+  Crafting,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum HaulerActivity {
+  Idle,
+  Collecting,
+  Delivering,
+}
+
+fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
+  match node {
+    NodeId::Source(_) => snapshot
+      .sources
+      .iter()
+      .find(|source| source.node == node)
+      .filter(|source| {
+        !source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty()
+      })
+      .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
+    NodeId::Road => NodeActivity::Idle,
+    NodeId::Factory if snapshot.factory.craft.crafting => NodeActivity::Crafting,
+    NodeId::Factory if !snapshot.factory.dispatch.intents.is_empty() => NodeActivity::Demanding,
+    NodeId::Factory => NodeActivity::Idle,
+  }
+}
+
+fn hauler_activity(hauler: &HaulerSnapshot) -> HaulerActivity {
+  match &hauler.dispatch {
+    DispatchReceiverState::Assigned(assignment)
+      if assignment.phase == DispatchPhase::Collect =>
+    {
+      HaulerActivity::Collecting
+    }
+    DispatchReceiverState::Assigned(_) => HaulerActivity::Delivering,
+    DispatchReceiverState::Unassigned if !hauler.cargo.items.is_empty() => {
+      HaulerActivity::Delivering
+    }
+    DispatchReceiverState::Unassigned => HaulerActivity::Idle,
+  }
+}
+
+fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
+  match (node, node_activity(snapshot, node)) {
+    (NodeId::Source(_), NodeActivity::Ready) => NODE_SOURCE_READY,
+    (NodeId::Source(_), _) => NODE_SOURCE_IDLE,
+    (NodeId::Road, _) => NODE_ROAD,
+    (NodeId::Factory, NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
+    (NodeId::Factory, NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
+    (NodeId::Factory, _) => NODE_FACTORY_IDLE,
+  }
+}
+
+fn hauler_color(hauler: &HaulerSnapshot) -> Color {
+  match hauler_activity(hauler) {
+    HaulerActivity::Idle => HAULER_IDLE,
+    HaulerActivity::Collecting => HAULER_COLLECTING,
+    HaulerActivity::Delivering => HAULER_DELIVERING,
+  }
+}
+
+fn hauler_size(hauler: &HaulerSnapshot) -> f32 {
+  if hauler.cargo.items.is_empty() {
+    25.0
+  } else {
+    33.0
+  }
+}
+
+fn route_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
+  if snapshot.haulers.iter().any(|hauler| {
+    matches!(
+      &hauler.dispatch,
+      DispatchReceiverState::Assigned(assignment)
+        if (assignment.phase == DispatchPhase::Collect && assignment.source == node)
+          || (assignment.phase == DispatchPhase::Deliver && assignment.destination == node)
+    )
+  }) {
+    ROUTE_ACTIVE
+  } else {
+    ROUTE_IDLE
+  }
 }
 
 fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
@@ -775,6 +944,70 @@ mod tests {
     let host = app.world().resource::<SimHost>();
     assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
     assert_eq!(1, host.scene_revision);
+  }
+
+  #[test]
+  fn recent_activity_is_bounded_and_survives_scenario_changes() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    for _ in 0..32 {
+      host.step_once();
+    }
+
+    assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
+    let latest_before_change = host
+      .recent_events
+      .back()
+      .expect("activity history has an event")
+      .clone();
+
+    host.select_scenario(1, "test selected");
+
+    assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
+    assert!(host.recent_events.contains(&latest_before_change));
+    assert!(
+      host
+        .recent_events
+        .back()
+        .expect("scenario event is recorded")
+        .contains("test selected")
+    );
+  }
+
+  #[test]
+  fn presentation_state_tracks_authoritative_material_flow() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    let mut saw_ready_source = false;
+    let mut saw_collecting = false;
+    let mut saw_delivering = false;
+    let mut saw_crafting = false;
+
+    for _ in 0..64 {
+      host.step_once();
+      saw_ready_source |= host
+        .snapshot
+        .sources
+        .iter()
+        .any(|source| node_activity(&host.snapshot, source.node) == NodeActivity::Ready);
+      saw_collecting |= host
+        .snapshot
+        .haulers
+        .iter()
+        .any(|hauler| hauler_activity(hauler) == HaulerActivity::Collecting);
+      saw_delivering |= host
+        .snapshot
+        .haulers
+        .iter()
+        .any(|hauler| hauler_activity(hauler) == HaulerActivity::Delivering);
+      saw_crafting |=
+        node_activity(&host.snapshot, NodeId::Factory) == NodeActivity::Crafting;
+    }
+
+    assert!(saw_ready_source);
+    assert!(saw_collecting);
+    assert!(saw_delivering);
+    assert!(saw_crafting);
   }
 
   #[test]

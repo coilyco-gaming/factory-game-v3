@@ -29,12 +29,19 @@ The viewer rotates through the `iron-bars`, `iron-bars-fleet`, and
 - hauler position, cargo, and dispatch phase
 - source and factory inventory
 - factory craft progress
-- current tick, run metrics, and recent events
+- current tick, run metrics, and a bounded rolling activity feed
 
 The scene rebuilds its generated primitives when the scenario changes. Hauler
 sprites move smoothly between the discrete positions in each authoritative
 snapshot. The presentation does not depend on retained Unity assets or Git
 LFS objects.
+
+Material-flow telemetry makes each phase visible without changing the
+simulation. Source nodes brighten when stock is ready, the factory changes
+color while demanding inputs or crafting, and active route segments light up.
+Haulers use distinct collecting and delivery colors, and loaded haulers grow
+slightly. The rolling activity feed keeps the latest eight authoritative
+events across scenario changes.
 
 Automatic cycling advances to the next scenario after eight consecutive quiet
 ticks. This gives the native and browser viewers a continuous demonstration
