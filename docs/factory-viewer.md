@@ -37,11 +37,11 @@ snapshot. The presentation does not depend on retained Unity assets or Git
 LFS objects.
 
 Material-flow telemetry brightens stocked sources and changes the factory color
-while it demands inputs or crafts. Active nodes pulse, and bright route dashes
-travel toward the road during collection and away during delivery. Haulers use
-phase colors plus a cargo badge that grows and brightens when loaded. The latest
-eight events persist across scenarios. These frame-time effects move smoothly
-between discrete ticks and never write back into simulation state.
+while it demands inputs or crafts. A slim gauge tracks recipe progress, and
+completed output releases a bounded particle burst. Active nodes pulse, route
+dashes show direction, and cargo badges brighten when loaded. The latest eight
+events persist across scenarios. Frame-time effects move smoothly between ticks
+and never write back into simulation state.
 
 Automatic cycling advances to the next scenario after eight consecutive quiet
 ticks. This gives the native and browser viewers a continuous demonstration

@@ -16,6 +16,10 @@ const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
 const MAX_RECENT_EVENTS: usize = 8;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
+const CRAFT_GAUGE_WIDTH: f32 = 96.0;
+const COMPLETION_BURST_PARTICLES: usize = 12;
+const MAX_COMPLETION_PARTICLES: usize = 48;
+const COMPLETION_BURST_LIFETIME: f32 = 0.9;
 const DEMO_SCENARIOS: [ScenarioId; 3] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
@@ -43,6 +47,10 @@ const HAULER_COLLECTING: Color = Color::srgb(0.95, 0.60, 0.24);
 const HAULER_DELIVERING: Color = Color::srgb(0.38, 0.72, 0.98);
 const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
 const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
+const CRAFT_GAUGE_BACKGROUND: Color = Color::srgb(0.10, 0.16, 0.14);
+const CRAFT_GAUGE_FILL: Color = Color::srgb(0.58, 0.96, 0.62);
+const COMPLETION_BURST_WARM: Color = Color::srgb(1.0, 0.76, 0.28);
+const COMPLETION_BURST_COOL: Color = Color::srgb(0.48, 0.88, 1.0);
 
 fn main() {
   App::new()
@@ -58,6 +66,7 @@ fn main() {
     .insert_resource(ClearColor(Color::srgb(0.06, 0.07, 0.09)))
     .insert_resource(SimHost::new())
     .init_resource::<ProjectionScene>()
+    .init_resource::<ProductionFeedback>()
     .add_systems(Startup, setup)
     .add_systems(
       Update,
@@ -68,7 +77,10 @@ fn main() {
         rebuild_projection,
         project_snapshot,
         project_activity,
+        project_craft_gauge,
+        emit_completion_burst,
         animate_activity,
+        animate_completion_particles,
         animate_haulers,
         update_text,
         style_control_buttons,
@@ -217,6 +229,12 @@ struct ProjectionScene {
   revision: u64,
 }
 
+#[derive(Resource, Default)]
+struct ProductionFeedback {
+  scene_revision: u64,
+  crafted: BTreeMap<String, u32>,
+}
+
 #[derive(Component)]
 struct ProjectionEntity;
 
@@ -248,6 +266,18 @@ struct HaulerTarget(Vec2);
 
 #[derive(Component)]
 struct CargoBadge(u8);
+
+#[derive(Component)]
+struct CraftGaugeFill {
+  left: f32,
+  max_width: f32,
+}
+
+#[derive(Component)]
+struct CompletionParticle {
+  velocity: Vec2,
+  remaining: f32,
+}
 
 #[derive(Component)]
 struct HudText;
@@ -427,6 +457,9 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeLabel(node.id),
       ProjectionEntity,
     ));
+    if node.id == NodeId::Factory {
+      spawn_craft_gauge(commands, snapshot, position);
+    }
   }
 
   for hauler in &snapshot.haulers {
@@ -461,6 +494,38 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       ProjectionEntity,
     ));
   }
+}
+
+fn spawn_craft_gauge(commands: &mut Commands, snapshot: &TickSnapshot, factory: Vec2) {
+  let y = factory.y - 28.0;
+  let left = factory.x - CRAFT_GAUGE_WIDTH / 2.0;
+  let progress = craft_progress_fraction(
+    snapshot.factory.craft.craft_progress,
+    snapshot.factory.craft.craft_time,
+  );
+  let width = CRAFT_GAUGE_WIDTH * progress;
+  commands.spawn((
+    Sprite::from_color(
+      CRAFT_GAUGE_BACKGROUND,
+      Vec2::new(CRAFT_GAUGE_WIDTH + 4.0, 10.0),
+    ),
+    Transform::from_xyz(factory.x, y, 1.5),
+    ProjectionEntity,
+  ));
+  commands.spawn((
+    Sprite::from_color(CRAFT_GAUGE_FILL, Vec2::new(width, 6.0)),
+    Transform::from_xyz(left + width / 2.0, y, 1.6),
+    if width > 0.0 {
+      Visibility::Visible
+    } else {
+      Visibility::Hidden
+    },
+    CraftGaugeFill {
+      left,
+      max_width: CRAFT_GAUGE_WIDTH,
+    },
+    ProjectionEntity,
+  ));
 }
 
 fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
@@ -691,6 +756,90 @@ fn project_activity(
   }
 }
 
+fn project_craft_gauge(
+  host: Res<SimHost>,
+  mut gauges: Query<(
+    &CraftGaugeFill,
+    &mut Sprite,
+    &mut Transform,
+    &mut Visibility,
+  )>,
+) {
+  if !host.is_changed() {
+    return;
+  }
+
+  let progress = craft_progress_fraction(
+    host.snapshot.factory.craft.craft_progress,
+    host.snapshot.factory.craft.craft_time,
+  );
+  for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
+    let width = gauge.max_width * progress;
+    sprite.custom_size = Some(Vec2::new(width, 6.0));
+    transform.translation.x = gauge.left + width / 2.0;
+    *visibility = if width > 0.0 {
+      Visibility::Visible
+    } else {
+      Visibility::Hidden
+    };
+  }
+}
+
+fn emit_completion_burst(
+  mut commands: Commands,
+  host: Res<SimHost>,
+  mut feedback: ResMut<ProductionFeedback>,
+  particles: Query<(), With<CompletionParticle>>,
+) {
+  if !host.is_changed() {
+    return;
+  }
+
+  let crafted = host.game.metrics().crafted;
+  let produced = if feedback.scene_revision == host.scene_revision {
+    crafted_output_delta(&feedback.crafted, &crafted)
+  } else {
+    0
+  };
+  feedback.scene_revision = host.scene_revision;
+  feedback.crafted = crafted;
+  if produced == 0 {
+    return;
+  }
+
+  let Some(factory) = host
+    .snapshot
+    .topology
+    .nodes
+    .iter()
+    .find(|node| node.id == NodeId::Factory)
+    .map(|node| grid_to_world(node.position))
+  else {
+    return;
+  };
+  let particle_count = COMPLETION_BURST_PARTICLES
+    .min(MAX_COMPLETION_PARTICLES.saturating_sub(particles.iter().count()));
+  for index in 0..particle_count {
+    let angle = std::f32::consts::TAU * index as f32 / COMPLETION_BURST_PARTICLES as f32;
+    let speed = 90.0 + (index % 3) as f32 * 24.0;
+    let velocity = Vec2::from_angle(angle) * speed;
+    let color = if index % 2 == 0 {
+      COMPLETION_BURST_WARM
+    } else {
+      COMPLETION_BURST_COOL
+    };
+    commands.spawn((
+      Sprite::from_color(color, Vec2::splat(7.0 + (index % 3) as f32)),
+      Transform::from_xyz(factory.x, factory.y, 4.0),
+      CompletionParticle {
+        velocity,
+        remaining: COMPLETION_BURST_LIFETIME,
+      },
+      ProjectionEntity,
+    ));
+  }
+}
+
 fn animate_activity(
   time: Res<Time>,
   host: Res<SimHost>,
@@ -723,6 +872,26 @@ fn animate_activity(
     };
     transform.translation.x = position.x;
     transform.translation.y = position.y;
+  }
+}
+
+fn animate_completion_particles(
+  mut commands: Commands,
+  time: Res<Time>,
+  mut particles: Query<(Entity, &mut CompletionParticle, &mut Transform)>,
+) {
+  let delta = time.delta_secs();
+  for (entity, mut particle, mut transform) in &mut particles {
+    particle.remaining -= delta;
+    if particle.remaining <= 0.0 {
+      commands.entity(entity).despawn();
+      continue;
+    }
+    particle.velocity.y -= 95.0 * delta;
+    transform.translation.x += particle.velocity.x * delta;
+    transform.translation.y += particle.velocity.y * delta;
+    transform.rotate_z(4.0 * delta);
+    transform.scale = Vec3::splat((particle.remaining / COMPLETION_BURST_LIFETIME).max(0.1));
   }
 }
 
@@ -872,6 +1041,24 @@ enum RouteDirection {
 enum CargoBadgeState {
   Empty,
   Loaded(u32),
+}
+
+fn craft_progress_fraction(progress: u32, craft_time: u32) -> f32 {
+  if craft_time == 0 {
+    0.0
+  } else {
+    (progress as f32 / craft_time as f32).clamp(0.0, 1.0)
+  }
+}
+
+fn crafted_output_delta(
+  previous: &BTreeMap<String, u32>,
+  current: &BTreeMap<String, u32>,
+) -> u32 {
+  current
+    .iter()
+    .map(|(item, quantity)| quantity.saturating_sub(previous.get(item).copied().unwrap_or(0)))
+    .sum()
 }
 
 fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
@@ -1226,6 +1413,27 @@ mod tests {
     });
 
     assert!(matches!(loaded, Some(CargoBadgeState::Loaded(units)) if units > 0));
+  }
+
+  #[test]
+  fn craft_progress_fraction_is_bounded() {
+    assert_eq!(0.0, craft_progress_fraction(0, 0));
+    assert_eq!(0.0, craft_progress_fraction(0, 4));
+    assert_eq!(0.5, craft_progress_fraction(2, 4));
+    assert_eq!(1.0, craft_progress_fraction(4, 4));
+    assert_eq!(1.0, craft_progress_fraction(8, 4));
+  }
+
+  #[test]
+  fn crafted_output_delta_detects_growth_without_false_reset_output() {
+    let previous = BTreeMap::from([("IronBars".to_string(), 2)]);
+    let current = BTreeMap::from([
+      ("BuildingMaterials".to_string(), 1),
+      ("IronBars".to_string(), 5),
+    ]);
+
+    assert_eq!(4, crafted_output_delta(&previous, &current));
+    assert_eq!(0, crafted_output_delta(&current, &BTreeMap::new()));
   }
 
   #[test]
