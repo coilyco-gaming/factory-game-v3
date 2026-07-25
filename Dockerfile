@@ -9,7 +9,7 @@ ARG TRUNK_VERSION=0.21.14
 # trunk from the upstream prebuilt release (matches the aos dev-base pin), and
 # the wasm target for the shell build. No binaryen/wasm-opt in the shell yet -
 # index.html pins data-wasm-opt="0", so nothing here can trip the Debian
-# binaryen instantiation bug galaxy-gen documents.
+# browser-side binaryen instantiation failure.
 RUN rustup target add wasm32-unknown-unknown \
  && curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" \
       -o /tmp/trunk.tar.gz \
@@ -46,7 +46,7 @@ RUN touch crates/*/src/*.rs \
 # Stage 2: unprivileged nginx serving the built bundle.
 # -----------------------------------------------------------------------------
 # Self-contained serving image on the coilyco-bridge/deploy static-site
-# precedent (atlas, galaxy-gen): nginx-unprivileged, uid 101, listens on 8080,
+# precedent: nginx-unprivileged, uid 101, listens on 8080,
 # TLS terminated upstream by traefik + cert-manager. Built at rollout by the
 # deploy repo over this repo's git context.
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
