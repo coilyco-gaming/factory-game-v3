@@ -20,7 +20,7 @@ commands:
     run: docker build -t factory-game-v3:local .
     description: "Build the deployable factory-game-v3 web image."
   check-publish:
-    run: shellcheck --severity=error scripts/publish-image.sh
+    run: pre-commit run shellcheck --files scripts/publish-image.sh
     description: "Lint the trusted Forgejo OCI publisher shell contract."
   shell-serve:
     run: bash scripts/shell-web.sh serve
