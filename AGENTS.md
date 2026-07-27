@@ -32,6 +32,7 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 
 - Run `ward exec test` for the repo baseline, including the Rust workspace.
 - Run `ward exec image-build` when changing the web image or publish workflow.
+- Run `ward exec check-publish` when changing the Forgejo OCI publisher.
 - Run `pre-commit run --all-files` before committing.
 - Keep [README.md](README.md), this file, and [docs/FEATURES.md](docs/FEATURES.md) in sync when the repo surface changes.
 
@@ -49,8 +50,12 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 
 ## Release
 
-- Source CI publishes the Bevy/Wasm web image by git sha.
-- `coilyco-bridge/deploy` owns rollout and the public ingress.
+- Source CI publishes the private Bevy/Wasm web image to
+  `forgejo.coilysiren.me/coilyco-gaming/factory-game-v3:<full-source-sha>`.
+- The trusted deploy runner supplies the package write credential as
+  `REGISTRY_TOKEN`.
+- `coilyco-bridge/deploy` owns rollout, the read-only `forgejo-registry`
+  pull secret, and the public ingress.
 - Land image and workflow changes together so the deploy contract stays complete.
 
 ## Agent rules

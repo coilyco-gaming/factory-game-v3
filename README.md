@@ -21,13 +21,16 @@ ward exec cargo-run -- run --scenario iron-bars --ticks 6
 ## Deployment
 
 Source CI builds the repo-root Dockerfile and publishes
-`factory-game-v3:<git-sha>` to the in-cluster registry on every push to `main`.
+`forgejo.coilysiren.me/coilyco-gaming/factory-game-v3:<full-source-sha>` as a
+private Forgejo package on every push to `main`.
 The image packages the Trunk-built Wasm bundle behind unprivileged nginx.
-`coilyco-bridge/deploy` owns the public chart and rollout.
+`coilyco-bridge/deploy` owns the public chart, rollout, and its separate
+read-only `forgejo-registry` pull credential.
 
 Validate the image locally through Ward:
 
 ```bash
+ward exec check-publish
 ward exec image-build
 ```
 
