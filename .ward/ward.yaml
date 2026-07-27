@@ -20,8 +20,8 @@ commands:
     run: docker build -t factory-game-v3:local .
     description: "Build the deployable factory-game-v3 web image."
   check-publish:
-    run: bash -n scripts/publish-image.sh
-    description: "Validate the trusted Forgejo OCI publisher shell contract."
+    run: bash -n scripts/publish-image.sh && shellcheck --severity=error scripts/publish-image.sh
+    description: "Parse and lint the trusted Forgejo OCI publisher shell contract."
   shell-serve:
     run: bash scripts/shell-web.sh serve
     description: "Serve the simulation viewer with trunk hot reload."
