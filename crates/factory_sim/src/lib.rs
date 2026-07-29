@@ -144,7 +144,7 @@ impl GameState {
             scenario.hauler_weight_capacity,
             scenario.hauler_volume_capacity,
           ),
-          NodeId::Source(0),
+          NodeId::Road,
           scenario.hauler_capacity,
         )
       })
@@ -223,7 +223,7 @@ impl GameState {
       source.refresh_dispatch(destination);
     }
     for factory in &mut self.world.factories {
-      factory.refresh_dispatch();
+      factory.refresh_dispatch(&self.content);
     }
     for source in self
       .world
@@ -368,8 +368,18 @@ impl GameState {
           .dispatch
           .intents
           .iter()
-          .any(|intent| intent.item == item && intent.to == destination)
+          .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
           .then_some(source.node)
+      });
+      let source_node = source_node.or_else(|| {
+        self.world.factories.iter().find_map(|factory| {
+          factory
+            .dispatch
+            .intents
+            .iter()
+            .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
+            .then_some(factory.node)
+        })
       });
       let source_node = match source_node {
         Some(node) => node,
@@ -397,6 +407,43 @@ impl GameState {
     }
   }
 
+  fn advance_receiver_phases(&mut self, events: &mut Vec<String>) {
+    for hauler in &mut self.world.haulers {
+      let DispatchReceiverState::Assigned(assignment) = &hauler.dispatch else {
+        continue;
+      };
+      let next_phase = match assignment.phase {
+        DispatchPhase::Collect if hauler.cargo.count(assignment.item) > 0 => {
+          Some(DispatchPhase::Deliver)
+        }
+        DispatchPhase::Retrieve if hauler.cargo.count(assignment.item) > 0 => {
+          Some(DispatchPhase::Deploy)
+        }
+        DispatchPhase::Deliver | DispatchPhase::Deploy
+          if hauler.cargo.count(assignment.item) == 0 =>
+        {
+          None
+        }
+        _ => continue,
+      };
+      if let Some(phase) = next_phase {
+        let item = assignment.item;
+        hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
+          phase,
+          ..assignment.clone()
+        });
+        events.push(format!(
+          "receiver hauler-{} {} => {:?}",
+          hauler.id, item, phase
+        ));
+      } else {
+        let phase = assignment.phase;
+        hauler.clear_assignment();
+        events.push(format!("receiver hauler-{} {:?} => awaiting", hauler.id, phase));
+      }
+    }
+  }
+
   fn collect(&mut self, events: &mut Vec<String>) {
     for hauler_index in 0..self.world.haulers.len() {
       let (assignment, position) = match &self.world.haulers[hauler_index].dispatch {
@@ -406,32 +453,45 @@ impl GameState {
         ),
         DispatchReceiverState::Unassigned => continue,
       };
-      if assignment.phase != DispatchPhase::Collect || position != assignment.source {
+      if assignment.phase != DispatchPhase::Collect
+        || !self.nodes_in_transfer_range(position, assignment.source)
+      {
         continue;
       }
-      let source = match self
-        .world
-        .sources
-        .iter_mut()
-        .find(|source| source.node == assignment.source)
-      {
-        Some(source) => source,
-        None => continue,
-      };
       let carry_limit = self.world.haulers[hauler_index].carry_limit;
-      let moved = source.stockpile.transfer_up_to(
-        &self.content,
-        &mut self.world.haulers[hauler_index].cargo,
-        assignment.item,
-        carry_limit,
-      );
+      let moved = match assignment.source {
+        NodeId::Source(_) => {
+          let Some(source) = self
+            .world
+            .sources
+            .iter_mut()
+            .find(|source| source.node == assignment.source)
+          else {
+            continue;
+          };
+          source.stockpile.transfer_up_to(
+            &self.content,
+            &mut self.world.haulers[hauler_index].cargo,
+            assignment.item,
+            carry_limit,
+          )
+        }
+        NodeId::Factory(factory_index) => {
+          let Some(factory) = self.world.factories.get_mut(factory_index as usize) else {
+            continue;
+          };
+          factory.production.inventory.transfer_up_to(
+            &self.content,
+            &mut self.world.haulers[hauler_index].cargo,
+            assignment.item,
+            carry_limit,
+          )
+        }
+        NodeId::Road | NodeId::PowerPlant | NodeId::Transit(_) => 0,
+      };
       self.metrics.units_collected += moved;
       if moved > 0 {
         let hauler = &mut self.world.haulers[hauler_index];
-        hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
-          phase: DispatchPhase::Deliver,
-          ..assignment
-        });
         events.push(format!(
           "dispatch collect {} from {} to {} by hauler-{}",
           moved, assignment.source, assignment.destination, hauler.id
@@ -449,7 +509,9 @@ impl GameState {
         ),
         DispatchReceiverState::Unassigned => continue,
       };
-      if assignment.phase != DispatchPhase::Deliver || position != assignment.destination {
+      if assignment.phase != DispatchPhase::Deliver
+        || !self.nodes_in_transfer_range(position, assignment.destination)
+      {
         continue;
       }
       let carried = self.world.haulers[hauler_index]
@@ -482,11 +544,9 @@ impl GameState {
       };
       self.metrics.units_delivered += delivered;
       if delivered > 0 {
-        let hauler = &mut self.world.haulers[hauler_index];
-        hauler.clear_assignment();
         events.push(format!(
           "dispatch deliver {} to {} by hauler-{}",
-          delivered, assignment.destination, hauler.id
+          delivered, assignment.destination, self.world.haulers[hauler_index].id
         ));
       }
     }
@@ -502,7 +562,7 @@ impl GameState {
         DispatchReceiverState::Unassigned => continue,
       };
       match assignment.phase {
-        DispatchPhase::Retrieve if position == assignment.source => {
+        DispatchPhase::Retrieve if self.nodes_in_transfer_range(position, assignment.source) => {
           let NodeId::Factory(factory_index) = assignment.source else {
             continue;
           };
@@ -516,18 +576,15 @@ impl GameState {
             1,
           );
           if moved > 0 {
-            self.world.haulers[hauler_index].dispatch =
-              DispatchReceiverState::Assigned(DispatchAssignment {
-                phase: DispatchPhase::Deploy,
-                ..assignment
-              });
             events.push(format!(
               "dispatch retrieve {} from factory by hauler-{}",
               moved, self.world.haulers[hauler_index].id
             ));
           }
         }
-        DispatchPhase::Deploy if position == assignment.destination => {
+        DispatchPhase::Deploy
+          if self.nodes_in_transfer_range(position, assignment.destination) =>
+        {
           if self.world.haulers[hauler_index]
             .cargo
             .remove_exact(assignment.item, 1)
@@ -540,7 +597,6 @@ impl GameState {
               .world
               .queued_mutations
               .push(WorldMutation::DeploySource(source_index));
-            self.world.haulers[hauler_index].clear_assignment();
             events.push(format!(
               "dispatch deploy {} queued at {} by hauler-{}",
               assignment.item,
@@ -770,8 +826,15 @@ impl GameState {
     }
   }
 
+  fn nodes_in_transfer_range(&self, left: NodeId, right: NodeId) -> bool {
+    let left = self.world.topology.position(left);
+    let right = self.world.topology.position(right);
+    left == right || adjacent(left, right)
+  }
+
   fn queue_hauler_movements(&mut self, events: &mut Vec<String>) {
     let mut reserved_transit = std::collections::BTreeSet::new();
+    let topology = &self.world.topology;
     for hauler in &mut self.world.haulers {
       let target = match &hauler.dispatch {
         DispatchReceiverState::Assigned(assignment) => match assignment.phase {
@@ -790,7 +853,12 @@ impl GameState {
       };
       hauler.set_target(target);
       let current = hauler.position;
-      let Some(next) = self.world.topology.step_toward(current, target) else {
+      let current_position = topology.position(current);
+      let target_position = topology.position(target);
+      if current_position == target_position || adjacent(current_position, target_position) {
+        continue;
+      }
+      let Some(next) = topology.step_toward(current, target) else {
         events.push(format!(
           "move hauler-{} no available path {} -> {}",
           hauler.id, current, target
@@ -819,6 +887,7 @@ impl GameState {
   pub fn step(&mut self) -> TickSnapshot {
     self.world.tick += 1;
     let mut events = Vec::new();
+    self.advance_receiver_phases(&mut events);
     self.advance_power(&mut events);
     self.advance_mining(&mut events);
     self.refresh_dispatch_intents();
@@ -934,8 +1003,8 @@ mod tests {
   use super::*;
   use factory_content::{
     ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS,
-    COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
-    FRAMES, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
+    COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS,
+    IRON_BARS_FLEET_SCENARIO, FRAMES, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
     PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
   };
 
@@ -1015,16 +1084,16 @@ mod tests {
       metrics.mined.get(IRON_ORE.as_str()).copied().unwrap_or(0)
     );
     assert_eq!(
-      10,
+      20,
       metrics
         .crafted
         .get(IRON_BARS.as_str())
         .copied()
         .unwrap_or(0)
     );
-    assert_eq!(2, metrics.dispatches_assigned);
-    assert_eq!(6, metrics.units_collected);
-    assert_eq!(3, metrics.units_delivered);
+    assert_eq!(3, metrics.dispatches_assigned);
+    assert_eq!(9, metrics.units_collected);
+    assert_eq!(9, metrics.units_delivered);
     assert_eq!(0, metrics.idle_ticks);
   }
 
@@ -1047,7 +1116,7 @@ mod tests {
     assert!(matches!(
       first.haulers[0].dispatch,
       DispatchReceiverState::Assigned(DispatchAssignment {
-        phase: DispatchPhase::Deliver,
+        phase: DispatchPhase::Collect,
         ..
       })
     ));
@@ -1061,7 +1130,7 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert_eq!(NodeId::Factory(0), first.haulers[0].target);
+    assert_eq!(NodeId::Source(0), first.haulers[0].target);
 
     let second = state.step();
     assert!(matches!(
@@ -1071,9 +1140,9 @@ mod tests {
         ..
       })
     ));
-    assert_eq!(NodeId::Factory(0), second.haulers[0].position);
+    assert_eq!(NodeId::Road, second.haulers[0].position);
     assert_eq!(
-      3,
+      0,
       second.haulers[0]
         .cargo
         .items
@@ -1081,16 +1150,19 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert!(!second.factories[0].craft.crafting);
+    assert!(second.factories[0].craft.crafting);
 
     let third = state.step();
     assert!(matches!(
       third.haulers[0].dispatch,
-      DispatchReceiverState::Unassigned
+      DispatchReceiverState::Assigned(DispatchAssignment {
+        phase: DispatchPhase::Collect,
+        ..
+      })
     ));
-    assert_eq!(NodeId::Factory(0), third.haulers[0].position);
+    assert_eq!(NodeId::Road, third.haulers[0].position);
     assert_eq!(
-      0,
+      3,
       third.haulers[0]
         .cargo
         .items
@@ -1098,18 +1170,18 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert!(third.factories[0].craft.crafting);
+    assert!(!third.factories[0].craft.crafting);
 
     let fourth = state.step();
     assert!(matches!(
       fourth.haulers[0].dispatch,
       DispatchReceiverState::Assigned(DispatchAssignment {
-        phase: DispatchPhase::Collect,
+        phase: DispatchPhase::Deliver,
         ..
       })
     ));
     assert_eq!(NodeId::Road, fourth.haulers[0].position);
-    assert_eq!(NodeId::Source(0), fourth.haulers[0].target);
+    assert_eq!(NodeId::Factory(0), fourth.haulers[0].target);
   }
 
   #[test]
@@ -1134,7 +1206,7 @@ mod tests {
   }
 
   #[test]
-  fn route_traversal_takes_multiple_ticks_before_delivery() {
+  fn adjacent_transfer_stops_before_entering_occupied_buildings() {
     let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
 
     let first = state.step();
@@ -1149,23 +1221,28 @@ mod tests {
       .any(|event| event.contains("dispatch deliver")));
 
     let second = state.step();
-    assert_eq!(NodeId::Factory(0), second.haulers[0].position);
+    assert_eq!(NodeId::Road, second.haulers[0].position);
     assert!(second
       .events
       .iter()
-      .all(|event| !event.contains("dispatch deliver")));
-
-    let third = state.step();
-    assert!(third
-      .events
-      .iter()
       .any(|event| event.contains("dispatch deliver")));
+    let factory_position = second
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Factory(0))
+      .unwrap()
+      .position;
+    assert!(second
+      .topology
+      .blocked
+      .contains(&factory_position));
   }
 
   #[test]
-  fn collect_and_deliver_require_the_correct_node() {
+  fn collect_and_deliver_require_transfer_range() {
     let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
-    state.world.haulers[0].position = NodeId::Road;
+    state.world.haulers[0].position = NodeId::Factory(0);
     state.world.haulers[0].dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
       item: IRON_ORE,
       source: NodeId::Source(0),
@@ -1187,9 +1264,9 @@ mod tests {
       .events
       .iter()
       .all(|event| !event.contains("dispatch collect")));
-    assert_eq!(NodeId::Source(0), collect_snapshot.haulers[0].target);
+    assert_eq!(NodeId::Road, collect_snapshot.haulers[0].position);
 
-    state.world.haulers[0].position = NodeId::Road;
+    state.world.haulers[0].position = NodeId::Source(0);
     state.world.haulers[0]
       .cargo
       .insert_exact(&ContentDatabase::starter(), IRON_ORE, 3)
@@ -1215,7 +1292,7 @@ mod tests {
       .events
       .iter()
       .all(|event| !event.contains("dispatch deliver")));
-    assert_eq!(NodeId::Factory(0), deliver_snapshot.haulers[0].target);
+    assert_eq!(NodeId::Road, deliver_snapshot.haulers[0].position);
   }
 
   #[test]
@@ -1297,6 +1374,37 @@ mod tests {
         .unwrap_or(0)
         > 0
     );
+  }
+
+  #[test]
+  fn haulers_retrieve_factory_output_for_nonadjacent_demand() {
+    let mut state =
+      GameState::new(ContentDatabase::starter(), DISTRIBUTED_CHAIN_SCENARIO).unwrap();
+    let snapshots: Vec<_> = (0..100).map(|_| state.step()).collect();
+
+    assert!(snapshots.iter().flat_map(|snapshot| &snapshot.events).any(
+      |event| event.contains("dispatch collect")
+        && event.contains("factory-0")
+        && event.contains("factory-1")
+    ));
+    assert!(
+      snapshots
+        .last()
+        .unwrap()
+        .factories[1]
+        .inventory
+        .items
+        .get(FRAMES.as_str())
+        .copied()
+        .unwrap_or(0)
+        > 0
+    );
+    assert!(snapshots.iter().all(|snapshot| {
+      snapshot.haulers.iter().all(|hauler| {
+        !matches!(hauler.position, NodeId::Factory(_))
+          && !matches!(hauler.position, NodeId::Source(_))
+      })
+    }));
   }
 
   #[test]
@@ -1422,7 +1530,16 @@ mod tests {
     let mut state = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
     let snapshots: Vec<_> = (0..8).map(|_| state.step()).collect();
 
-    assert!(snapshots[..4]
+    let deploy_tick = snapshots
+      .iter()
+      .position(|snapshot| {
+        snapshot
+          .events
+          .iter()
+          .any(|event| event.contains("world deploy mining drill"))
+      })
+      .expect("drill deployment occurs");
+    assert!(snapshots[..deploy_tick]
       .iter()
       .all(|snapshot| snapshot.sources[0].stockpile.items.is_empty()));
     assert!(snapshots
@@ -1526,8 +1643,12 @@ mod tests {
       NodeId::Transit(GridPosition { x: 2, y: 1 }),
       second.haulers[0].position
     );
-    assert_eq!(NodeId::Factory(0), third.haulers[0].position);
-    assert!(fourth.events.iter().any(|event| event.contains("deliver 3")));
+    assert_eq!(
+      NodeId::Transit(GridPosition { x: 2, y: 1 }),
+      third.haulers[0].position
+    );
+    assert!(third.events.iter().any(|event| event.contains("deliver 3")));
+    assert_ne!(NodeId::Factory(0), fourth.haulers[0].position);
     assert_eq!(
       1,
       first.topology.obstacles.len(),

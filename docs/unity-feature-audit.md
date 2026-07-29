@@ -7,17 +7,18 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Content catalog** - working - `factory_content` owns all active resources,
   products, spawnable recipes, physical values, timing, multipliers, manifest
   flags, and spawn flags from `FactoryGameContent.cs`.
-* **Resource containers** - substantial - Rust owns capacity, weight, volume,
-  reservations, insertion, removal, transfer, and eight-neighbor automated
-  insertion. Automated retrieval remains.
+* **Resource containers** - working - Rust owns capacity, weight, volume,
+  reservations, insertion, removal, transfer, eight-neighbor automated
+  insertion, and adjacent receiver retrieval from source or factory containers.
 * **Mining** - working - Rust owns finite and manifest extraction, deployment
   requirements, power gating, depletion, and source/drill teardown.
 * **Production** - working - Rust owns indexed factories, multi-input recipes,
   progress, output capacity, power gating, and an end-to-end five-factory
   mining-drill chain.
 * **Dispatch** - working core - Rust owns collect, deliver, retrieve, deploy,
-  fleet arbitration, in-flight work, phase transitions, and fuel delivery.
-  General object-type targeting and blocked-adjacency rejection remain.
+  fleet arbitration, in-flight work, one-phase-per-tick receiver transitions,
+  fuel delivery, factory-output supply, and occupied-target avoidance. General
+  world-object-type targeting remains.
 * **Movement and pathfinding** - working - Rust owns deterministic A-star
   routing, diagonals, occupied targets, queued movement, recalculation,
   no-path state, and transit conflict arbitration.

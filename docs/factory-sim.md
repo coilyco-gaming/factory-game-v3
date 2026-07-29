@@ -5,7 +5,7 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 ## Crates
 
 - `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion, indexed factories, typed dispatch with multi-hauler arbitration, queued deployment and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, fuel-burning power, and tick stepping.
+- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, fuel-burning power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -18,6 +18,9 @@ The world generalizes to N sources, N factories, and N haulers:
 - every factory has reserved input capacity per ingredient and advertises one dispatch intent per under-buffered input, in item-id order
 - automated inserters pull each required item at rate five from any distinct
   source or factory container in the eight neighboring cells
+- collect and retrieve receivers pull from adjacent source or factory
+  containers, advance exactly one phase per tick, and never enter occupied
+  building cells
 - scenario layouts define grid bounds, object positions, and static obstacles,
   deterministic A-star routing supports cardinal and diagonal movement, allows
   arrival at an occupied target, and reports a sealed route
@@ -35,12 +38,8 @@ The world generalizes to N sources, N factories, and N haulers:
 - finite ore and its empty drill queue ordered deletion after the last stockpile
   is hauled, then release the source's occupied grid cell
 
-Starter scenarios cover single and multi-hauler iron bars, two-input building
-materials, powered ironworks, mining-drill deployment, an obstacle convoy that
-arbitrates a one-cell transit lane, and a five-factory chain that converts iron
-and copper ore into mining drills through adjacent inserters.
-
-The first recipe is intentionally small. It exercises the container and production flow without adding pathfinding or rendering.
+The eight layouts and their proof goals are listed in
+[factory-scenarios.md](factory-scenarios.md).
 
 ## Run
 

@@ -64,6 +64,7 @@ pub const POWERED_IRONWORKS_SCENARIO: ScenarioId = ScenarioId::new("powered-iron
 pub const DEPLOYMENT_DEMO_SCENARIO: ScenarioId = ScenarioId::new("deployment-demo");
 pub const PATHFINDING_DEMO_SCENARIO: ScenarioId = ScenarioId::new("pathfinding-demo");
 pub const PRODUCTION_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("production-chain");
+pub const DISTRIBUTED_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("distributed-chain");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -596,6 +597,37 @@ impl ContentDatabase {
             GridPoint { x: 2, y: 2 },
             GridPoint { x: 3, y: 1 },
           ],
+          power_plant_position: None,
+          obstacles: Vec::new(),
+        },
+      },
+    );
+    scenarios.insert(
+      DISTRIBUTED_CHAIN_SCENARIO,
+      ScenarioDefinition {
+        id: DISTRIBUTED_CHAIN_SCENARIO,
+        name: "Distributed Frame Line".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 48,
+          mining_speed: 6,
+          requires_deployment: false,
+        }],
+        factories: vec![
+          FactorySpec::new(IRON_BARS, 18, 100),
+          FactorySpec::new(FRAMES, 20, 10),
+        ],
+        hauler_count: 2,
+        hauler_capacity: 5,
+        hauler_weight_capacity: 100,
+        hauler_volume_capacity: 100,
+        power: None,
+        layout: LayoutSpec {
+          width: 5,
+          height: 3,
+          source_positions: vec![GridPoint { x: 0, y: 1 }],
+          road_position: GridPoint { x: 1, y: 1 },
+          factory_positions: vec![GridPoint { x: 2, y: 0 }, GridPoint { x: 4, y: 1 }],
           power_plant_position: None,
           obstacles: Vec::new(),
         },

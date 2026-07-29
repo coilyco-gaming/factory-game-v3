@@ -21,9 +21,10 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through seven scenarios, including powered ironworks, drill
+The viewer rotates through eight scenarios, including powered ironworks, drill
 deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
-production chain. Each scene displays:
+production chain. A separated freight line makes haulers carry foundry output
+to a downstream frame factory. Each scene displays:
 
 - active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
@@ -73,7 +74,6 @@ The keyboard mirrors the same typed actions:
 - `ward exec shell-build-web` builds the static Wasm bundle.
 - `ward exec cargo-test` proves the viewer-hosted tick stream matches direct
   simulation stepping.
-
 ## Deferred
 
 Scenario editing, camera controls, production art, recording playback, and

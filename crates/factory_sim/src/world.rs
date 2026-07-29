@@ -3,7 +3,7 @@ use crate::mining::MiningExtractor;
 use crate::power::{PowerPlant, PowerSnapshot};
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
-use factory_content::{ItemId, LayoutSpec, ScenarioDefinition};
+use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
 use serde::{Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -334,7 +334,7 @@ impl FactoryNode {
     }
   }
 
-  pub fn refresh_dispatch(&mut self) {
+  pub fn refresh_dispatch(&mut self, content: &ContentDatabase) {
     let input_buffer = self.input_buffer;
     let inventory = &self.production.inventory;
     self.dispatch.intents = self
@@ -345,6 +345,15 @@ impl FactoryNode {
       .filter(|item| input_buffer.saturating_sub(inventory.count(**item)) > 0)
       .map(|item| DispatchIntent::deliver(*item, NodeId::Road, self.node))
       .collect();
+    let output_item = self.production.recipe.output_item;
+    if self.production.inventory.count(output_item) > 0
+      && !content.item(output_item).can_spawn_game_object
+    {
+      self
+        .dispatch
+        .intents
+        .push(DispatchIntent::collect(output_item, self.node, NodeId::Road));
+    }
   }
 }
 

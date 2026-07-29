@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
-  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
-  POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
+  DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO,
+  PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
@@ -22,7 +22,7 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 7] = [
+const DEMO_SCENARIOS: [ScenarioId; 8] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
@@ -30,6 +30,7 @@ const DEMO_SCENARIOS: [ScenarioId; 7] = [
   DEPLOYMENT_DEMO_SCENARIO,
   PATHFINDING_DEMO_SCENARIO,
   PRODUCTION_CHAIN_SCENARIO,
+  DISTRIBUTED_CHAIN_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -402,7 +403,10 @@ fn spawn_control_deck(commands: &mut Commands) {
       );
       spawn_control_row(
         panel,
-        &[(ControlAction::SelectScenario(6), "DRILL CHAIN")],
+        &[
+          (ControlAction::SelectScenario(6), "DRILL CHAIN"),
+          (ControlAction::SelectScenario(7), "FREIGHT LINE"),
+        ],
       );
       spawn_control_row(
         panel,
@@ -1625,12 +1629,13 @@ mod tests {
       Some(RouteDirection::TowardRoad),
       route_direction(&host.snapshot, NodeId::Factory(0))
     );
-    host.step_once();
-    host.step_once();
-    assert_eq!(
-      Some(RouteDirection::AwayFromRoad),
-      route_direction(&host.snapshot, source)
-    );
+    let mut saw_deploy_route = false;
+    for _ in 0..6 {
+      host.step_once();
+      saw_deploy_route |=
+        route_direction(&host.snapshot, source) == Some(RouteDirection::AwayFromRoad);
+    }
+    assert!(saw_deploy_route);
   }
 
   #[test]
@@ -1706,8 +1711,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(PRODUCTION_CHAIN_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(DISTRIBUTED_CHAIN_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(7, host.scene_revision);
+    assert_eq!(8, host.scene_revision);
   }
 
   #[test]

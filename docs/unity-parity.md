@@ -11,8 +11,9 @@ viewer exposes player-visible state.
   recipes, craft timing, output multipliers, finite deposits, manifest
   resources, and spawnable-object flags. General object construction remains.
 * **Resource containers** - substantial - Rust owns weight and volume capacity,
-  item reservations, exact and partial insert, remove, transfer, and
-  eight-neighbor automated inserter scheduling. Retriever scheduling remains.
+  item reservations, exact and partial insert, remove, transfer,
+  eight-neighbor automated inserters, and adjacent retrievers over source and
+  factory containers.
 * **Mining** - substantial - Rust owns deterministic extraction speed, finite
   depletion, manifest creation, capacity limits, and energy-gated mining.
   Mining drills can be retrieved, transported, deployed, activated, drained
@@ -23,9 +24,10 @@ viewer exposes player-visible state.
   General spawnable output construction remains.
 * **Dispatch and receivers** - substantial - Rust owns typed collect, deliver,
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
-  in-flight demand accounting, receiver assignment, coal delivery to a
-  separate consumer, and lifecycle transitions. General target-type matching,
-  buffer policy, and blocked-adjacency behavior remain.
+  in-flight demand accounting, receiver assignment, coal delivery,
+  factory-output supply, one-phase-per-tick lifecycle transitions, adjacent
+  transfers, and occupied-target avoidance. General world-object-type matching
+  and configurable buffer policy remain.
 * **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
   bounds and layouts, occupied static cells, deterministic A-star search,
   cardinal and diagonal movement with corner rules, blocked-target arrival,
@@ -48,21 +50,5 @@ viewer exposes player-visible state.
 * **Observability** - substantial - snapshots, JSONL, run metrics, events, the
   activity feed, and the Bevy projection cover the active Rust systems.
 
-## Decommission order
-
-1. The agent expands deferred world mutation from deployed source activation to
-   general spawn, move, delete, and teardown operations.
-2. The agent ports general spawnable output construction.
-3. The agent adds player-facing programming and logistics policy controls.
-4. The agent proves every retained C# gameplay component is either covered by a
-   Rust test and viewer surface or explicitly retired as obsolete.
-5. The agent removes `Assets/Scripts/`, `tests.csproj`, and C#-only plugins in a
-   dedicated deletion change after the proof is complete.
-
-Retained visual assets have a separate decision. C# decommission does not
-require deleting reusable textures, materials, or other art.
-
-## Decommission progress
-
-The proof and removed first batch live in
-[csharp-decommission.md](csharp-decommission.md).
+The ordered removal gates and progress links live in
+[unity-decommission-plan.md](unity-decommission-plan.md).
