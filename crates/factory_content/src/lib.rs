@@ -63,6 +63,7 @@ pub const BUILDING_MATERIALS_SCENARIO: ScenarioId = ScenarioId::new("building-ma
 pub const POWERED_IRONWORKS_SCENARIO: ScenarioId = ScenarioId::new("powered-ironworks");
 pub const DEPLOYMENT_DEMO_SCENARIO: ScenarioId = ScenarioId::new("deployment-demo");
 pub const PATHFINDING_DEMO_SCENARIO: ScenarioId = ScenarioId::new("pathfinding-demo");
+pub const PRODUCTION_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("production-chain");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -134,7 +135,7 @@ pub struct LayoutSpec {
   pub height: i32,
   pub source_positions: Vec<GridPoint>,
   pub road_position: GridPoint,
-  pub factory_position: GridPoint,
+  pub factory_positions: Vec<GridPoint>,
   pub power_plant_position: Option<GridPoint>,
   pub obstacles: Vec<GridPoint>,
 }
@@ -151,10 +152,34 @@ impl LayoutSpec {
         })
         .collect(),
       road_position: GridPoint { x: 1, y: 0 },
-      factory_position: GridPoint { x: 2, y: 0 },
+      factory_positions: vec![GridPoint { x: 2, y: 0 }],
       power_plant_position: include_power_plant.then_some(GridPoint { x: 2, y: 1 }),
       obstacles: Vec::new(),
     }
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct FactorySpec {
+  pub product_item: ItemId,
+  pub input_buffer: u32,
+  pub output_buffer: u32,
+  pub starting_items: BTreeMap<ItemId, u32>,
+}
+
+impl FactorySpec {
+  pub fn new(product_item: ItemId, input_buffer: u32, output_buffer: u32) -> Self {
+    Self {
+      product_item,
+      input_buffer,
+      output_buffer,
+      starting_items: BTreeMap::new(),
+    }
+  }
+
+  pub fn with_starting_items(mut self, starting_items: BTreeMap<ItemId, u32>) -> Self {
+    self.starting_items = starting_items;
+    self
   }
 }
 
@@ -176,15 +201,12 @@ pub struct ScenarioDefinition {
   pub id: ScenarioId,
   pub name: String,
   pub sources: Vec<SourceSpec>,
-  pub product_item: ItemId,
+  pub factories: Vec<FactorySpec>,
   pub hauler_count: u32,
   pub hauler_capacity: u32,
   pub hauler_weight_capacity: u32,
   pub hauler_volume_capacity: u32,
-  pub craft_input_buffer: u32,
-  pub craft_output_buffer: u32,
   pub power: Option<PowerSpec>,
-  pub factory_starting_items: BTreeMap<ItemId, u32>,
   pub layout: LayoutSpec,
 }
 
@@ -200,7 +222,7 @@ impl ContentDatabase {
 
     items.insert(
       IRON_ORE,
-      ItemDefinition::new(IRON_ORE, "Iron Ore", 1, 1, 100, 0, 1, BTreeMap::new()),
+      ItemDefinition::new(IRON_ORE, "Iron Ore", 1, 1, 100, 1, 1, BTreeMap::new()),
     );
 
     items.insert(
@@ -211,7 +233,7 @@ impl ContentDatabase {
         1,
         1,
         100,
-        2,
+        1,
         10,
         BTreeMap::from([(IRON_ORE, 3)]),
       ),
@@ -219,7 +241,7 @@ impl ContentDatabase {
 
     items.insert(
       COPPER_ORE,
-      ItemDefinition::new(COPPER_ORE, "Copper Ore", 1, 1, 100, 0, 1, BTreeMap::new()),
+      ItemDefinition::new(COPPER_ORE, "Copper Ore", 1, 1, 100, 1, 1, BTreeMap::new()),
     );
 
     items.insert(
@@ -230,7 +252,7 @@ impl ContentDatabase {
         1,
         1,
         100,
-        2,
+        1,
         10,
         BTreeMap::from([(COPPER_ORE, 3)]),
       ),
@@ -238,12 +260,12 @@ impl ContentDatabase {
 
     items.insert(
       COAL,
-      ItemDefinition::new(COAL, "Coal", 1, 1, 100, 0, 1, BTreeMap::new()),
+      ItemDefinition::new(COAL, "Coal", 1, 1, 100, 1, 1, BTreeMap::new()),
     );
 
     items.insert(
       STONE,
-      ItemDefinition::new(STONE, "Stone", 1, 1, 100, 0, 1, BTreeMap::new())
+      ItemDefinition::new(STONE, "Stone", 1, 1, 100, 1, 1, BTreeMap::new())
         .with_create_from_nothing(),
     );
 
@@ -385,15 +407,12 @@ impl ContentDatabase {
           mining_speed: 3,
           requires_deployment: false,
         }],
-        product_item: IRON_BARS,
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
-        craft_input_buffer: 6,
-        craft_output_buffer: 20,
         power: None,
-        factory_starting_items: BTreeMap::new(),
         layout: LayoutSpec::linear(1, false),
       },
     );
@@ -408,15 +427,12 @@ impl ContentDatabase {
           mining_speed: 6,
           requires_deployment: false,
         }],
-        product_item: IRON_BARS,
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         hauler_count: 3,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
-        craft_input_buffer: 6,
-        craft_output_buffer: 20,
         power: None,
-        factory_starting_items: BTreeMap::new(),
         layout: LayoutSpec::linear(1, false),
       },
     );
@@ -439,15 +455,12 @@ impl ContentDatabase {
             requires_deployment: false,
           },
         ],
-        product_item: BUILDING_MATERIALS,
+        factories: vec![FactorySpec::new(BUILDING_MATERIALS, 4, 20)],
         hauler_count: 2,
         hauler_capacity: 2,
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
-        craft_input_buffer: 4,
-        craft_output_buffer: 20,
         power: None,
-        factory_starting_items: BTreeMap::new(),
         layout: LayoutSpec::linear(2, false),
       },
     );
@@ -470,13 +483,11 @@ impl ContentDatabase {
             requires_deployment: false,
           },
         ],
-        product_item: IRON_BARS,
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
-        craft_input_buffer: 6,
-        craft_output_buffer: 20,
         power: Some(PowerSpec {
           fuel_item: COAL,
           initial_fuel: 2,
@@ -488,7 +499,6 @@ impl ContentDatabase {
           dispatch_cost: 1,
           production_cost: 2,
         }),
-        factory_starting_items: BTreeMap::new(),
         layout: LayoutSpec::linear(2, true),
       },
     );
@@ -503,15 +513,15 @@ impl ContentDatabase {
           mining_speed: 3,
           requires_deployment: true,
         }],
-        product_item: IRON_BARS,
+        factories: vec![
+          FactorySpec::new(IRON_BARS, 6, 100)
+            .with_starting_items(BTreeMap::from([(MINING_DRILL, 1)])),
+        ],
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 100,
         hauler_volume_capacity: 100,
-        craft_input_buffer: 6,
-        craft_output_buffer: 100,
         power: None,
-        factory_starting_items: BTreeMap::from([(MINING_DRILL, 1)]),
         layout: LayoutSpec::linear(1, false),
       },
     );
@@ -526,23 +536,68 @@ impl ContentDatabase {
           mining_speed: 6,
           requires_deployment: false,
         }],
-        product_item: IRON_BARS,
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
-        craft_input_buffer: 6,
-        craft_output_buffer: 20,
         power: None,
-        factory_starting_items: BTreeMap::new(),
         layout: LayoutSpec {
           width: 4,
           height: 3,
           source_positions: vec![GridPoint { x: 0, y: 1 }],
           road_position: GridPoint { x: 1, y: 0 },
-          factory_position: GridPoint { x: 3, y: 1 },
+          factory_positions: vec![GridPoint { x: 3, y: 1 }],
           power_plant_position: None,
           obstacles: vec![GridPoint { x: 1, y: 1 }],
+        },
+      },
+    );
+    scenarios.insert(
+      PRODUCTION_CHAIN_SCENARIO,
+      ScenarioDefinition {
+        id: PRODUCTION_CHAIN_SCENARIO,
+        name: "Drill Production Chain".into(),
+        sources: vec![
+          SourceSpec {
+            item: IRON_ORE,
+            deposit: 180,
+            mining_speed: 12,
+            requires_deployment: false,
+          },
+          SourceSpec {
+            item: COPPER_ORE,
+            deposit: 90,
+            mining_speed: 8,
+            requires_deployment: false,
+          },
+        ],
+        factories: vec![
+          FactorySpec::new(IRON_BARS, 30, 100),
+          FactorySpec::new(COPPER_BARS, 30, 100),
+          FactorySpec::new(FRAMES, 40, 20),
+          FactorySpec::new(MOTORS, 40, 20),
+          FactorySpec::new(MINING_DRILL, 20, 5),
+        ],
+        hauler_count: 0,
+        hauler_capacity: 5,
+        hauler_weight_capacity: 100,
+        hauler_volume_capacity: 100,
+        power: None,
+        layout: LayoutSpec {
+          width: 4,
+          height: 4,
+          source_positions: vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 0, y: 3 }],
+          road_position: GridPoint { x: 3, y: 3 },
+          factory_positions: vec![
+            GridPoint { x: 1, y: 1 },
+            GridPoint { x: 1, y: 3 },
+            GridPoint { x: 2, y: 1 },
+            GridPoint { x: 2, y: 2 },
+            GridPoint { x: 3, y: 1 },
+          ],
+          power_plant_position: None,
+          obstacles: Vec::new(),
         },
       },
     );
@@ -653,6 +708,12 @@ mod tests {
         building_materials.craft_time
       )
     );
+    for resource in [IRON_ORE, COPPER_ORE, COAL, STONE] {
+      assert_eq!(1, content.item(resource).craft_time);
+    }
+    for bars in [IRON_BARS, COPPER_BARS] {
+      assert_eq!(1, content.item(bars).craft_time);
+    }
     let frames = content.item(FRAMES);
     assert_eq!(
       (10, 10, 20, 5),

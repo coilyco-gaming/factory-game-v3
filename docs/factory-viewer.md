@@ -21,13 +21,14 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through six scenarios, including powered ironworks, drill
-deployment, and a collision-arbitrated obstacle convoy. Each scene displays:
+The viewer rotates through seven scenarios, including powered ironworks, drill
+deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
+production chain. Each scene displays:
 
 - active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
-- source and factory inventory plus dormant, draining, and exhausted lifecycle
-- factory craft progress
+- source and per-factory inventory plus dormant, draining, and exhausted lifecycle
+- independent craft progress and output item for every factory
 - coal-plant fuel, power-grid energy, generation, consumption, and starvation
 - current tick, run metrics, and a bounded rolling activity feed
 
@@ -76,5 +77,4 @@ The keyboard mirrors the same typed actions:
 ## Deferred
 
 Scenario editing, camera controls, production art, recording playback, and
-gameplay editing remain deferred. The viewer is an observability surface
-before it becomes a game client.
+gameplay editing remain deferred while the viewer is an observability surface.

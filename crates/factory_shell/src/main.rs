@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
   IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
-  POWERED_IRONWORKS_SCENARIO,
+  POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
@@ -22,13 +22,14 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 6] = [
+const DEMO_SCENARIOS: [ScenarioId; 7] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
   POWERED_IRONWORKS_SCENARIO,
   DEPLOYMENT_DEMO_SCENARIO,
   PATHFINDING_DEMO_SCENARIO,
+  PRODUCTION_CHAIN_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -281,6 +282,7 @@ struct CargoBadge(u8);
 
 #[derive(Component)]
 struct CraftGaugeFill {
+  node: NodeId,
   left: f32,
   max_width: f32,
 }
@@ -400,6 +402,10 @@ fn spawn_control_deck(commands: &mut Commands) {
       );
       spawn_control_row(
         panel,
+        &[(ControlAction::SelectScenario(6), "DRILL CHAIN")],
+      );
+      spawn_control_row(
+        panel,
         &[
           (ControlAction::SelectScenario(0), "IRON"),
           (ControlAction::SelectScenario(1), "FLEET"),
@@ -475,7 +481,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
     let size = match node.id {
       NodeId::Source(_) => Vec2::new(124.0, 74.0),
       NodeId::Road => Vec2::new(100.0, 34.0),
-      NodeId::Factory => Vec2::new(132.0, 82.0),
+      NodeId::Factory(_) => Vec2::new(132.0, 82.0),
       NodeId::PowerPlant => Vec2::new(132.0, 82.0),
       NodeId::Transit(_) => Vec2::new(28.0, 28.0),
     };
@@ -496,8 +502,8 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeLabel(node.id),
       ProjectionEntity,
     ));
-    if node.id == NodeId::Factory {
-      spawn_craft_gauge(commands, snapshot, position);
+    if matches!(node.id, NodeId::Factory(_)) {
+      spawn_craft_gauge(commands, snapshot, node.id, position);
     } else if node.id == NodeId::PowerPlant {
       spawn_power_gauge(commands, snapshot, position);
     }
@@ -537,12 +543,20 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   }
 }
 
-fn spawn_craft_gauge(commands: &mut Commands, snapshot: &TickSnapshot, factory: Vec2) {
+fn spawn_craft_gauge(
+  commands: &mut Commands,
+  snapshot: &TickSnapshot,
+  node: NodeId,
+  factory: Vec2,
+) {
+  let Some(factory_snapshot) = snapshot.factories.iter().find(|factory| factory.node == node) else {
+    return;
+  };
   let y = factory.y - 28.0;
   let left = factory.x - CRAFT_GAUGE_WIDTH / 2.0;
   let progress = craft_progress_fraction(
-    snapshot.factory.craft.craft_progress,
-    snapshot.factory.craft.craft_time,
+    factory_snapshot.craft.craft_progress,
+    factory_snapshot.craft.craft_time,
   );
   let width = CRAFT_GAUGE_WIDTH * progress;
   commands.spawn((
@@ -562,6 +576,7 @@ fn spawn_craft_gauge(commands: &mut Commands, snapshot: &TickSnapshot, factory: 
       Visibility::Hidden
     },
     CraftGaugeFill {
+      node,
       left,
       max_width: CRAFT_GAUGE_WIDTH,
     },
@@ -845,11 +860,17 @@ fn project_craft_gauge(
     return;
   }
 
-  let progress = craft_progress_fraction(
-    host.snapshot.factory.craft.craft_progress,
-    host.snapshot.factory.craft.craft_time,
-  );
   for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
+    let Some(factory) = host
+      .snapshot
+      .factories
+      .iter()
+      .find(|factory| factory.node == gauge.node)
+    else {
+      continue;
+    };
+    let progress =
+      craft_progress_fraction(factory.craft.craft_progress, factory.craft.craft_time);
     let width = gauge.max_width * progress;
     sprite.custom_size = Some(Vec2::new(width, 6.0));
     transform.translation.x = gauge.left + width / 2.0;
@@ -916,7 +937,8 @@ fn emit_output_chips(
     .topology
     .nodes
     .iter()
-    .find(|node| node.id == NodeId::Factory)
+    .filter(|node| matches!(node.id, NodeId::Factory(_)))
+    .last()
     .map(|node| grid_to_world(node.position))
   else {
     return;
@@ -1193,9 +1215,19 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
       })
       .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
     NodeId::Road => NodeActivity::Idle,
-    NodeId::Factory if snapshot.factory.craft.crafting => NodeActivity::Crafting,
-    NodeId::Factory if !snapshot.factory.dispatch.intents.is_empty() => NodeActivity::Demanding,
-    NodeId::Factory => NodeActivity::Idle,
+    NodeId::Factory(_) => snapshot
+      .factories
+      .iter()
+      .find(|factory| factory.node == node)
+      .map_or(NodeActivity::Idle, |factory| {
+        if factory.craft.crafting {
+          NodeActivity::Crafting
+        } else if !factory.dispatch.intents.is_empty() {
+          NodeActivity::Demanding
+        } else {
+          NodeActivity::Idle
+        }
+      }),
     NodeId::PowerPlant => snapshot.power.as_ref().map_or(NodeActivity::Idle, |power| {
       if snapshot
         .events
@@ -1236,9 +1268,9 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::Source(_), NodeActivity::Ready) => NODE_SOURCE_READY,
     (NodeId::Source(_), _) => NODE_SOURCE_IDLE,
     (NodeId::Road, _) => NODE_ROAD,
-    (NodeId::Factory, NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
-    (NodeId::Factory, NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
-    (NodeId::Factory, _) => NODE_FACTORY_IDLE,
+    (NodeId::Factory(_), NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
+    (NodeId::Factory(_), NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
+    (NodeId::Factory(_), _) => NODE_FACTORY_IDLE,
     (NodeId::PowerPlant, NodeActivity::Powering) => NODE_POWER_ACTIVE,
     (NodeId::PowerPlant, NodeActivity::Ready) => NODE_POWER_CHARGED,
     (NodeId::PowerPlant, _) => NODE_POWER_IDLE,
@@ -1349,17 +1381,26 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       })
       .unwrap_or_else(|| node.to_string()),
     NodeId::Road => "road".into(),
-    NodeId::Factory => format!(
-      "factory\ninventory: {}\ncraft: {}/{} {}",
-      format_items(&snapshot.factory.inventory.items),
-      snapshot.factory.craft.craft_progress,
-      snapshot.factory.craft.craft_time,
-      if snapshot.factory.craft.crafting {
-        "active"
-      } else {
-        "idle"
-      }
-    ),
+    NodeId::Factory(_) => snapshot
+      .factories
+      .iter()
+      .find(|factory| factory.node == node)
+      .map(|factory| {
+        format!(
+          "{}\noutput: {}\nstock: {}\ncraft: {}/{} {}",
+          node,
+          factory.craft.output_item,
+          format_items(&factory.inventory.items),
+          factory.craft.craft_progress,
+          factory.craft.craft_time,
+          if factory.craft.crafting {
+            "active"
+          } else {
+            "idle"
+          }
+        )
+      })
+      .unwrap_or_else(|| node.to_string()),
     NodeId::PowerPlant => snapshot
       .power
       .as_ref()
@@ -1542,7 +1583,7 @@ mod tests {
         .haulers
         .iter()
         .any(|hauler| hauler_activity(hauler) == HaulerActivity::Delivering);
-      saw_crafting |= node_activity(&host.snapshot, NodeId::Factory) == NodeActivity::Crafting;
+      saw_crafting |= node_activity(&host.snapshot, NodeId::Factory(0)) == NodeActivity::Crafting;
     }
 
     assert!(saw_ready_source);
@@ -1564,7 +1605,7 @@ mod tests {
       saw_toward_road |=
         route_direction(&host.snapshot, source) == Some(RouteDirection::TowardRoad);
       saw_away_from_road |=
-        route_direction(&host.snapshot, NodeId::Factory) == Some(RouteDirection::AwayFromRoad);
+        route_direction(&host.snapshot, NodeId::Factory(0)) == Some(RouteDirection::AwayFromRoad);
     }
 
     assert!(saw_toward_road);
@@ -1582,7 +1623,7 @@ mod tests {
     host.step_once();
     assert_eq!(
       Some(RouteDirection::TowardRoad),
-      route_direction(&host.snapshot, NodeId::Factory)
+      route_direction(&host.snapshot, NodeId::Factory(0))
     );
     host.step_once();
     host.step_once();
@@ -1663,8 +1704,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(PATHFINDING_DEMO_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(PRODUCTION_CHAIN_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(6, host.scene_revision);
+    assert_eq!(7, host.scene_revision);
   }
 
   #[test]

@@ -11,15 +11,16 @@ viewer exposes player-visible state.
   recipes, craft timing, output multipliers, finite deposits, manifest
   resources, and spawnable-object flags. General object construction remains.
 * **Resource containers** - substantial - Rust owns weight and volume capacity,
-  item reservations, exact and partial insert, remove, and transfer behavior.
-  Inserter and retriever scheduling remain.
+  item reservations, exact and partial insert, remove, transfer, and
+  eight-neighbor automated inserter scheduling. Retriever scheduling remains.
 * **Mining** - substantial - Rust owns deterministic extraction speed, finite
   depletion, manifest creation, capacity limits, and energy-gated mining.
   Mining drills can be retrieved, transported, deployed, activated, drained
   after ore depletion, and automatically torn down.
-* **Production** - substantial - Rust owns multi-input recipes, input
-  consumption, craft progress, output multipliers, output capacity, and
-  energy-gated crafting. Multiple factories and spawnable outputs remain.
+* **Production** - substantial - Rust owns indexed factories, multi-input
+  recipes, input consumption, craft progress, output multipliers, output
+  capacity, energy-gated crafting, and multi-building production chains.
+  General spawnable output construction remains.
 * **Dispatch and receivers** - substantial - Rust owns typed collect, deliver,
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
   in-flight demand accounting, receiver assignment, coal delivery to a
@@ -51,7 +52,7 @@ viewer exposes player-visible state.
 
 1. The agent expands deferred world mutation from deployed source activation to
    general spawn, move, delete, and teardown operations.
-2. The agent ports multi-building production chains.
+2. The agent ports general spawnable output construction.
 3. The agent adds player-facing programming and logistics policy controls.
 4. The agent proves every retained C# gameplay component is either covered by a
    Rust test and viewer surface or explicitly retired as obsolete.

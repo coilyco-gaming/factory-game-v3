@@ -37,3 +37,29 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
   Unity definitions stay out of scope.
 - Next - validate and land the catalog, then use it as the fixed input for the
   multi-factory production graph.
+
+### 2026-07-29 - multi-factory production
+
+- Done - one indexed model now owns every factory in content, topology, world
+  state, snapshots, dispatch demand, production stepping, and Bevy projection.
+- Evidence - the drill-chain scenario deterministically converts iron and
+  copper ore through five factories into mining drills. Tests prove both the
+  complete chain and rejection of nonadjacent resource containers.
+- Decision - automated inserters use Unity's eight-neighbor search and rate of
+  five, with one energy charged per transfer attempt when a power grid exists.
+- Correction - active Unity raw resources and bar recipes use the default
+  one-tick craft time. Rust values now match that source instead of the earlier
+  two-tick demonstration approximation.
+- Next - validate the complete gate, let Trunk finish the Wasm rebuild, and land
+  the player-visible slice.
+
+### 2026-07-29 - multi-factory validation
+
+- Evidence - the complete pre-commit suite and all 44 Rust tests pass. Trunk
+  completed the release Wasm build and applied the new distribution to the
+  live local server.
+- Decision - this slice is a remote checkpoint because it changes the snapshot
+  schema and exposes a new viewer scenario. Later parity work builds only on
+  the indexed factory model.
+- Next - commit and push the slice to canonical main, then port adjacent
+  retrieval and general dispatch target policy.

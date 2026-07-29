@@ -12,7 +12,7 @@ use std::fmt;
 pub enum NodeId {
   Source(u8),
   Road,
-  Factory,
+  Factory(u8),
   PowerPlant,
   Transit(GridPosition),
 }
@@ -22,7 +22,7 @@ impl fmt::Display for NodeId {
     match self {
       Self::Source(index) => write!(f, "source-{index}"),
       Self::Road => f.write_str("road"),
-      Self::Factory => f.write_str("factory"),
+      Self::Factory(index) => write!(f, "factory-{index}"),
       Self::PowerPlant => f.write_str("power-plant"),
       Self::Transit(position) => write!(f, "transit-{}-{}", position.x, position.y),
     }
@@ -62,7 +62,8 @@ impl Topology {
   }
 
   pub fn from_layout(layout: &LayoutSpec) -> Self {
-    let mut nodes = Vec::with_capacity(layout.source_positions.len() + 3);
+    let mut nodes =
+      Vec::with_capacity(layout.source_positions.len() + layout.factory_positions.len() + 2);
     for (index, position) in layout.source_positions.iter().enumerate() {
       nodes.push(TopologyNode {
         id: NodeId::Source(index as u8),
@@ -79,13 +80,15 @@ impl Topology {
         y: layout.road_position.y,
       },
     });
-    nodes.push(TopologyNode {
-      id: NodeId::Factory,
-      position: GridPosition {
-        x: layout.factory_position.x,
-        y: layout.factory_position.y,
-      },
-    });
+    for (index, position) in layout.factory_positions.iter().enumerate() {
+      nodes.push(TopologyNode {
+        id: NodeId::Factory(index as u8),
+        position: GridPosition {
+          x: position.x,
+          y: position.y,
+        },
+      });
+    }
     if let Some(position) = layout.power_plant_position {
       nodes.push(TopologyNode {
         id: NodeId::PowerPlant,
@@ -315,14 +318,16 @@ impl SourceNode {
 
 #[derive(Clone, Debug)]
 pub struct FactoryNode {
+  pub node: NodeId,
   pub production: FactoryProduction,
   pub dispatch: DispatchBoard,
   pub input_buffer: u32,
 }
 
 impl FactoryNode {
-  pub fn new(production: FactoryProduction, input_buffer: u32) -> Self {
+  pub fn new(node: NodeId, production: FactoryProduction, input_buffer: u32) -> Self {
     Self {
+      node,
       production,
       dispatch: DispatchBoard::new(),
       input_buffer,
@@ -338,7 +343,7 @@ impl FactoryNode {
       .inputs
       .keys()
       .filter(|item| input_buffer.saturating_sub(inventory.count(**item)) > 0)
-      .map(|item| DispatchIntent::deliver(*item, NodeId::Road, NodeId::Factory))
+      .map(|item| DispatchIntent::deliver(*item, NodeId::Road, self.node))
       .collect();
   }
 }
@@ -391,6 +396,7 @@ pub struct SourceSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct FactorySnapshot {
+  pub node: NodeId,
   pub inventory: crate::resources::InventorySnapshot,
   pub craft: CraftSnapshot,
   pub dispatch: DispatchBoard,
@@ -430,7 +436,7 @@ pub struct TickSnapshot {
   pub topology: TopologySnapshot,
   pub sources: Vec<SourceSnapshot>,
   pub haulers: Vec<HaulerSnapshot>,
-  pub factory: FactorySnapshot,
+  pub factories: Vec<FactorySnapshot>,
   pub power: Option<PowerSnapshot>,
   pub events: Vec<String>,
 }
@@ -454,7 +460,7 @@ pub struct WorldState {
   pub scenario: ScenarioDefinition,
   pub sources: Vec<SourceNode>,
   pub haulers: Vec<Hauler>,
-  pub factory: FactoryNode,
+  pub factories: Vec<FactoryNode>,
   pub power: Option<PowerPlant>,
   pub topology: Topology,
   pub queued_mutations: Vec<WorldMutation>,
@@ -469,8 +475,8 @@ mod tests {
   fn astar_uses_the_open_road_for_the_linear_layout() {
     let topology = Topology::for_sources(1, false);
     assert_eq!(
-      Some(vec![NodeId::Source(0), NodeId::Road, NodeId::Factory]),
-      topology.path(NodeId::Source(0), NodeId::Factory)
+      Some(vec![NodeId::Source(0), NodeId::Road, NodeId::Factory(0)]),
+      topology.path(NodeId::Source(0), NodeId::Factory(0))
     );
   }
 
@@ -481,7 +487,7 @@ mod tests {
       height: 3,
       source_positions: vec![GridPoint { x: 0, y: 1 }],
       road_position: GridPoint { x: 1, y: 0 },
-      factory_position: GridPoint { x: 3, y: 1 },
+      factory_positions: vec![GridPoint { x: 3, y: 1 }],
       power_plant_position: None,
       obstacles: vec![GridPoint { x: 1, y: 1 }],
     });
@@ -490,9 +496,9 @@ mod tests {
         NodeId::Source(0),
         NodeId::Road,
         NodeId::Transit(GridPosition { x: 2, y: 1 }),
-        NodeId::Factory,
+        NodeId::Factory(0),
       ]),
-      topology.path(NodeId::Source(0), NodeId::Factory)
+      topology.path(NodeId::Source(0), NodeId::Factory(0))
     );
   }
 
@@ -503,6 +509,6 @@ mod tests {
       GridPosition { x: 0, y: 1 },
       GridPosition { x: 1, y: 1 },
     ]);
-    assert_eq!(None, topology.path(NodeId::Source(0), NodeId::Factory));
+    assert_eq!(None, topology.path(NodeId::Source(0), NodeId::Factory(0)));
   }
 }

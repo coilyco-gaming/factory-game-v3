@@ -30,6 +30,7 @@ pub use world::{
 pub enum SimulationError {
   UnknownScenario(ScenarioId),
   ScenarioMissingSources(ScenarioId),
+  ScenarioMissingFactories(ScenarioId),
   ScenarioLayoutMismatch(ScenarioId),
   RecipeMissingIngredients(ItemId),
 }
@@ -40,6 +41,9 @@ impl fmt::Display for SimulationError {
       Self::UnknownScenario(id) => write!(f, "unknown scenario: {id}"),
       Self::ScenarioMissingSources(id) => {
         write!(f, "scenario {id} must define at least one source")
+      }
+      Self::ScenarioMissingFactories(id) => {
+        write!(f, "scenario {id} must define at least one factory")
       }
       Self::ScenarioLayoutMismatch(id) => {
         write!(f, "scenario {id} layout does not match its world objects")
@@ -59,6 +63,12 @@ pub struct GameState {
   metrics: RunMetrics,
 }
 
+#[derive(Copy, Clone)]
+enum AdjacentProvider {
+  Source(usize),
+  Factory(usize),
+}
+
 impl GameState {
   pub fn new(content: ContentDatabase, scenario_id: ScenarioId) -> Result<Self, SimulationError> {
     let scenario = content
@@ -69,34 +79,48 @@ impl GameState {
     if scenario.sources.is_empty() {
       return Err(SimulationError::ScenarioMissingSources(scenario_id));
     }
+    if scenario.factories.is_empty() {
+      return Err(SimulationError::ScenarioMissingFactories(scenario_id));
+    }
     if scenario.sources.len() != scenario.layout.source_positions.len()
+      || scenario.factories.len() != scenario.layout.factory_positions.len()
       || scenario.power.is_some() != scenario.layout.power_plant_position.is_some()
     {
       return Err(SimulationError::ScenarioLayoutMismatch(scenario_id));
     }
-    let product = content.item(scenario.product_item).clone();
-    if product.ingredients.is_empty() {
-      return Err(SimulationError::RecipeMissingIngredients(product.id));
-    }
-    let recipe = RecipeRuntime {
-      inputs: product.ingredients.clone(),
-      output_item: product.id,
-      output_quantity: product.craft_output,
-      craft_time: product.craft_time.max(1),
-    };
-
-    let mut factory_inventory = Inventory::new(1024, 1024);
-    for input_item in recipe.inputs.keys() {
-      factory_inventory.reserve(*input_item, scenario.craft_input_buffer);
-    }
-    factory_inventory.reserve(recipe.output_item, scenario.craft_output_buffer);
-    for (item, quantity) in &scenario.factory_starting_items {
-      factory_inventory.reserve(*item, *quantity);
-      factory_inventory
-        .insert_exact(&content, *item, *quantity)
-        .expect("scenario starting inventory fits the factory");
-    }
-    let production = FactoryProduction::new(factory_inventory, recipe);
+    let factories = scenario
+      .factories
+      .iter()
+      .enumerate()
+      .map(|(index, spec)| {
+        let product = content.item(spec.product_item).clone();
+        if product.ingredients.is_empty() {
+          return Err(SimulationError::RecipeMissingIngredients(product.id));
+        }
+        let recipe = RecipeRuntime {
+          inputs: product.ingredients.clone(),
+          output_item: product.id,
+          output_quantity: product.craft_output,
+          craft_time: product.craft_time.max(1),
+        };
+        let mut inventory = Inventory::new(1024, 1024);
+        for input_item in recipe.inputs.keys() {
+          inventory.reserve(*input_item, spec.input_buffer);
+        }
+        inventory.reserve(recipe.output_item, spec.output_buffer);
+        for (item, quantity) in &spec.starting_items {
+          inventory.reserve(*item, *quantity);
+          inventory
+            .insert_exact(&content, *item, *quantity)
+            .expect("scenario starting inventory fits its factory");
+        }
+        Ok(FactoryNode::new(
+          NodeId::Factory(index as u8),
+          FactoryProduction::new(inventory, recipe),
+          spec.input_buffer,
+        ))
+      })
+      .collect::<Result<Vec<_>, SimulationError>>()?;
 
     let sources = scenario
       .sources
@@ -136,7 +160,7 @@ impl GameState {
         tick: 0,
         sources,
         haulers,
-        factory: FactoryNode::new(production, scenario.craft_input_buffer),
+        factories,
         power,
         topology: Topology::from_layout(&scenario.layout),
         queued_mutations: Vec::new(),
@@ -189,35 +213,34 @@ impl GameState {
       let destination = if Some(source.item) == power_fuel {
         NodeId::PowerPlant
       } else {
-        NodeId::Factory
+        self
+          .world
+          .factories
+          .iter()
+          .find(|factory| factory.production.recipe.inputs.contains_key(&source.item))
+          .map_or(NodeId::Factory(0), |factory| factory.node)
       };
       source.refresh_dispatch(destination);
     }
-    self.world.factory.refresh_dispatch();
+    for factory in &mut self.world.factories {
+      factory.refresh_dispatch();
+    }
     for source in self
       .world
       .sources
       .iter()
       .filter(|source| !source.deployed && !source.exhausted)
     {
-      if self
+      if let Some(factory) = self
         .world
-        .factory
-        .production
-        .inventory
-        .count(MINING_DRILL)
-        > 0
+        .factories
+        .iter_mut()
+        .find(|factory| factory.production.inventory.count(MINING_DRILL) > 0)
       {
-        self
-          .world
-          .factory
+        factory
           .dispatch
           .intents
-          .push(DispatchIntent::retrieve(
-            MINING_DRILL,
-            NodeId::Factory,
-            source.node,
-          ));
+          .push(DispatchIntent::retrieve(MINING_DRILL, factory.node, source.node));
       }
     }
     if let Some(power) = &mut self.world.power {
@@ -230,18 +253,22 @@ impl GameState {
   fn assign_dispatch(&mut self, events: &mut Vec<String>) {
     let demands: Vec<(ItemId, NodeId, u32, u32)> = self
       .world
-      .factory
-      .dispatch
-      .intents
+      .factories
       .iter()
-      .filter(|intent| intent.verb == DispatchVerb::Deliver)
-      .map(|intent| {
-        (
-          intent.item,
-          NodeId::Factory,
-          self.world.factory.input_buffer,
-          self.world.factory.production.inventory.count(intent.item),
-        )
+      .flat_map(|factory| {
+        factory
+          .dispatch
+          .intents
+          .iter()
+          .filter(|intent| intent.verb == DispatchVerb::Deliver)
+          .map(|intent| {
+            (
+              intent.item,
+              factory.node,
+              factory.input_buffer,
+              factory.production.inventory.count(intent.item),
+            )
+          })
       })
       .collect();
     let mut demands = demands;
@@ -264,10 +291,9 @@ impl GameState {
   fn assign_deployments(&mut self, events: &mut Vec<String>) {
     let intents = self
       .world
-      .factory
-      .dispatch
-      .intents
+      .factories
       .iter()
+      .flat_map(|factory| factory.dispatch.intents.iter())
       .filter(|intent| intent.verb == DispatchVerb::Retrieve)
       .cloned()
       .collect::<Vec<_>>();
@@ -430,12 +456,17 @@ impl GameState {
         .cargo
         .count(assignment.item);
       let delivered = match assignment.destination {
-        NodeId::Factory => self.world.haulers[hauler_index].cargo.transfer_up_to(
-          &self.content,
-          &mut self.world.factory.production.inventory,
-          assignment.item,
-          carried,
-        ),
+        NodeId::Factory(factory_index) => {
+          let Some(factory) = self.world.factories.get_mut(factory_index as usize) else {
+            continue;
+          };
+          self.world.haulers[hauler_index].cargo.transfer_up_to(
+            &self.content,
+            &mut factory.production.inventory,
+            assignment.item,
+            carried,
+          )
+        }
         NodeId::PowerPlant => {
           let Some(power) = &mut self.world.power else {
             continue;
@@ -472,7 +503,13 @@ impl GameState {
       };
       match assignment.phase {
         DispatchPhase::Retrieve if position == assignment.source => {
-          let moved = self.world.factory.production.inventory.transfer_up_to(
+          let NodeId::Factory(factory_index) = assignment.source else {
+            continue;
+          };
+          let Some(factory) = self.world.factories.get_mut(factory_index as usize) else {
+            continue;
+          };
+          let moved = factory.production.inventory.transfer_up_to(
             &self.content,
             &mut self.world.haulers[hauler_index].cargo,
             assignment.item,
@@ -604,20 +641,111 @@ impl GameState {
     }
   }
 
+  fn advance_inserters(&mut self, events: &mut Vec<String>) {
+    const INSERTION_RATE: u32 = 5;
+    let mut transfers = Vec::new();
+    for (target_index, factory) in self.world.factories.iter().enumerate() {
+      let target_position = self.world.topology.position(factory.node);
+      for item in factory.production.recipe.inputs.keys().copied() {
+        for (source_index, source) in self.world.sources.iter().enumerate() {
+          let source_position = self.world.topology.position(source.node);
+          if adjacent(source_position, target_position) && source.stockpile.count(item) > 0 {
+            transfers.push((target_index, item, AdjacentProvider::Source(source_index)));
+          }
+        }
+        for (source_index, source) in self.world.factories.iter().enumerate() {
+          if source_index == target_index {
+            continue;
+          }
+          let source_position = self.world.topology.position(source.node);
+          if adjacent(source_position, target_position)
+            && source.production.inventory.count(item) > 0
+          {
+            transfers.push((
+              target_index,
+              item,
+              AdjacentProvider::Factory(source_index),
+            ));
+          }
+        }
+      }
+    }
+
+    for (target_index, item, provider) in transfers {
+      let Some(target) = self.world.factories.get(target_index) else {
+        continue;
+      };
+      let needed = target
+        .input_buffer
+        .saturating_sub(target.production.inventory.count(item));
+      if needed == 0 {
+        continue;
+      }
+      let consumer = format!("inserter-{}", target.node);
+      if !self.consume_power(1, &consumer, events) {
+        continue;
+      }
+      let quantity = INSERTION_RATE.min(needed);
+      let (moved, from, to) = match provider {
+        AdjacentProvider::Source(source_index) => {
+          let source = &mut self.world.sources[source_index];
+          let target = &mut self.world.factories[target_index];
+          (
+            source.stockpile.transfer_up_to(
+              &self.content,
+              &mut target.production.inventory,
+              item,
+              quantity,
+            ),
+            source.node,
+            target.node,
+          )
+        }
+        AdjacentProvider::Factory(source_index) => {
+          let (source, target) = two_factories_mut(
+            &mut self.world.factories,
+            source_index,
+            target_index,
+          );
+          (
+            source.production.inventory.transfer_up_to(
+              &self.content,
+              &mut target.production.inventory,
+              item,
+              quantity,
+            ),
+            source.node,
+            target.node,
+          )
+        }
+      };
+      if moved > 0 {
+        events.push(format!("inserter move {item} +{moved} {from} -> {to}"));
+      }
+    }
+  }
+
   fn advance_production(&mut self, events: &mut Vec<String>) {
     let production_cost = self
       .world
       .power
       .as_ref()
       .map_or(0, |power| power.spec.production_cost);
-    if self.world.factory.production.wants_power()
-      && !self.consume_power(production_cost, "factory", events)
-    {
-      return;
+    for factory_index in 0..self.world.factories.len() {
+      let wants_power = self.world.factories[factory_index]
+        .production
+        .wants_power();
+      let node = self.world.factories[factory_index].node;
+      if wants_power
+        && !self.consume_power(production_cost, &node.to_string(), events)
+      {
+        continue;
+      }
+      let factory = &mut self.world.factories[factory_index];
+      let produced = factory.production.advance(&self.content, events);
+      let output_item = factory.production.recipe.output_item;
+      self.metrics.record_crafted(output_item, produced);
     }
-    let produced = self.world.factory.production.advance(&self.content, events);
-    let output_item = self.world.factory.production.recipe.output_item;
-    self.metrics.record_crafted(output_item, produced);
   }
 
   fn advance_power(&mut self, events: &mut Vec<String>) {
@@ -656,7 +784,7 @@ impl GameState {
           if hauler.cargo.is_empty() {
             hauler.position
           } else {
-            NodeId::Factory
+            NodeId::Factory(0)
           }
         }
       };
@@ -699,6 +827,7 @@ impl GameState {
     self.deliver(&mut events);
     self.retrieve_and_deploy(&mut events);
     self.queue_source_lifecycle();
+    self.advance_inserters(&mut events);
     self.advance_production(&mut events);
     self.queue_hauler_movements(&mut events);
     self.apply_world_mutations(&mut events);
@@ -756,14 +885,39 @@ impl GameState {
           dispatch: hauler.dispatch.clone(),
         })
         .collect(),
-      factory: FactorySnapshot {
-        inventory: self.world.factory.production.inventory.snapshot(),
-        craft: self.world.factory.production.craft_snapshot(),
-        dispatch: self.world.factory.dispatch.clone(),
-      },
+      factories: self
+        .world
+        .factories
+        .iter()
+        .map(|factory| FactorySnapshot {
+          node: factory.node,
+          inventory: factory.production.inventory.snapshot(),
+          craft: factory.production.craft_snapshot(),
+          dispatch: factory.dispatch.clone(),
+        })
+        .collect(),
       power: self.world.power.as_ref().map(PowerPlant::snapshot),
       events,
     }
+  }
+}
+
+fn adjacent(left: GridPosition, right: GridPosition) -> bool {
+  left != right && left.x.abs_diff(right.x) <= 1 && left.y.abs_diff(right.y) <= 1
+}
+
+fn two_factories_mut(
+  factories: &mut [FactoryNode],
+  left: usize,
+  right: usize,
+) -> (&mut FactoryNode, &mut FactoryNode) {
+  assert_ne!(left, right, "factory transfer endpoints must differ");
+  if left < right {
+    let (before, after) = factories.split_at_mut(right);
+    (&mut before[left], &mut after[0])
+  } else {
+    let (before, after) = factories.split_at_mut(left);
+    (&mut after[0], &mut before[right])
   }
 }
 
@@ -781,8 +935,8 @@ mod tests {
   use factory_content::{
     ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS,
     COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
-    IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, PATHFINDING_DEMO_SCENARIO,
-    POWERED_IRONWORKS_SCENARIO, STONE,
+    FRAMES, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
+    PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
   };
 
   #[test]
@@ -907,7 +1061,7 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert_eq!(NodeId::Factory, first.haulers[0].target);
+    assert_eq!(NodeId::Factory(0), first.haulers[0].target);
 
     let second = state.step();
     assert!(matches!(
@@ -917,7 +1071,7 @@ mod tests {
         ..
       })
     ));
-    assert_eq!(NodeId::Factory, second.haulers[0].position);
+    assert_eq!(NodeId::Factory(0), second.haulers[0].position);
     assert_eq!(
       3,
       second.haulers[0]
@@ -927,14 +1081,14 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert!(!second.factory.craft.crafting);
+    assert!(!second.factories[0].craft.crafting);
 
     let third = state.step();
     assert!(matches!(
       third.haulers[0].dispatch,
       DispatchReceiverState::Unassigned
     ));
-    assert_eq!(NodeId::Factory, third.haulers[0].position);
+    assert_eq!(NodeId::Factory(0), third.haulers[0].position);
     assert_eq!(
       0,
       third.haulers[0]
@@ -944,7 +1098,7 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert!(third.factory.craft.crafting);
+    assert!(third.factories[0].craft.crafting);
 
     let fourth = state.step();
     assert!(matches!(
@@ -969,7 +1123,7 @@ mod tests {
     assert_eq!(first_run, second_run);
     assert!(first_run.iter().any(|snapshot| {
       snapshot
-        .factory
+        .factories[0]
         .inventory
         .items
         .get(IRON_BARS.as_str())
@@ -995,7 +1149,7 @@ mod tests {
       .any(|event| event.contains("dispatch deliver")));
 
     let second = state.step();
-    assert_eq!(NodeId::Factory, second.haulers[0].position);
+    assert_eq!(NodeId::Factory(0), second.haulers[0].position);
     assert!(second
       .events
       .iter()
@@ -1015,7 +1169,7 @@ mod tests {
     state.world.haulers[0].dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
       item: IRON_ORE,
       source: NodeId::Source(0),
-      destination: NodeId::Factory,
+      destination: NodeId::Factory(0),
       phase: DispatchPhase::Collect,
     });
 
@@ -1043,7 +1197,7 @@ mod tests {
     state.world.haulers[0].dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
       item: IRON_ORE,
       source: NodeId::Source(0),
-      destination: NodeId::Factory,
+      destination: NodeId::Factory(0),
       phase: DispatchPhase::Deliver,
     });
 
@@ -1061,7 +1215,7 @@ mod tests {
       .events
       .iter()
       .all(|event| !event.contains("dispatch deliver")));
-    assert_eq!(NodeId::Factory, deliver_snapshot.haulers[0].target);
+    assert_eq!(NodeId::Factory(0), deliver_snapshot.haulers[0].target);
   }
 
   #[test]
@@ -1071,7 +1225,7 @@ mod tests {
 
     let first = state.step();
     let intent_items: Vec<&str> = first
-      .factory
+      .factories[0]
       .dispatch
       .intents
       .iter()
@@ -1104,7 +1258,7 @@ mod tests {
     );
     assert!(first_run.iter().any(|snapshot| {
       snapshot
-        .factory
+        .factories[0]
         .inventory
         .items
         .get(BUILDING_MATERIALS.as_str())
@@ -1112,6 +1266,57 @@ mod tests {
         .unwrap_or(0)
         > 0
     }));
+  }
+
+  #[test]
+  fn adjacent_inserters_run_the_multi_factory_drill_chain() {
+    let mut first =
+      GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
+    let mut second =
+      GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
+
+    let first_run: Vec<_> = (0..80).map(|_| first.step()).collect();
+    let second_run: Vec<_> = (0..80).map(|_| second.step()).collect();
+    assert_eq!(first_run, second_run);
+    assert_eq!(5, first_run[0].factories.len());
+    assert!(first_run.iter().flat_map(|snapshot| &snapshot.events).any(
+      |event| event.starts_with("inserter move iron_ore") && event.contains("source-0")
+    ));
+    assert!(first_run.iter().flat_map(|snapshot| &snapshot.events).any(
+      |event| event.starts_with("inserter move frames") && event.contains("factory-2")
+    ));
+    assert!(
+      first_run
+        .last()
+        .unwrap()
+        .factories[4]
+        .inventory
+        .items
+        .get(MINING_DRILL.as_str())
+        .copied()
+        .unwrap_or(0)
+        > 0
+    );
+  }
+
+  #[test]
+  fn inserters_ignore_nonadjacent_resource_containers() {
+    let mut content = ContentDatabase::starter();
+    content
+      .scenarios
+      .get_mut(&PRODUCTION_CHAIN_SCENARIO)
+      .unwrap()
+      .layout
+      .factory_positions[4] = factory_content::GridPoint { x: 0, y: 0 };
+    let mut state = GameState::new(content, PRODUCTION_CHAIN_SCENARIO).unwrap();
+
+    for _ in 0..80 {
+      state.step();
+    }
+
+    assert_eq!(0, state.world.factories[4].production.inventory.count(MINING_DRILL));
+    assert!(state.world.factories[2].production.inventory.count(FRAMES) > 0);
+    assert!(state.world.factories[3].production.inventory.count(MOTORS) > 0);
   }
 
   #[test]
@@ -1135,7 +1340,7 @@ mod tests {
     for _ in 0..16 {
       let snapshot = state.step();
       let input_stock = snapshot
-        .factory
+        .factories[0]
         .inventory
         .items
         .get(IRON_ORE.as_str())
@@ -1143,7 +1348,7 @@ mod tests {
         .unwrap_or(0);
       assert!(input_stock <= 6, "input stock {input_stock} exceeds buffer");
       bars_seen |= snapshot
-        .factory
+        .factories[0]
         .inventory
         .items
         .get(IRON_BARS.as_str())
@@ -1254,7 +1459,7 @@ mod tests {
       snapshots
         .last()
         .expect("run has snapshots")
-        .factory
+        .factories[0]
         .inventory
         .items
         .get(MINING_DRILL.as_str())
@@ -1321,7 +1526,7 @@ mod tests {
       NodeId::Transit(GridPosition { x: 2, y: 1 }),
       second.haulers[0].position
     );
-    assert_eq!(NodeId::Factory, third.haulers[0].position);
+    assert_eq!(NodeId::Factory(0), third.haulers[0].position);
     assert!(fourth.events.iter().any(|event| event.contains("deliver 3")));
     assert_eq!(
       1,
@@ -1344,7 +1549,7 @@ mod tests {
       hauler.assign(DispatchAssignment {
         item: IRON_ORE,
         source: NodeId::Source(0),
-        destination: NodeId::Factory,
+        destination: NodeId::Factory(0),
         phase: DispatchPhase::Deliver,
       });
     }
