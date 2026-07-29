@@ -3,9 +3,9 @@
 The Rust migration removes retained C# only after deterministic tests cover its
 state transitions and the viewer exposes player-visible state.
 
-## Batch one: movement and deployment
+## Removed batch one: movement and deployment
 
-Rust now covers the retained behavior in:
+Rust covers the behavior removed from:
 
 - `Assets/Scripts/Components/PathfindingComponent.cs`
 - `Assets/Scripts/Components/MovementComponent.cs`
@@ -18,10 +18,10 @@ queued movement, transit arbitration, retrieve and deploy transitions,
 depleted-ore deletion, and drill teardown. The Bevy viewer exposes each
 player-visible state through DETOUR and DEPLOY.
 
-This is the first safe removal batch. The agent removes the three component
-files, their `.meta` files, and only their direct truck and core fields together.
-Mining, dispatch, resources, production, and power C# remain reference material
-until their wider object and content dependencies reach the same proof boundary.
+The repository removed the three component files, their `.meta` files, and only
+their direct truck and core fields together. Mining, dispatch, resources,
+production, and power C# remain reference material until their wider object and
+content dependencies reach the same proof boundary.
 
 ## Final deletion gate
 

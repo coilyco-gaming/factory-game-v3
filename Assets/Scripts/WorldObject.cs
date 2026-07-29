@@ -24,13 +24,11 @@ namespace Assets.Scripts.Core
         // TODO: add odin inspector to all of the serializable classes
         // https://odininspector.com/tutorials
 
-        public MovementComponentCore movement;
         public BatteryComponentCore battery;
         public ResourcesComponentCore resources;
         public List<ResourceInserterComponentCore> resourceInserters;
         public List<DispatchComponentCore> dispatchers;
         public List<DispatchReceiverComponentCore> dispatchReceivers;
-        public List<DeploymentComponentCore> deployments;
         public ResourceRetrieverCore resourceRetriever;
         public ProductionComponentCore production;
         public PowerComponentCore power;

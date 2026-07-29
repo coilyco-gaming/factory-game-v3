@@ -62,7 +62,7 @@ viewer exposes player-visible state.
 Retained visual assets have a separate decision. C# decommission does not
 require deleting reusable textures, materials, or other art.
 
-## First decommission-ready batch
+## Decommission progress
 
-The proof and exact first removal boundary live in
+The proof and removed first batch live in
 [csharp-decommission.md](csharp-decommission.md).
