@@ -10,7 +10,14 @@ if ! command -v pre-commit >/dev/null 2>&1; then
 fi
 
 echo "ward: pre-commit migration baseline run --all-files"
-timeout --kill-after=30s "${gate_timeout}" pre-commit run --all-files
+if command -v timeout >/dev/null 2>&1; then
+  timeout --kill-after=30s "${gate_timeout}" pre-commit run --all-files
+elif command -v gtimeout >/dev/null 2>&1; then
+  gtimeout --kill-after=30s "${gate_timeout}" pre-commit run --all-files
+else
+  echo "ward: timeout unavailable; running pre-commit without an outer deadline"
+  pre-commit run --all-files
+fi
 
 echo "ward: cargo test --workspace"
 cargo test --workspace

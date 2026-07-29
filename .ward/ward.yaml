@@ -3,7 +3,7 @@
 commands:
   test:
     run: bash scripts/test-gate.sh
-    description: "Run the repo's pre-commit baseline with a bounded timeout."
+    description: "Run the pre-commit baseline and Rust workspace tests."
   cargo-test:
     run: cargo test --workspace
     description: "Run the Rust workspace tests."
