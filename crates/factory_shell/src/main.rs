@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use factory_content::{
-  ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, IRON_BARS_FLEET_SCENARIO,
-  IRON_BARS_SCENARIO, POWERED_IRONWORKS_SCENARIO,
+  ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
+  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, POWERED_IRONWORKS_SCENARIO,
 };
 use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
@@ -21,11 +21,12 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 4] = [
+const DEMO_SCENARIOS: [ScenarioId; 5] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
   POWERED_IRONWORKS_SCENARIO,
+  DEPLOYMENT_DEMO_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -401,6 +402,7 @@ fn spawn_control_deck(commands: &mut Commands) {
           (ControlAction::SelectScenario(1), "FLEET"),
           (ControlAction::SelectScenario(2), "MATERIALS"),
           (ControlAction::SelectScenario(3), "POWER"),
+          (ControlAction::SelectScenario(4), "DEPLOY"),
         ],
       );
     });
@@ -1034,7 +1036,7 @@ fn update_text(
   let hud_value = format!(
     "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
      mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\
-     power: {}\nenergy used: {}\nstarvations: {}\n\n\
+     power: {}\nenergy used: {}\nstarvations: {}\ndeployments: {}\n\n\
      showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
      click the control deck below\nkeyboard: Space N R F C L",
     host.snapshot.scenario.name,
@@ -1053,6 +1055,7 @@ fn update_text(
       .unwrap_or_else(|| "off-grid".into()),
     metrics.energy_consumed,
     metrics.power_starvations,
+    metrics.deployments,
     cycle_status,
     host.idle_streak,
     AUTO_ADVANCE_IDLE_TICKS,
@@ -1159,7 +1162,10 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
       .sources
       .iter()
       .find(|source| source.node == node)
-      .filter(|source| !source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty())
+      .filter(|source| {
+        source.deployed
+          && (!source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty())
+      })
       .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
     NodeId::Road => NodeActivity::Idle,
     NodeId::Factory if snapshot.factory.craft.crafting => NodeActivity::Crafting,
@@ -1183,7 +1189,12 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
 
 fn hauler_activity(hauler: &HaulerSnapshot) -> HaulerActivity {
   match &hauler.dispatch {
-    DispatchReceiverState::Assigned(assignment) if assignment.phase == DispatchPhase::Collect => {
+    DispatchReceiverState::Assigned(assignment)
+      if matches!(
+        assignment.phase,
+        DispatchPhase::Collect | DispatchPhase::Retrieve
+      ) =>
+    {
       HaulerActivity::Collecting
     }
     DispatchReceiverState::Assigned(_) => HaulerActivity::Delivering,
@@ -1262,6 +1273,16 @@ fn route_direction(snapshot: &TickSnapshot, node: NodeId) -> Option<RouteDirecti
       {
         Some(RouteDirection::AwayFromRoad)
       }
+      DispatchReceiverState::Assigned(assignment)
+        if assignment.phase == DispatchPhase::Retrieve && assignment.source == node =>
+      {
+        Some(RouteDirection::TowardRoad)
+      }
+      DispatchReceiverState::Assigned(assignment)
+        if assignment.phase == DispatchPhase::Deploy && assignment.destination == node =>
+      {
+        Some(RouteDirection::AwayFromRoad)
+      }
       _ => None,
     })
 }
@@ -1281,11 +1302,15 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       .iter()
       .find(|source| source.node == node)
       .map(|source| {
-        format!(
-          "{}\nstock: {}",
-          source.node,
-          format_items(&source.stockpile.items)
-        )
+        if source.deployed {
+          format!(
+            "{}\nstock: {}",
+            source.node,
+            format_items(&source.stockpile.items)
+          )
+        } else {
+          format!("{}\nore site: awaiting drill", source.node)
+        }
       })
       .unwrap_or_else(|| node.to_string()),
     NodeId::Road => "road".into(),
@@ -1342,6 +1367,8 @@ fn dispatch_text(state: &DispatchReceiverState) -> String {
       let phase = match assignment.phase {
         DispatchPhase::Collect => "collect",
         DispatchPhase::Deliver => "deliver",
+        DispatchPhase::Retrieve => "retrieve",
+        DispatchPhase::Deploy => "deploy",
       };
       format!("{phase} {}", assignment.item)
     }
@@ -1509,6 +1536,27 @@ mod tests {
   }
 
   #[test]
+  fn deployment_projection_tracks_dormant_source_and_drill_route() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    host.select_scenario(4, "test selected");
+    let source = host.snapshot.sources[0].node;
+
+    assert!(node_label_value(&host.snapshot, source).contains("awaiting drill"));
+    host.step_once();
+    assert_eq!(
+      Some(RouteDirection::TowardRoad),
+      route_direction(&host.snapshot, NodeId::Factory)
+    );
+    host.step_once();
+    host.step_once();
+    assert_eq!(
+      Some(RouteDirection::AwayFromRoad),
+      route_direction(&host.snapshot, source)
+    );
+  }
+
+  #[test]
   fn cargo_badge_state_tracks_authoritative_inventory() {
     let mut host = SimHost::new();
     host.auto_cycle = false;
@@ -1575,8 +1623,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(POWERED_IRONWORKS_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(DEPLOYMENT_DEMO_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(4, host.scene_revision);
+    assert_eq!(5, host.scene_revision);
   }
 
   #[test]

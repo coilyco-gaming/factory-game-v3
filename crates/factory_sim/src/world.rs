@@ -107,21 +107,29 @@ pub struct SourceNode {
   pub item: ItemId,
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
+  pub deployed: bool,
 }
 
 impl SourceNode {
-  pub fn new(node: NodeId, stockpile: Inventory, item: ItemId, mining: MiningExtractor) -> Self {
+  pub fn new(
+    node: NodeId,
+    stockpile: Inventory,
+    item: ItemId,
+    mining: MiningExtractor,
+    deployed: bool,
+  ) -> Self {
     Self {
       node,
       stockpile,
       item,
       mining,
       dispatch: DispatchBoard::new(),
+      deployed,
     }
   }
 
   pub fn refresh_dispatch(&mut self, factory_location: NodeId) {
-    self.dispatch.intents = (self.stockpile.count(self.item) > 0)
+    self.dispatch.intents = (self.deployed && self.stockpile.count(self.item) > 0)
       .then(|| DispatchIntent::collect(self.item, self.node, factory_location))
       .into_iter()
       .collect();
@@ -200,6 +208,7 @@ pub struct SourceSnapshot {
   pub stockpile: crate::resources::InventorySnapshot,
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
+  pub deployed: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -244,6 +253,11 @@ pub struct TickSnapshot {
   pub events: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WorldMutation {
+  DeploySource(u8),
+}
+
 #[derive(Clone, Debug)]
 pub struct WorldState {
   pub tick: u64,
@@ -253,4 +267,5 @@ pub struct WorldState {
   pub factory: FactoryNode,
   pub power: Option<PowerPlant>,
   pub topology: Topology,
+  pub queued_mutations: Vec<WorldMutation>,
 }

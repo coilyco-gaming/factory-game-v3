@@ -8,6 +8,8 @@ use std::fmt;
 pub enum DispatchVerb {
   Collect,
   Deliver,
+  Retrieve,
+  Deploy,
 }
 
 impl fmt::Display for DispatchVerb {
@@ -15,6 +17,8 @@ impl fmt::Display for DispatchVerb {
     match self {
       Self::Collect => f.write_str("collect"),
       Self::Deliver => f.write_str("deliver"),
+      Self::Retrieve => f.write_str("retrieve"),
+      Self::Deploy => f.write_str("deploy"),
     }
   }
 }
@@ -24,6 +28,8 @@ impl fmt::Display for DispatchVerb {
 pub enum DispatchPhase {
   Collect,
   Deliver,
+  Retrieve,
+  Deploy,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -52,6 +58,15 @@ impl DispatchIntent {
       to,
     }
   }
+
+  pub fn retrieve(item: ItemId, from: NodeId, to: NodeId) -> Self {
+    Self {
+      verb: DispatchVerb::Retrieve,
+      item,
+      from,
+      to,
+    }
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -69,6 +84,15 @@ impl DispatchAssignment {
       source,
       destination,
       phase: DispatchPhase::Collect,
+    }
+  }
+
+  pub fn retrieve(item: ItemId, source: NodeId, destination: NodeId) -> Self {
+    Self {
+      item,
+      source,
+      destination,
+      phase: DispatchPhase::Retrieve,
     }
   }
 }

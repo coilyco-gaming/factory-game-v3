@@ -22,9 +22,9 @@ through Bevy entities.
 ## Showcase
 
 The viewer rotates through `iron-bars`, `iron-bars-fleet`, `building-materials`,
-and `powered-ironworks`. Each scene displays:
+`powered-ironworks`, and `deployment-demo`. Each scene displays:
 
-- source, road, and factory topology nodes
+- active or awaiting-drill source, road, factory, and power-plant topology nodes
 - hauler position, cargo, and dispatch phase
 - source and factory inventory
 - factory craft progress

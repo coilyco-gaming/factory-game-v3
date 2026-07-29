@@ -49,11 +49,13 @@ pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
 pub const COAL: ItemId = ItemId::new("coal");
 pub const STONE: ItemId = ItemId::new("stone");
 pub const BUILDING_MATERIALS: ItemId = ItemId::new("building_materials");
+pub const MINING_DRILL: ItemId = ItemId::new("mining_drill");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
 pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-fleet");
 pub const BUILDING_MATERIALS_SCENARIO: ScenarioId = ScenarioId::new("building-materials");
 pub const POWERED_IRONWORKS_SCENARIO: ScenarioId = ScenarioId::new("powered-ironworks");
+pub const DEPLOYMENT_DEMO_SCENARIO: ScenarioId = ScenarioId::new("deployment-demo");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -66,6 +68,7 @@ pub struct ItemDefinition {
   pub craft_output: u32,
   pub ingredients: BTreeMap<ItemId, u32>,
   pub create_from_nothing: bool,
+  pub can_spawn_game_object: bool,
 }
 
 impl ItemDefinition {
@@ -89,11 +92,17 @@ impl ItemDefinition {
       craft_output,
       ingredients,
       create_from_nothing: false,
+      can_spawn_game_object: false,
     }
   }
 
   pub fn with_create_from_nothing(mut self) -> Self {
     self.create_from_nothing = true;
+    self
+  }
+
+  pub fn with_spawnable_game_object(mut self) -> Self {
+    self.can_spawn_game_object = true;
     self
   }
 }
@@ -103,6 +112,7 @@ pub struct SourceSpec {
   pub item: ItemId,
   pub deposit: u32,
   pub mining_speed: u32,
+  pub requires_deployment: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -126,9 +136,12 @@ pub struct ScenarioDefinition {
   pub product_item: ItemId,
   pub hauler_count: u32,
   pub hauler_capacity: u32,
+  pub hauler_weight_capacity: u32,
+  pub hauler_volume_capacity: u32,
   pub craft_input_buffer: u32,
   pub craft_output_buffer: u32,
   pub power: Option<PowerSpec>,
+  pub factory_starting_items: BTreeMap<ItemId, u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -204,6 +217,21 @@ impl ContentDatabase {
       ),
     );
 
+    items.insert(
+      MINING_DRILL,
+      ItemDefinition::new(
+        MINING_DRILL,
+        "Mining Drill",
+        50,
+        20,
+        1,
+        5,
+        1,
+        BTreeMap::new(),
+      )
+      .with_spawnable_game_object(),
+    );
+
     let mut scenarios = BTreeMap::new();
     scenarios.insert(
       IRON_BARS_SCENARIO,
@@ -214,13 +242,17 @@ impl ContentDatabase {
           item: IRON_ORE,
           deposit: 9,
           mining_speed: 3,
+          requires_deployment: false,
         }],
         product_item: IRON_BARS,
         hauler_count: 1,
         hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
         craft_input_buffer: 6,
         craft_output_buffer: 20,
         power: None,
+        factory_starting_items: BTreeMap::new(),
       },
     );
     scenarios.insert(
@@ -232,13 +264,17 @@ impl ContentDatabase {
           item: IRON_ORE,
           deposit: 24,
           mining_speed: 6,
+          requires_deployment: false,
         }],
         product_item: IRON_BARS,
         hauler_count: 3,
         hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
         craft_input_buffer: 6,
         craft_output_buffer: 20,
         power: None,
+        factory_starting_items: BTreeMap::new(),
       },
     );
     scenarios.insert(
@@ -251,19 +287,24 @@ impl ContentDatabase {
             item: IRON_ORE,
             deposit: 12,
             mining_speed: 2,
+            requires_deployment: false,
           },
           SourceSpec {
             item: STONE,
             deposit: 0,
             mining_speed: 2,
+            requires_deployment: false,
           },
         ],
         product_item: BUILDING_MATERIALS,
         hauler_count: 2,
         hauler_capacity: 2,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
         craft_input_buffer: 4,
         craft_output_buffer: 20,
         power: None,
+        factory_starting_items: BTreeMap::new(),
       },
     );
     scenarios.insert(
@@ -276,16 +317,20 @@ impl ContentDatabase {
             item: IRON_ORE,
             deposit: 30,
             mining_speed: 3,
+            requires_deployment: false,
           },
           SourceSpec {
             item: COAL,
             deposit: 18,
             mining_speed: 2,
+            requires_deployment: false,
           },
         ],
         product_item: IRON_BARS,
         hauler_count: 2,
         hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
         craft_input_buffer: 6,
         craft_output_buffer: 20,
         power: Some(PowerSpec {
@@ -299,6 +344,29 @@ impl ContentDatabase {
           dispatch_cost: 1,
           production_cost: 2,
         }),
+        factory_starting_items: BTreeMap::new(),
+      },
+    );
+    scenarios.insert(
+      DEPLOYMENT_DEMO_SCENARIO,
+      ScenarioDefinition {
+        id: DEPLOYMENT_DEMO_SCENARIO,
+        name: "Drill Deployment".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 18,
+          mining_speed: 3,
+          requires_deployment: true,
+        }],
+        product_item: IRON_BARS,
+        hauler_count: 1,
+        hauler_capacity: 3,
+        hauler_weight_capacity: 100,
+        hauler_volume_capacity: 100,
+        craft_input_buffer: 6,
+        craft_output_buffer: 20,
+        power: None,
+        factory_starting_items: BTreeMap::from([(MINING_DRILL, 1)]),
       },
     );
 

@@ -6,7 +6,9 @@ mod production;
 mod resources;
 mod world;
 
-use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO};
+use factory_content::{
+  ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, MINING_DRILL,
+};
 use std::fmt;
 
 pub use dispatch::{
@@ -20,7 +22,8 @@ pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
   FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerSnapshot, NodeId, ScenarioSnapshot,
-  SourceNode, SourceSnapshot, TickSnapshot, Topology, TopologyNode, TopologySnapshot, WorldState,
+  SourceNode, SourceSnapshot, TickSnapshot, Topology, TopologyNode, TopologySnapshot,
+  WorldMutation, WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,11 +76,17 @@ impl GameState {
       craft_time: product.craft_time.max(1),
     };
 
-    let mut factory_inventory = Inventory::new(32, 32);
+    let mut factory_inventory = Inventory::new(1024, 1024);
     for input_item in recipe.inputs.keys() {
       factory_inventory.reserve(*input_item, scenario.craft_input_buffer);
     }
     factory_inventory.reserve(recipe.output_item, scenario.craft_output_buffer);
+    for (item, quantity) in &scenario.factory_starting_items {
+      factory_inventory.reserve(*item, *quantity);
+      factory_inventory
+        .insert_exact(&content, *item, *quantity)
+        .expect("scenario starting inventory fits the factory");
+    }
     let production = FactoryProduction::new(factory_inventory, recipe);
 
     let sources = scenario
@@ -90,6 +99,7 @@ impl GameState {
           Inventory::new(1024, 1024),
           spec.item,
           MiningExtractor::for_item(&content, spec.item, spec.mining_speed, spec.deposit),
+          !spec.requires_deployment,
         )
       })
       .collect();
@@ -97,7 +107,10 @@ impl GameState {
       .map(|index| {
         Hauler::new(
           index as u8,
-          Inventory::new(32, 32),
+          Inventory::new(
+            scenario.hauler_weight_capacity,
+            scenario.hauler_volume_capacity,
+          ),
           NodeId::Source(0),
           scenario.hauler_capacity,
         )
@@ -118,6 +131,7 @@ impl GameState {
         factory: FactoryNode::new(production, scenario.craft_input_buffer),
         power,
         topology: Topology::for_sources(scenario.sources.len() as u8, has_power),
+        queued_mutations: Vec::new(),
         scenario,
       },
       content,
@@ -136,6 +150,9 @@ impl GameState {
       .as_ref()
       .map_or(0, |power| power.spec.mining_cost);
     for source_index in 0..self.world.sources.len() {
+      if !self.world.sources[source_index].deployed {
+        continue;
+      }
       let consumer = format!("mining-{}", self.world.sources[source_index].node);
       if !self.consume_power(mining_cost, &consumer, events) {
         continue;
@@ -169,6 +186,27 @@ impl GameState {
       source.refresh_dispatch(destination);
     }
     self.world.factory.refresh_dispatch();
+    for source in self.world.sources.iter().filter(|source| !source.deployed) {
+      if self
+        .world
+        .factory
+        .production
+        .inventory
+        .count(MINING_DRILL)
+        > 0
+      {
+        self
+          .world
+          .factory
+          .dispatch
+          .intents
+          .push(DispatchIntent::retrieve(
+            MINING_DRILL,
+            NodeId::Factory,
+            source.node,
+          ));
+      }
+    }
     if let Some(power) = &mut self.world.power {
       power.refresh_dispatch();
     }
@@ -183,6 +221,7 @@ impl GameState {
       .dispatch
       .intents
       .iter()
+      .filter(|intent| intent.verb == DispatchVerb::Deliver)
       .map(|intent| {
         (
           intent.item,
@@ -206,6 +245,54 @@ impl GameState {
     for (item, destination, buffer, stocked) in demands {
       self.assign_dispatch_for_demand(item, destination, buffer, stocked, events);
     }
+    self.assign_deployments(events);
+  }
+
+  fn assign_deployments(&mut self, events: &mut Vec<String>) {
+    let intents = self
+      .world
+      .factory
+      .dispatch
+      .intents
+      .iter()
+      .filter(|intent| intent.verb == DispatchVerb::Retrieve)
+      .cloned()
+      .collect::<Vec<_>>();
+    for intent in intents {
+      if self.world.haulers.iter().any(|hauler| {
+        matches!(
+          &hauler.dispatch,
+          DispatchReceiverState::Assigned(assignment)
+            if assignment.item == intent.item && assignment.destination == intent.to
+        )
+      }) {
+        continue;
+      }
+      let Some(hauler_index) = self.world.haulers.iter().position(|hauler| {
+        matches!(hauler.dispatch, DispatchReceiverState::Unassigned) && hauler.cargo.is_empty()
+      }) else {
+        break;
+      };
+      let dispatch_cost = self
+        .world
+        .power
+        .as_ref()
+        .map_or(0, |power| power.spec.dispatch_cost);
+      if !self.consume_power(dispatch_cost, "dispatch-deploy", events) {
+        break;
+      }
+      let hauler = &mut self.world.haulers[hauler_index];
+      hauler.assign(DispatchAssignment::retrieve(
+        intent.item,
+        intent.from,
+        intent.to,
+      ));
+      self.metrics.dispatches_assigned += 1;
+      events.push(format!(
+        "dispatch assigned retrieve {} {} -> {} to hauler-{}",
+        intent.item, intent.from, intent.to, hauler.id
+      ));
+    }
   }
 
   fn assign_dispatch_for_demand(
@@ -223,6 +310,7 @@ impl GameState {
           let in_flight = match assignment.phase {
             DispatchPhase::Collect => hauler.carry_limit,
             DispatchPhase::Deliver => hauler.cargo.count(item),
+            DispatchPhase::Retrieve | DispatchPhase::Deploy => 0,
           };
           need = need.saturating_sub(in_flight);
         }
@@ -264,7 +352,7 @@ impl GameState {
         "dispatch assigned collect {} {} -> {} to hauler-{}",
         item,
         source_node,
-        NodeId::Factory,
+        destination,
         hauler.id
       ));
     }
@@ -360,6 +448,82 @@ impl GameState {
     }
   }
 
+  fn retrieve_and_deploy(&mut self, events: &mut Vec<String>) {
+    for hauler_index in 0..self.world.haulers.len() {
+      let (assignment, position) = match &self.world.haulers[hauler_index].dispatch {
+        DispatchReceiverState::Assigned(assignment) => (
+          assignment.clone(),
+          self.world.haulers[hauler_index].position,
+        ),
+        DispatchReceiverState::Unassigned => continue,
+      };
+      match assignment.phase {
+        DispatchPhase::Retrieve if position == assignment.source => {
+          let moved = self.world.factory.production.inventory.transfer_up_to(
+            &self.content,
+            &mut self.world.haulers[hauler_index].cargo,
+            assignment.item,
+            1,
+          );
+          if moved > 0 {
+            self.world.haulers[hauler_index].dispatch =
+              DispatchReceiverState::Assigned(DispatchAssignment {
+                phase: DispatchPhase::Deploy,
+                ..assignment
+              });
+            events.push(format!(
+              "dispatch retrieve {} from factory by hauler-{}",
+              moved, self.world.haulers[hauler_index].id
+            ));
+          }
+        }
+        DispatchPhase::Deploy if position == assignment.destination => {
+          if self.world.haulers[hauler_index]
+            .cargo
+            .remove_exact(assignment.item, 1)
+            .is_ok()
+          {
+            let NodeId::Source(source_index) = assignment.destination else {
+              continue;
+            };
+            self
+              .world
+              .queued_mutations
+              .push(WorldMutation::DeploySource(source_index));
+            self.world.haulers[hauler_index].clear_assignment();
+            events.push(format!(
+              "dispatch deploy {} queued at {} by hauler-{}",
+              assignment.item,
+              assignment.destination,
+              self.world.haulers[hauler_index].id
+            ));
+          }
+        }
+        _ => {}
+      }
+    }
+  }
+
+  fn apply_world_mutations(&mut self, events: &mut Vec<String>) {
+    for mutation in std::mem::take(&mut self.world.queued_mutations) {
+      match mutation {
+        WorldMutation::DeploySource(source_index) => {
+          let Some(source) = self
+            .world
+            .sources
+            .iter_mut()
+            .find(|source| source.node == NodeId::Source(source_index))
+          else {
+            continue;
+          };
+          source.deployed = true;
+          self.metrics.deployments += 1;
+          events.push(format!("world deploy mining drill at {}", source.node));
+        }
+      }
+    }
+  }
+
   fn advance_production(&mut self, events: &mut Vec<String>) {
     let production_cost = self
       .world
@@ -404,6 +568,8 @@ impl GameState {
         DispatchReceiverState::Assigned(assignment) => match assignment.phase {
           DispatchPhase::Collect => assignment.source,
           DispatchPhase::Deliver => assignment.destination,
+          DispatchPhase::Retrieve => assignment.source,
+          DispatchPhase::Deploy => assignment.destination,
         },
         DispatchReceiverState::Unassigned => {
           if hauler.cargo.is_empty() {
@@ -435,8 +601,10 @@ impl GameState {
     self.assign_dispatch(&mut events);
     self.collect(&mut events);
     self.deliver(&mut events);
+    self.retrieve_and_deploy(&mut events);
     self.advance_production(&mut events);
     self.move_haulers(&mut events);
+    self.apply_world_mutations(&mut events);
     self.metrics.ticks = self.world.tick;
     if events.is_empty() {
       self.metrics.idle_ticks += 1;
@@ -468,6 +636,7 @@ impl GameState {
           stockpile: source.stockpile.snapshot(),
           mining: source.mining.clone(),
           dispatch: source.dispatch.clone(),
+          deployed: source.deployed,
         })
         .collect(),
       haulers: self
@@ -509,8 +678,8 @@ mod tests {
   use super::*;
   use factory_content::{
     ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS,
-    COPPER_ORE, IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE,
-    POWERED_IRONWORKS_SCENARIO, STONE,
+    COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
+    IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, POWERED_IRONWORKS_SCENARIO, STONE,
   };
 
   #[test]
@@ -938,5 +1107,66 @@ mod tests {
       .events
       .iter()
       .any(|event| event.starts_with("power starved mining")));
+  }
+
+  #[test]
+  fn retrieve_and_deploy_activates_a_source_through_the_mutation_queue() {
+    let mut state = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let snapshots: Vec<_> = (0..8).map(|_| state.step()).collect();
+
+    assert!(snapshots[..4]
+      .iter()
+      .all(|snapshot| snapshot.sources[0].stockpile.items.is_empty()));
+    assert!(snapshots
+      .iter()
+      .any(|snapshot| snapshot.events.iter().any(|event| {
+        event.contains("dispatch retrieve") && event.contains("factory")
+      })));
+    assert!(snapshots
+      .iter()
+      .any(|snapshot| snapshot.events.iter().any(|event| {
+        event.contains("dispatch deploy") && event.contains("queued")
+      })));
+    assert!(snapshots
+      .iter()
+      .any(|snapshot| snapshot.events.iter().any(|event| {
+        event.contains("world deploy mining drill")
+      })));
+    assert!(snapshots.last().expect("run has snapshots").sources[0].deployed);
+    assert!(
+      snapshots
+        .last()
+        .expect("run has snapshots")
+        .sources[0]
+        .stockpile
+        .items
+        .get(IRON_ORE.as_str())
+        .copied()
+        .unwrap_or(0)
+        > 0
+    );
+    assert_eq!(1, state.metrics().deployments);
+    assert_eq!(
+      0,
+      snapshots
+        .last()
+        .expect("run has snapshots")
+        .factory
+        .inventory
+        .items
+        .get(MINING_DRILL.as_str())
+        .copied()
+        .unwrap_or(0)
+    );
+  }
+
+  #[test]
+  fn deployment_scenario_is_deterministic() {
+    let mut first = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let mut second = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let first_run: Vec<_> = (0..12).map(|_| first.step()).collect();
+    let second_run: Vec<_> = (0..12).map(|_| second.step()).collect();
+    assert_eq!(first_run, second_run);
+    assert_eq!(first.metrics(), second.metrics());
   }
 }
