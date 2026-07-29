@@ -194,7 +194,12 @@ impl GameState {
       source.refresh_dispatch(destination);
     }
     self.world.factory.refresh_dispatch();
-    for source in self.world.sources.iter().filter(|source| !source.deployed) {
+    for source in self
+      .world
+      .sources
+      .iter()
+      .filter(|source| !source.deployed && !source.exhausted)
+    {
       if self
         .world
         .factory
@@ -528,6 +533,37 @@ impl GameState {
           self.metrics.deployments += 1;
           events.push(format!("world deploy mining drill at {}", source.node));
         }
+        WorldMutation::DeleteDepletedDeposit(source_index) => {
+          let Some(source) = self
+            .world
+            .sources
+            .iter_mut()
+            .find(|source| source.node == NodeId::Source(source_index))
+          else {
+            continue;
+          };
+          source.exhausted = true;
+          self.metrics.world_deletions += 1;
+          events.push(format!("world delete depleted ore at {}", source.node));
+        }
+        WorldMutation::TeardownSource(source_index) => {
+          let Some(source) = self
+            .world
+            .sources
+            .iter_mut()
+            .find(|source| source.node == NodeId::Source(source_index))
+          else {
+            continue;
+          };
+          source.deployed = false;
+          self
+            .world
+            .topology
+            .blocked
+            .remove(&self.world.topology.position(source.node));
+          self.metrics.world_deletions += 1;
+          events.push(format!("world delete depleted mining drill at {}", source.node));
+        }
         WorldMutation::MoveHauler {
           hauler_id,
           from,
@@ -548,6 +584,22 @@ impl GameState {
             hauler.id, from, to, target
           ));
         }
+      }
+    }
+  }
+
+  fn queue_source_lifecycle(&mut self) {
+    for (source_index, source) in self.world.sources.iter().enumerate() {
+      if !source.exhausted && source.mining.is_depleted() {
+        self
+          .world
+          .queued_mutations
+          .push(WorldMutation::DeleteDepletedDeposit(source_index as u8));
+      } else if source.exhausted && source.deployed && source.stockpile.is_empty() {
+        self
+          .world
+          .queued_mutations
+          .push(WorldMutation::TeardownSource(source_index as u8));
       }
     }
   }
@@ -646,6 +698,7 @@ impl GameState {
     self.collect(&mut events);
     self.deliver(&mut events);
     self.retrieve_and_deploy(&mut events);
+    self.queue_source_lifecycle();
     self.advance_production(&mut events);
     self.queue_hauler_movements(&mut events);
     self.apply_world_mutations(&mut events);
@@ -685,6 +738,7 @@ impl GameState {
           mining: source.mining.clone(),
           dispatch: source.dispatch.clone(),
           deployed: source.deployed,
+          exhausted: source.exhausted,
         })
         .collect(),
       haulers: self
@@ -1217,6 +1271,41 @@ mod tests {
     let second_run: Vec<_> = (0..12).map(|_| second.step()).collect();
     assert_eq!(first_run, second_run);
     assert_eq!(first.metrics(), second.metrics());
+  }
+
+  #[test]
+  fn depleted_ore_and_empty_drill_teardown_at_world_boundaries() {
+    let mut state = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let snapshots = (0..64).map(|_| state.step()).collect::<Vec<_>>();
+    let deposit_delete_tick = snapshots
+      .iter()
+      .position(|snapshot| {
+        snapshot
+          .events
+          .iter()
+          .any(|event| event.contains("delete depleted ore"))
+      })
+      .expect("depleted ore is deleted");
+    let drill_delete_tick = snapshots
+      .iter()
+      .position(|snapshot| {
+        snapshot
+          .events
+          .iter()
+          .any(|event| event.contains("delete depleted mining drill"))
+      })
+      .expect("empty drill is deleted");
+    let final_snapshot = snapshots.last().expect("run has snapshots");
+
+    assert!(deposit_delete_tick < drill_delete_tick);
+    assert!(final_snapshot.sources[0].exhausted);
+    assert!(!final_snapshot.sources[0].deployed);
+    assert!(final_snapshot.sources[0].stockpile.items.is_empty());
+    assert_eq!(2, state.metrics().world_deletions);
+    assert!(!final_snapshot
+      .topology
+      .blocked
+      .contains(&final_snapshot.topology.nodes[0].position));
   }
 
   #[test]

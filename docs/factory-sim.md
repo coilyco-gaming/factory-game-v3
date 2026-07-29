@@ -30,6 +30,8 @@ The world generalizes to N sources and N haulers around one factory:
 - deployment scenarios start with a spawnable drill in factory inventory,
   retrieve it into a capable hauler, carry it to a dormant source, and queue
   source activation for the deterministic world-mutation boundary
+- finite ore and its empty drill queue ordered deletion after the last stockpile
+  is hauled, then release the source's occupied grid cell
 
 Starter scenarios cover single and multi-hauler iron bars, two-input building
 materials, powered ironworks, mining-drill deployment, and an obstacle convoy
@@ -45,7 +47,7 @@ ward exec cargo-run -- run --scenario iron-bars --ticks 6
 
 The CLI prints JSON lines. Each tick line contains the tick number, the current topology, source, hauler, and factory snapshots, the typed dispatch protocol state, and the events emitted during that tick.
 
-After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, per-item mined and crafted counts, dispatches assigned, units collected and delivered, fuel burned, energy generated and consumed, power starvations, deployments, and idle ticks (ticks that emitted no events). The distinguishing `summary` key keeps tick lines and the summary mechanically separable.
+After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, material flow, dispatch, energy, deployments, world deletions, and idle ticks. The `summary` key keeps tick lines and the summary mechanically separable.
 
 The migration and C# deletion gates are tracked in
 [unity-parity.md](unity-parity.md).

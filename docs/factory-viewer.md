@@ -26,7 +26,7 @@ deployment, and a collision-arbitrated obstacle convoy. Each scene displays:
 
 - active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
-- source and factory inventory
+- source and factory inventory plus dormant, draining, and exhausted lifecycle
 - factory craft progress
 - coal-plant fuel, power-grid energy, generation, consumption, and starvation
 - current tick, run metrics, and a bounded rolling activity feed

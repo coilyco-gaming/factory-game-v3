@@ -1,9 +1,8 @@
 # Unity parity and decommission gates
 
-The retained C# tree is the behavioral reference for the Rust migration. A C#
-component can leave the repository only when the Rust simulation owns its
-behavior, deterministic tests cover the important state transitions, and the
-viewer exposes any state a player previously needed to understand.
+The retained C# tree is the Rust migration reference. A component can leave only
+when Rust owns its behavior, deterministic tests cover its transitions, and the
+viewer exposes player-visible state.
 
 ## Current parity
 
@@ -16,8 +15,8 @@ viewer exposes any state a player previously needed to understand.
   Inserter and retriever scheduling remain.
 * **Mining** - substantial - Rust owns deterministic extraction speed, finite
   depletion, manifest creation, capacity limits, and energy-gated mining.
-  Mining drills can be retrieved, transported, deployed, and activated.
-  Automatic teardown remains.
+  Mining drills can be retrieved, transported, deployed, activated, drained
+  after ore depletion, and automatically torn down.
 * **Production** - substantial - Rust owns multi-input recipes, input
   consumption, craft progress, output multipliers, output capacity, and
   energy-gated crafting. Multiple factories and spawnable outputs remain.
@@ -39,8 +38,9 @@ viewer exposes any state a player previously needed to understand.
   power-line placement remain.
 * **World mutation and deployment** - partial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
-  and source activation at a deterministic tick boundary. General spawn, delete,
-  player placement, and teardown operations remain.
+  source activation, depleted-ore deletion, drill teardown, and occupancy
+  release at a deterministic tick boundary. General object spawn and deletion
+  plus player placement remain.
 * **Player and UI interaction** - early - Bevy owns playback controls and
   read-only projection. World editing, selection, placement, and programmable
   logistics controls remain.
@@ -61,3 +61,8 @@ viewer exposes any state a player previously needed to understand.
 
 Retained visual assets have a separate decision. C# decommission does not
 require deleting reusable textures, materials, or other art.
+
+## First decommission-ready batch
+
+The proof and exact first removal boundary live in
+[csharp-decommission.md](csharp-decommission.md).

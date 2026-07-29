@@ -49,4 +49,8 @@ impl MiningExtractor {
     }
     mined
   }
+
+  pub fn is_depleted(&self) -> bool {
+    matches!(self.deposit, Deposit::Finite(0))
+  }
 }

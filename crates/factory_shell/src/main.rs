@@ -1060,7 +1060,7 @@ fn update_text(
   let hud_value = format!(
     "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
      mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\
-     power: {}\nenergy used: {}\nstarvations: {}\ndeployments: {}\n\n\
+     power: {}\nenergy used: {}\nstarvations: {}\ndeployments: {}\ndeletions: {}\n\n\
      showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
      click the control deck below\nkeyboard: Space N R F C L",
     host.snapshot.scenario.name,
@@ -1080,6 +1080,7 @@ fn update_text(
     metrics.energy_consumed,
     metrics.power_starvations,
     metrics.deployments,
+    metrics.world_deletions,
     cycle_status,
     host.idle_streak,
     AUTO_ADVANCE_IDLE_TICKS,
@@ -1328,7 +1329,15 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       .iter()
       .find(|source| source.node == node)
       .map(|source| {
-        if source.deployed {
+        if source.exhausted && !source.deployed {
+          format!("{}\nore site: exhausted", source.node)
+        } else if source.exhausted {
+          format!(
+            "{}\ndraining: {}",
+            source.node,
+            format_items(&source.stockpile.items)
+          )
+        } else if source.deployed {
           format!(
             "{}\nstock: {}",
             source.node,

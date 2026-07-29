@@ -406,7 +406,7 @@ impl ContentDatabase {
         hauler_weight_capacity: 100,
         hauler_volume_capacity: 100,
         craft_input_buffer: 6,
-        craft_output_buffer: 20,
+        craft_output_buffer: 100,
         power: None,
         factory_starting_items: BTreeMap::from([(MINING_DRILL, 1)]),
         layout: LayoutSpec::linear(1, false),

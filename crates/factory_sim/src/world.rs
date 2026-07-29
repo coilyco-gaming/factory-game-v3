@@ -283,6 +283,7 @@ pub struct SourceNode {
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
   pub deployed: bool,
+  pub exhausted: bool,
 }
 
 impl SourceNode {
@@ -300,6 +301,7 @@ impl SourceNode {
       mining,
       dispatch: DispatchBoard::new(),
       deployed,
+      exhausted: false,
     }
   }
 
@@ -384,6 +386,7 @@ pub struct SourceSnapshot {
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
   pub deployed: bool,
+  pub exhausted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -435,6 +438,8 @@ pub struct TickSnapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorldMutation {
   DeploySource(u8),
+  DeleteDepletedDeposit(u8),
+  TeardownSource(u8),
   MoveHauler {
     hauler_id: u8,
     from: NodeId,
