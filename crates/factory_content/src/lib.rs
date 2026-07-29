@@ -46,12 +46,14 @@ pub const IRON_ORE: ItemId = ItemId::new("iron_ore");
 pub const IRON_BARS: ItemId = ItemId::new("iron_bars");
 pub const COPPER_ORE: ItemId = ItemId::new("copper_ore");
 pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
+pub const COAL: ItemId = ItemId::new("coal");
 pub const STONE: ItemId = ItemId::new("stone");
 pub const BUILDING_MATERIALS: ItemId = ItemId::new("building_materials");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
 pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-fleet");
 pub const BUILDING_MATERIALS_SCENARIO: ScenarioId = ScenarioId::new("building-materials");
+pub const POWERED_IRONWORKS_SCENARIO: ScenarioId = ScenarioId::new("powered-ironworks");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -104,6 +106,19 @@ pub struct SourceSpec {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct PowerSpec {
+  pub fuel_item: ItemId,
+  pub initial_fuel: u32,
+  pub fuel_buffer: u32,
+  pub burn_rate: u32,
+  pub gain_rate: u32,
+  pub grid_capacity: u32,
+  pub mining_cost: u32,
+  pub dispatch_cost: u32,
+  pub production_cost: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ScenarioDefinition {
   pub id: ScenarioId,
   pub name: String,
@@ -113,6 +128,7 @@ pub struct ScenarioDefinition {
   pub hauler_capacity: u32,
   pub craft_input_buffer: u32,
   pub craft_output_buffer: u32,
+  pub power: Option<PowerSpec>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -164,6 +180,11 @@ impl ContentDatabase {
     );
 
     items.insert(
+      COAL,
+      ItemDefinition::new(COAL, "Coal", 1, 1, 100, 0, 1, BTreeMap::new()),
+    );
+
+    items.insert(
       STONE,
       ItemDefinition::new(STONE, "Stone", 1, 1, 100, 0, 1, BTreeMap::new())
         .with_create_from_nothing(),
@@ -199,6 +220,7 @@ impl ContentDatabase {
         hauler_capacity: 3,
         craft_input_buffer: 6,
         craft_output_buffer: 20,
+        power: None,
       },
     );
     scenarios.insert(
@@ -216,6 +238,7 @@ impl ContentDatabase {
         hauler_capacity: 3,
         craft_input_buffer: 6,
         craft_output_buffer: 20,
+        power: None,
       },
     );
     scenarios.insert(
@@ -240,6 +263,42 @@ impl ContentDatabase {
         hauler_capacity: 2,
         craft_input_buffer: 4,
         craft_output_buffer: 20,
+        power: None,
+      },
+    );
+    scenarios.insert(
+      POWERED_IRONWORKS_SCENARIO,
+      ScenarioDefinition {
+        id: POWERED_IRONWORKS_SCENARIO,
+        name: "Powered Ironworks".into(),
+        sources: vec![
+          SourceSpec {
+            item: IRON_ORE,
+            deposit: 30,
+            mining_speed: 3,
+          },
+          SourceSpec {
+            item: COAL,
+            deposit: 18,
+            mining_speed: 2,
+          },
+        ],
+        product_item: IRON_BARS,
+        hauler_count: 2,
+        hauler_capacity: 3,
+        craft_input_buffer: 6,
+        craft_output_buffer: 20,
+        power: Some(PowerSpec {
+          fuel_item: COAL,
+          initial_fuel: 2,
+          fuel_buffer: 5,
+          burn_rate: 1,
+          gain_rate: 12,
+          grid_capacity: 48,
+          mining_cost: 1,
+          dispatch_cost: 1,
+          production_cost: 2,
+        }),
       },
     );
 
@@ -247,13 +306,15 @@ impl ContentDatabase {
   }
 
   pub fn item(&self, id: ItemId) -> &ItemDefinition {
-    self.items
+    self
+      .items
       .get(&id)
       .unwrap_or_else(|| panic!("missing item definition for {id}"))
   }
 
   pub fn scenario(&self, id: ScenarioId) -> &ScenarioDefinition {
-    self.scenarios
+    self
+      .scenarios
       .get(&id)
       .unwrap_or_else(|| panic!("missing scenario definition for {id}"))
   }

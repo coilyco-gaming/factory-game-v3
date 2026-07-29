@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, IRON_BARS_FLEET_SCENARIO,
-  IRON_BARS_SCENARIO,
+  IRON_BARS_SCENARIO, POWERED_IRONWORKS_SCENARIO,
 };
 use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
@@ -17,13 +17,15 @@ const MAX_RECENT_EVENTS: usize = 8;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
+const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 3] = [
+const DEMO_SCENARIOS: [ScenarioId; 4] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
+  POWERED_IRONWORKS_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -39,6 +41,9 @@ const NODE_ROAD: Color = Color::srgb(0.30, 0.34, 0.40);
 const NODE_FACTORY_IDLE: Color = Color::srgb(0.23, 0.47, 0.36);
 const NODE_FACTORY_DEMAND: Color = Color::srgb(0.24, 0.69, 0.65);
 const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
+const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
+const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
+const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
 const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
 const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
@@ -49,6 +54,8 @@ const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
 const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
 const CRAFT_GAUGE_BACKGROUND: Color = Color::srgb(0.10, 0.16, 0.14);
 const CRAFT_GAUGE_FILL: Color = Color::srgb(0.58, 0.96, 0.62);
+const POWER_GAUGE_BACKGROUND: Color = Color::srgb(0.16, 0.10, 0.08);
+const POWER_GAUGE_FILL: Color = Color::srgb(1.0, 0.72, 0.18);
 const OUTPUT_CHIP_STONE: Color = Color::srgb(0.62, 0.58, 0.48);
 const OUTPUT_CHIP_STEEL: Color = Color::srgb(0.48, 0.55, 0.58);
 
@@ -78,6 +85,7 @@ fn main() {
         project_snapshot,
         project_activity,
         project_craft_gauge,
+        project_power_gauge,
         emit_output_chips,
         animate_activity,
         animate_output_chips,
@@ -274,6 +282,12 @@ struct CraftGaugeFill {
 }
 
 #[derive(Component)]
+struct PowerGaugeFill {
+  left: f32,
+  max_width: f32,
+}
+
+#[derive(Component)]
 struct OutputChip {
   velocity: Vec2,
   remaining: f32,
@@ -386,15 +400,13 @@ fn spawn_control_deck(commands: &mut Commands) {
           (ControlAction::SelectScenario(0), "IRON"),
           (ControlAction::SelectScenario(1), "FLEET"),
           (ControlAction::SelectScenario(2), "MATERIALS"),
+          (ControlAction::SelectScenario(3), "POWER"),
         ],
       );
     });
 }
 
-fn spawn_control_row(
-  parent: &mut ChildSpawnerCommands,
-  buttons: &[(ControlAction, &'static str)],
-) {
+fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlAction, &'static str)]) {
   parent
     .spawn(Node {
       width: percent(100),
@@ -439,6 +451,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeId::Source(_) => Vec2::new(124.0, 74.0),
       NodeId::Road => Vec2::new(100.0, 34.0),
       NodeId::Factory => Vec2::new(132.0, 82.0),
+      NodeId::PowerPlant => Vec2::new(132.0, 82.0),
     };
     commands.spawn((
       Sprite::from_color(node_color(snapshot, node.id), size),
@@ -459,6 +472,8 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
     ));
     if node.id == NodeId::Factory {
       spawn_craft_gauge(commands, snapshot, position);
+    } else if node.id == NodeId::PowerPlant {
+      spawn_power_gauge(commands, snapshot, position);
     }
   }
 
@@ -528,6 +543,37 @@ fn spawn_craft_gauge(commands: &mut Commands, snapshot: &TickSnapshot, factory: 
   ));
 }
 
+fn spawn_power_gauge(commands: &mut Commands, snapshot: &TickSnapshot, plant: Vec2) {
+  let Some(power) = &snapshot.power else {
+    return;
+  };
+  let y = plant.y - 28.0;
+  let left = plant.x - POWER_GAUGE_WIDTH / 2.0;
+  let width = POWER_GAUGE_WIDTH * power_fraction(power.energy, power.capacity);
+  commands.spawn((
+    Sprite::from_color(
+      POWER_GAUGE_BACKGROUND,
+      Vec2::new(POWER_GAUGE_WIDTH + 4.0, 10.0),
+    ),
+    Transform::from_xyz(plant.x, y, 1.5),
+    ProjectionEntity,
+  ));
+  commands.spawn((
+    Sprite::from_color(POWER_GAUGE_FILL, Vec2::new(width, 6.0)),
+    Transform::from_xyz(left + width / 2.0, y, 1.6),
+    if width > 0.0 {
+      Visibility::Visible
+    } else {
+      Visibility::Hidden
+    },
+    PowerGaugeFill {
+      left,
+      max_width: POWER_GAUGE_WIDTH,
+    },
+    ProjectionEntity,
+  ));
+}
+
 fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
   let road = snapshot
     .topology
@@ -547,7 +593,10 @@ fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
     let delta = road_position - position;
     let midpoint = position + delta / 2.0;
     commands.spawn((
-      Sprite::from_color(route_color(snapshot, node.id), Vec2::new(delta.length(), 5.0)),
+      Sprite::from_color(
+        route_color(snapshot, node.id),
+        Vec2::new(delta.length(), 5.0),
+      ),
       Transform::from_xyz(midpoint.x, midpoint.y, 0.0)
         .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
       RouteVisual(node.id),
@@ -579,9 +628,10 @@ fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
     (KeyCode::KeyN, ControlAction::Step),
     (KeyCode::KeyR, ControlAction::Reset),
     (KeyCode::KeyF, ControlAction::ToggleSpeed),
-    (KeyCode::KeyC, ControlAction::SelectScenario(
-      (host.scenario_index + 1) % DEMO_SCENARIOS.len(),
-    )),
+    (
+      KeyCode::KeyC,
+      ControlAction::SelectScenario((host.scenario_index + 1) % DEMO_SCENARIOS.len()),
+    ),
     (KeyCode::KeyL, ControlAction::ToggleAutoCycle),
   ] {
     if keys.just_pressed(key) {
@@ -785,6 +835,34 @@ fn project_craft_gauge(
   }
 }
 
+fn project_power_gauge(
+  host: Res<SimHost>,
+  mut gauges: Query<(
+    &PowerGaugeFill,
+    &mut Sprite,
+    &mut Transform,
+    &mut Visibility,
+  )>,
+) {
+  if !host.is_changed() {
+    return;
+  }
+  let Some(power) = &host.snapshot.power else {
+    return;
+  };
+  let progress = power_fraction(power.energy, power.capacity);
+  for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
+    let width = gauge.max_width * progress;
+    sprite.custom_size = Some(Vec2::new(width, 6.0));
+    transform.translation.x = gauge.left + width / 2.0;
+    *visibility = if width > 0.0 {
+      Visibility::Visible
+    } else {
+      Visibility::Hidden
+    };
+  }
+}
+
 fn emit_output_chips(
   mut commands: Commands,
   host: Res<SimHost>,
@@ -841,10 +919,7 @@ fn animate_activity(
   time: Res<Time>,
   host: Res<SimHost>,
   mut nodes: Query<(&NodeVisual, &mut Transform), Without<RouteDash>>,
-  mut route_dashes: Query<
-    (&RouteDash, &mut Transform, &mut Visibility),
-    Without<NodeVisual>,
-  >,
+  mut route_dashes: Query<(&RouteDash, &mut Transform, &mut Visibility), Without<NodeVisual>>,
 ) {
   let elapsed = time.elapsed_secs();
   let pulse = 1.0 + 0.045 * (elapsed * 5.0).sin().max(0.0);
@@ -958,7 +1033,8 @@ fn update_text(
   let cycle_status = if host.auto_cycle { "auto" } else { "locked" };
   let hud_value = format!(
     "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
-     mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\n\
+     mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\
+     power: {}\nenergy used: {}\nstarvations: {}\n\n\
      showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
      click the control deck below\nkeyboard: Space N R F C L",
     host.snapshot.scenario.name,
@@ -969,6 +1045,14 @@ fn update_text(
     format_items(&metrics.crafted),
     metrics.dispatches_assigned,
     metrics.idle_ticks,
+    host
+      .snapshot
+      .power
+      .as_ref()
+      .map(|power| format!("{}/{}", power.energy, power.capacity))
+      .unwrap_or_else(|| "off-grid".into()),
+    metrics.energy_consumed,
+    metrics.power_starvations,
     cycle_status,
     host.idle_streak,
     AUTO_ADVANCE_IDLE_TICKS,
@@ -1005,10 +1089,7 @@ fn grid_to_world(position: GridPosition) -> Vec2 {
 
 fn hauler_world_position(hauler: &HaulerSnapshot) -> Vec2 {
   let position = grid_to_world(hauler.position_grid);
-  Vec2::new(
-    position.x,
-    position.y - 54.0 - f32::from(hauler.id) * 30.0,
-  )
+  Vec2::new(position.x, position.y - 54.0 - f32::from(hauler.id) * 30.0)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1017,6 +1098,7 @@ enum NodeActivity {
   Ready,
   Demanding,
   Crafting,
+  Powering,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1046,10 +1128,15 @@ fn craft_progress_fraction(progress: u32, craft_time: u32) -> f32 {
   }
 }
 
-fn crafted_output_delta(
-  previous: &BTreeMap<String, u32>,
-  current: &BTreeMap<String, u32>,
-) -> u32 {
+fn power_fraction(energy: u32, capacity: u32) -> f32 {
+  if capacity == 0 {
+    0.0
+  } else {
+    (energy as f32 / capacity as f32).clamp(0.0, 1.0)
+  }
+}
+
+fn crafted_output_delta(previous: &BTreeMap<String, u32>, current: &BTreeMap<String, u32>) -> u32 {
   current
     .iter()
     .map(|(item, quantity)| quantity.saturating_sub(previous.get(item).copied().unwrap_or(0)))
@@ -1072,22 +1159,31 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
       .sources
       .iter()
       .find(|source| source.node == node)
-      .filter(|source| {
-        !source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty()
-      })
+      .filter(|source| !source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty())
       .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
     NodeId::Road => NodeActivity::Idle,
     NodeId::Factory if snapshot.factory.craft.crafting => NodeActivity::Crafting,
     NodeId::Factory if !snapshot.factory.dispatch.intents.is_empty() => NodeActivity::Demanding,
     NodeId::Factory => NodeActivity::Idle,
+    NodeId::PowerPlant => snapshot.power.as_ref().map_or(NodeActivity::Idle, |power| {
+      if snapshot
+        .events
+        .iter()
+        .any(|event| event.starts_with("power burn"))
+      {
+        NodeActivity::Powering
+      } else if power.energy > 0 {
+        NodeActivity::Ready
+      } else {
+        NodeActivity::Demanding
+      }
+    }),
   }
 }
 
 fn hauler_activity(hauler: &HaulerSnapshot) -> HaulerActivity {
   match &hauler.dispatch {
-    DispatchReceiverState::Assigned(assignment)
-      if assignment.phase == DispatchPhase::Collect =>
-    {
+    DispatchReceiverState::Assigned(assignment) if assignment.phase == DispatchPhase::Collect => {
       HaulerActivity::Collecting
     }
     DispatchReceiverState::Assigned(_) => HaulerActivity::Delivering,
@@ -1106,6 +1202,9 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::Factory, NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
     (NodeId::Factory, NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
     (NodeId::Factory, _) => NODE_FACTORY_IDLE,
+    (NodeId::PowerPlant, NodeActivity::Powering) => NODE_POWER_ACTIVE,
+    (NodeId::PowerPlant, NodeActivity::Ready) => NODE_POWER_CHARGED,
+    (NodeId::PowerPlant, _) => NODE_POWER_IDLE,
   }
 }
 
@@ -1201,6 +1300,18 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
         "idle"
       }
     ),
+    NodeId::PowerPlant => snapshot
+      .power
+      .as_ref()
+      .map(|power| {
+        format!(
+          "coal plant\nfuel: {}\ngrid: {}/{}",
+          format_items(&power.fuel.items),
+          power.energy,
+          power.capacity
+        )
+      })
+      .unwrap_or_else(|| "coal plant".into()),
   }
 }
 
@@ -1335,13 +1446,11 @@ mod tests {
 
     assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
     assert!(host.recent_events.contains(&latest_before_change));
-    assert!(
-      host
-        .recent_events
-        .back()
-        .expect("scenario event is recorded")
-        .contains("test selected")
-    );
+    assert!(host
+      .recent_events
+      .back()
+      .expect("scenario event is recorded")
+      .contains("test selected"));
   }
 
   #[test]
@@ -1370,8 +1479,7 @@ mod tests {
         .haulers
         .iter()
         .any(|hauler| hauler_activity(hauler) == HaulerActivity::Delivering);
-      saw_crafting |=
-        node_activity(&host.snapshot, NodeId::Factory) == NodeActivity::Crafting;
+      saw_crafting |= node_activity(&host.snapshot, NodeId::Factory) == NodeActivity::Crafting;
     }
 
     assert!(saw_ready_source);
@@ -1465,8 +1573,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(POWERED_IRONWORKS_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(3, host.scene_revision);
+    assert_eq!(4, host.scene_revision);
   }
 
   #[test]

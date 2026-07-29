@@ -1,5 +1,6 @@
 use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, DispatchReceiverState};
 use crate::mining::MiningExtractor;
+use crate::power::{PowerPlant, PowerSnapshot};
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ItemId, ScenarioDefinition};
@@ -11,6 +12,7 @@ pub enum NodeId {
   Source(u8),
   Road,
   Factory,
+  PowerPlant,
 }
 
 impl fmt::Display for NodeId {
@@ -19,6 +21,7 @@ impl fmt::Display for NodeId {
       Self::Source(index) => write!(f, "source-{index}"),
       Self::Road => f.write_str("road"),
       Self::Factory => f.write_str("factory"),
+      Self::PowerPlant => f.write_str("power-plant"),
     }
   }
 }
@@ -49,8 +52,8 @@ pub struct Topology {
 }
 
 impl Topology {
-  pub fn for_sources(source_count: u8) -> Self {
-    let mut nodes = Vec::with_capacity(usize::from(source_count) + 2);
+  pub fn for_sources(source_count: u8, include_power_plant: bool) -> Self {
+    let mut nodes = Vec::with_capacity(usize::from(source_count) + 3);
     for index in 0..source_count {
       nodes.push(TopologyNode {
         id: NodeId::Source(index),
@@ -68,6 +71,12 @@ impl Topology {
       id: NodeId::Factory,
       position: GridPosition { x: 2, y: 0 },
     });
+    if include_power_plant {
+      nodes.push(TopologyNode {
+        id: NodeId::PowerPlant,
+        position: GridPosition { x: 2, y: 1 },
+      });
+    }
     Self { nodes }
   }
 
@@ -231,6 +240,7 @@ pub struct TickSnapshot {
   pub sources: Vec<SourceSnapshot>,
   pub haulers: Vec<HaulerSnapshot>,
   pub factory: FactorySnapshot,
+  pub power: Option<PowerSnapshot>,
   pub events: Vec<String>,
 }
 
@@ -241,5 +251,6 @@ pub struct WorldState {
   pub sources: Vec<SourceNode>,
   pub haulers: Vec<Hauler>,
   pub factory: FactoryNode,
+  pub power: Option<PowerPlant>,
   pub topology: Topology,
 }

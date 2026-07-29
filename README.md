@@ -37,6 +37,8 @@ ward exec image-build
 ## Inventory
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
+See [docs/unity-parity.md](docs/unity-parity.md) for the C# parity map and
+decommission gates.
 
 ## See also
 

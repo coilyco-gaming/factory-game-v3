@@ -14,21 +14,21 @@ production, metrics, and tick ordering. The viewer owns only:
 - node, route, hauler, and text presentation
 - native-window and Wasm runtime behavior
 
-Bevy frames and simulation ticks use separate clocks. The viewer advances the
-simulation in whole ticks at a bounded cadence and projects the latest
+Bevy frames and simulation ticks use separate clocks. The viewer advances the simulation in whole ticks at a bounded cadence and projects the latest
 snapshot after each update. Bevy smoothly interpolates only the visual hauler
 projection between snapshots. That animation never mutates simulation state
 through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through the `iron-bars`, `iron-bars-fleet`, and
-`building-materials` scenarios. Each scene displays:
+The viewer rotates through `iron-bars`, `iron-bars-fleet`, `building-materials`,
+and `powered-ironworks`. Each scene displays:
 
 - source, road, and factory topology nodes
 - hauler position, cargo, and dispatch phase
 - source and factory inventory
 - factory craft progress
+- coal-plant fuel, power-grid energy, generation, consumption, and starvation
 - current tick, run metrics, and a bounded rolling activity feed
 
 The scene rebuilds its generated primitives when the scenario changes. Hauler
@@ -40,6 +40,7 @@ Material-flow telemetry brightens stocked sources and changes the factory color
 while it demands inputs or crafts. A slim gauge tracks recipe progress, and
 completed output ejects a short stack of stone-and-steel product chips. Active
 nodes pulse, route dashes show direction, and cargo badges brighten when loaded.
+The coal plant changes state as it burns fuel or holds charge. Its gauge tracks the authoritative shared grid.
 The latest eight events persist across scenarios. Frame-time effects move
 smoothly between ticks and never write back into simulation state.
 

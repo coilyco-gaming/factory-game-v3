@@ -39,12 +39,16 @@ impl FactoryProduction {
     }
   }
 
-  fn inputs_ready(&self) -> bool {
+  pub fn inputs_ready(&self) -> bool {
     self
       .recipe
       .inputs
       .iter()
       .all(|(item, quantity)| self.inventory.count(*item) >= *quantity)
+  }
+
+  pub fn wants_power(&self) -> bool {
+    self.crafting || self.inputs_ready()
   }
 
   pub fn advance(&mut self, content: &ContentDatabase, events: &mut Vec<String>) -> u32 {

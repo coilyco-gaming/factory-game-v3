@@ -10,6 +10,10 @@ pub struct RunMetrics {
   pub dispatches_assigned: u32,
   pub units_collected: u32,
   pub units_delivered: u32,
+  pub fuel_burned: u32,
+  pub energy_generated: u32,
+  pub energy_consumed: u32,
+  pub power_starvations: u32,
   pub idle_ticks: u64,
 }
 
@@ -42,6 +46,10 @@ impl RunMetrics {
       dispatches_assigned: self.dispatches_assigned,
       units_collected: self.units_collected,
       units_delivered: self.units_delivered,
+      fuel_burned: self.fuel_burned,
+      energy_generated: self.energy_generated,
+      energy_consumed: self.energy_consumed,
+      power_starvations: self.power_starvations,
       idle_ticks: self.idle_ticks,
     }
   }
@@ -55,5 +63,9 @@ pub struct RunMetricsSnapshot {
   pub dispatches_assigned: u32,
   pub units_collected: u32,
   pub units_delivered: u32,
+  pub fuel_burned: u32,
+  pub energy_generated: u32,
+  pub energy_consumed: u32,
+  pub power_starvations: u32,
   pub idle_ticks: u64,
 }
