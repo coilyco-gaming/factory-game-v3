@@ -6,10 +6,10 @@ viewer exposes player-visible state.
 
 ## Current parity
 
-* **Content and item definitions** - partial - Rust owns typed item and scenario
-  IDs, weights, volumes, stack sizes, recipes, craft timing, output multipliers,
-  finite deposits, manifest resources, and spawnable-object flags. The full
-  Unity item catalog and general object construction remain.
+* **Content and item definitions** - substantial - Rust owns the complete
+  active Unity item catalog with typed IDs, weights, volumes, stack sizes,
+  recipes, craft timing, output multipliers, finite deposits, manifest
+  resources, and spawnable-object flags. General object construction remains.
 * **Resource containers** - substantial - Rust owns weight and volume capacity,
   item reservations, exact and partial insert, remove, and transfer behavior.
   Inserter and retriever scheduling remain.
@@ -51,8 +51,7 @@ viewer exposes player-visible state.
 
 1. The agent expands deferred world mutation from deployed source activation to
    general spawn, move, delete, and teardown operations.
-2. The agent ports the remaining content catalog and multi-building production
-   chains.
+2. The agent ports multi-building production chains.
 3. The agent adds player-facing programming and logistics policy controls.
 4. The agent proves every retained C# gameplay component is either covered by a
    Rust test and viewer surface or explicitly retired as obsolete.

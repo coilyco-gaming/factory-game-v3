@@ -1077,7 +1077,7 @@ mod tests {
       .iter()
       .map(|intent| intent.item.as_str())
       .collect();
-    assert_eq!(vec![IRON_ORE.as_str(), STONE.as_str()], intent_items);
+    assert_eq!(vec![IRON_BARS.as_str(), STONE.as_str()], intent_items);
   }
 
   #[test]
@@ -1092,7 +1092,7 @@ mod tests {
     assert_eq!(first_run, second_run);
 
     let metrics = first.metrics();
-    assert!(metrics.mined.get(IRON_ORE.as_str()).copied().unwrap_or(0) > 0);
+    assert!(metrics.mined.get(IRON_BARS.as_str()).copied().unwrap_or(0) > 0);
     assert!(metrics.mined.get(STONE.as_str()).copied().unwrap_or(0) > 0);
     assert!(
       metrics

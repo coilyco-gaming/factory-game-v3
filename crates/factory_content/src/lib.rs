@@ -49,6 +49,12 @@ pub const COPPER_BARS: ItemId = ItemId::new("copper_bars");
 pub const COAL: ItemId = ItemId::new("coal");
 pub const STONE: ItemId = ItemId::new("stone");
 pub const BUILDING_MATERIALS: ItemId = ItemId::new("building_materials");
+pub const MOTORS: ItemId = ItemId::new("motors");
+pub const CIRCUITS: ItemId = ItemId::new("circuits");
+pub const FRAMES: ItemId = ItemId::new("frames");
+pub const STORAGE_WAREHOUSE: ItemId = ItemId::new("storage_warehouse");
+pub const COAL_PLANT: ItemId = ItemId::new("coal_plant");
+pub const FACTORY_BUILDING: ItemId = ItemId::new("factory");
 pub const MINING_DRILL: ItemId = ItemId::new("mining_drill");
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
@@ -246,13 +252,110 @@ impl ContentDatabase {
       ItemDefinition::new(
         BUILDING_MATERIALS,
         "Building Materials",
+        20,
+        5,
+        20,
+        5,
         1,
-        1,
-        100,
-        2,
-        4,
-        BTreeMap::from([(IRON_ORE, 2), (STONE, 2)]),
+        BTreeMap::from([(IRON_BARS, 4), (STONE, 4)]),
       ),
+    );
+
+    items.insert(
+      MOTORS,
+      ItemDefinition::new(
+        MOTORS,
+        "Motors",
+        1,
+        1,
+        20,
+        5,
+        1,
+        BTreeMap::from([(IRON_BARS, 2), (COPPER_BARS, 2)]),
+      ),
+    );
+
+    items.insert(
+      CIRCUITS,
+      ItemDefinition::new(
+        CIRCUITS,
+        "Circuits",
+        1,
+        1,
+        20,
+        5,
+        1,
+        BTreeMap::from([(COPPER_BARS, 1)]),
+      ),
+    );
+
+    items.insert(
+      FRAMES,
+      ItemDefinition::new(
+        FRAMES,
+        "Frames",
+        10,
+        10,
+        20,
+        5,
+        1,
+        BTreeMap::from([(IRON_BARS, 4)]),
+      ),
+    );
+
+    items.insert(
+      STORAGE_WAREHOUSE,
+      ItemDefinition::new(
+        STORAGE_WAREHOUSE,
+        "Storage Warehouse",
+        400,
+        200,
+        1,
+        40,
+        1,
+        BTreeMap::from([(FRAMES, 20), (BUILDING_MATERIALS, 20)]),
+      )
+      .with_spawnable_game_object(),
+    );
+
+    items.insert(
+      COAL_PLANT,
+      ItemDefinition::new(
+        COAL_PLANT,
+        "Coal Plant",
+        400,
+        200,
+        1,
+        40,
+        1,
+        BTreeMap::from([
+          (FRAMES, 20),
+          (BUILDING_MATERIALS, 10),
+          (MOTORS, 8),
+          (CIRCUITS, 16),
+        ]),
+      )
+      .with_spawnable_game_object(),
+    );
+
+    items.insert(
+      FACTORY_BUILDING,
+      ItemDefinition::new(
+        FACTORY_BUILDING,
+        "Factory",
+        400,
+        200,
+        1,
+        40,
+        1,
+        BTreeMap::from([
+          (FRAMES, 20),
+          (BUILDING_MATERIALS, 10),
+          (CIRCUITS, 16),
+          (MOTORS, 16),
+        ]),
+      )
+      .with_spawnable_game_object(),
     );
 
     items.insert(
@@ -261,11 +364,11 @@ impl ContentDatabase {
         MINING_DRILL,
         "Mining Drill",
         50,
-        20,
+        1,
         1,
         5,
         1,
-        BTreeMap::new(),
+        BTreeMap::from([(FRAMES, 4), (MOTORS, 1)]),
       )
       .with_spawnable_game_object(),
     );
@@ -324,7 +427,7 @@ impl ContentDatabase {
         name: "Building Materials".into(),
         sources: vec![
           SourceSpec {
-            item: IRON_ORE,
+            item: IRON_BARS,
             deposit: 12,
             mining_speed: 2,
             requires_deployment: false,
@@ -459,5 +562,128 @@ impl ContentDatabase {
       .scenarios
       .get(&id)
       .unwrap_or_else(|| panic!("missing scenario definition for {id}"))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn starter_catalog_matches_the_active_unity_item_set() {
+    let content = ContentDatabase::starter();
+
+    assert_eq!(
+      vec![
+        BUILDING_MATERIALS,
+        CIRCUITS,
+        COAL,
+        COAL_PLANT,
+        COPPER_BARS,
+        COPPER_ORE,
+        FACTORY_BUILDING,
+        FRAMES,
+        IRON_BARS,
+        IRON_ORE,
+        MINING_DRILL,
+        MOTORS,
+        STONE,
+        STORAGE_WAREHOUSE,
+      ],
+      content.items.keys().copied().collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn starter_catalog_preserves_unity_recipes_and_flags() {
+    let content = ContentDatabase::starter();
+
+    assert_eq!(
+      BTreeMap::from([(IRON_ORE, 3)]),
+      content.item(IRON_BARS).ingredients
+    );
+    assert_eq!(10, content.item(IRON_BARS).craft_output);
+    assert_eq!(
+      BTreeMap::from([(COPPER_ORE, 3)]),
+      content.item(COPPER_BARS).ingredients
+    );
+    assert_eq!(10, content.item(COPPER_BARS).craft_output);
+    assert_eq!(
+      BTreeMap::from([(IRON_BARS, 4), (STONE, 4)]),
+      content.item(BUILDING_MATERIALS).ingredients
+    );
+    assert_eq!(
+      BTreeMap::from([(IRON_BARS, 2), (COPPER_BARS, 2)]),
+      content.item(MOTORS).ingredients
+    );
+    assert_eq!(
+      BTreeMap::from([(COPPER_BARS, 1)]),
+      content.item(CIRCUITS).ingredients
+    );
+    assert_eq!(
+      BTreeMap::from([(IRON_BARS, 4)]),
+      content.item(FRAMES).ingredients
+    );
+    assert_eq!(
+      BTreeMap::from([(FRAMES, 4), (MOTORS, 1)]),
+      content.item(MINING_DRILL).ingredients
+    );
+    assert!(content.item(STONE).create_from_nothing);
+    for spawnable in [
+      STORAGE_WAREHOUSE,
+      COAL_PLANT,
+      FACTORY_BUILDING,
+      MINING_DRILL,
+    ] {
+      assert!(content.item(spawnable).can_spawn_game_object);
+    }
+  }
+
+  #[test]
+  fn starter_catalog_preserves_unity_physical_and_timing_values() {
+    let content = ContentDatabase::starter();
+
+    let building_materials = content.item(BUILDING_MATERIALS);
+    assert_eq!(
+      (20, 5, 20, 5),
+      (
+        building_materials.weight,
+        building_materials.volume,
+        building_materials.stack_size,
+        building_materials.craft_time
+      )
+    );
+    let frames = content.item(FRAMES);
+    assert_eq!(
+      (10, 10, 20, 5),
+      (
+        frames.weight,
+        frames.volume,
+        frames.stack_size,
+        frames.craft_time
+      )
+    );
+    for building in [STORAGE_WAREHOUSE, COAL_PLANT, FACTORY_BUILDING] {
+      let definition = content.item(building);
+      assert_eq!(
+        (400, 200, 1, 40),
+        (
+          definition.weight,
+          definition.volume,
+          definition.stack_size,
+          definition.craft_time
+        )
+      );
+    }
+    let mining_drill = content.item(MINING_DRILL);
+    assert_eq!(
+      (50, 1, 1, 5),
+      (
+        mining_drill.weight,
+        mining_drill.volume,
+        mining_drill.stack_size,
+        mining_drill.craft_time
+      )
+    );
   }
 }
