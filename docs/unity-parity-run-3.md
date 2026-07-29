@@ -32,3 +32,23 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
 - Decision - power behavior is now complete enough to leave only general world
   construction and player interaction in the critical migration path.
 - Next - land and begin spawnable output construction.
+
+### 2026-07-29 - general structure construction
+
+- Done - scenarios can declare typed build sites. Factories advertise matching
+  spawnable inventory, haulers retrieve one item, and deployment queues a world
+  mutation that replaces the site with a blocked structure node.
+- Evidence - the warehouse scenario begins without resource sources, transports
+  the Unity-catalog warehouse under its real weight and volume constraints, and
+  exposes the spawned structure in snapshots and the tenth viewer control.
+- Next - run the full gate, wait for Wasm hot reload, land, then audit general
+  targeting and buffer-policy parity.
+
+### 2026-07-29 - construction validation
+
+- Evidence - the full gate and all 52 Rust tests pass. The proof asserts the
+  open build site, factory retrieval, single spawn event, typed structure
+  snapshot, occupied replacement cell, consumed inventory, and no duplication.
+- Evidence - Trunk applied the tenth viewer scene and the live BUILD control now
+  shows the full warehouse trip and topology replacement.
+- Next - land and audit Unity's configurable dispatch target and buffer policy.

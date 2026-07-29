@@ -14,6 +14,8 @@ pub enum NodeId {
   Road,
   Factory(u8),
   PowerPlant,
+  BuildSite(u8),
+  Structure(u8),
   Transit(GridPosition),
 }
 
@@ -24,6 +26,8 @@ impl fmt::Display for NodeId {
       Self::Road => f.write_str("road"),
       Self::Factory(index) => write!(f, "factory-{index}"),
       Self::PowerPlant => f.write_str("power-plant"),
+      Self::BuildSite(index) => write!(f, "build-site-{index}"),
+      Self::Structure(index) => write!(f, "structure-{index}"),
       Self::Transit(position) => write!(f, "transit-{}-{}", position.x, position.y),
     }
   }
@@ -119,6 +123,24 @@ impl Topology {
       blocked,
       obstacles,
     }
+  }
+
+  pub fn from_scenario(scenario: &ScenarioDefinition) -> Self {
+    let mut topology = Self::from_layout(&scenario.layout);
+    topology.nodes.extend(
+      scenario
+        .build_sites
+        .iter()
+        .enumerate()
+        .map(|(index, site)| TopologyNode {
+          id: NodeId::BuildSite(index as u8),
+          position: GridPosition {
+            x: site.position.x,
+            y: site.position.y,
+          },
+        }),
+    );
+    topology
   }
 
   pub fn with_obstacles(
@@ -412,6 +434,12 @@ pub struct FactorySnapshot {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct StructureSnapshot {
+  pub node: NodeId,
+  pub item: ItemId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HaulerSnapshot {
   pub id: u8,
   pub position: NodeId,
@@ -447,6 +475,7 @@ pub struct TickSnapshot {
   pub sources: Vec<SourceSnapshot>,
   pub haulers: Vec<HaulerSnapshot>,
   pub factories: Vec<FactorySnapshot>,
+  pub structures: Vec<StructureSnapshot>,
   pub power: Option<PowerSnapshot>,
   pub events: Vec<String>,
 }
@@ -456,6 +485,11 @@ pub enum WorldMutation {
   DeploySource(u8),
   DeleteDepletedDeposit(u8),
   TeardownSource(u8),
+  SpawnStructure {
+    site_index: u8,
+    item: ItemId,
+    hauler_id: u8,
+  },
   MoveHauler {
     hauler_id: u8,
     from: NodeId,
@@ -471,6 +505,7 @@ pub struct WorldState {
   pub sources: Vec<SourceNode>,
   pub haulers: Vec<Hauler>,
   pub factories: Vec<FactoryNode>,
+  pub structures: Vec<StructureSnapshot>,
   pub power: Option<PowerPlant>,
   pub batteries: BTreeMap<BatteryOwner, Battery>,
   pub power_lines: BTreeSet<GridPosition>,

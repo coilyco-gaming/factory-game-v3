@@ -9,7 +9,8 @@ viewer exposes player-visible state.
 * **Content and item definitions** - substantial - Rust owns the complete
   active Unity item catalog with typed IDs, weights, volumes, stack sizes,
   recipes, craft timing, output multipliers, finite deposits, manifest
-  resources, and spawnable-object flags. General object construction remains.
+  resources, and spawnable-object flags. Spawnable warehouse construction is
+  now proven through the general build-site path.
 * **Resource containers** - substantial - Rust owns weight and volume capacity,
   item reservations, exact and partial insert, remove, transfer,
   eight-neighbor automated inserters, and adjacent retrievers over source and
@@ -21,7 +22,7 @@ viewer exposes player-visible state.
 * **Production** - substantial - Rust owns indexed factories, multi-input
   recipes, input consumption, craft progress, output multipliers, output
   capacity, energy-gated crafting, and multi-building production chains.
-  General spawnable output construction remains.
+  Spawnable factory inventory can now dispatch into world construction.
 * **Dispatch and receivers** - substantial - Rust owns typed collect, deliver,
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
   in-flight demand accounting, receiver assignment, coal delivery,
@@ -40,11 +41,12 @@ viewer exposes player-visible state.
   fuel-burning generation, starvation, coal demand, and energy metrics.
   Generators greedily construct battery-backed lines toward the nearest
   disconnected battery, and the viewer projects each line cell.
-* **World mutation and deployment** - partial - Rust owns scenario-starting
+* **World mutation and deployment** - substantial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
-  source activation, depleted-ore deletion, drill teardown, and occupancy
-  release at a deterministic tick boundary. General object spawn and deletion
-  plus player placement remain.
+  source activation, general spawnable-item construction at build sites,
+  topology replacement, structure occupancy, depleted-ore deletion, drill
+  teardown, and occupancy release at a deterministic tick boundary. General
+  structure deletion plus player placement remain.
 * **Player and UI interaction** - early - Bevy owns playback controls and
   read-only projection. World editing, selection, placement, and programmable
   logistics controls remain.

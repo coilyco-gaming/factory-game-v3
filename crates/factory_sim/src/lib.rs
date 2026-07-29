@@ -6,9 +6,7 @@ mod production;
 mod resources;
 mod world;
 
-use factory_content::{
-  ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, MINING_DRILL,
-};
+use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, MINING_DRILL};
 use std::fmt;
 
 pub use dispatch::{
@@ -22,8 +20,8 @@ pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
   FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerSnapshot, NodeId, ScenarioSnapshot,
-  SourceNode, SourceSnapshot, TickSnapshot, Topology, TopologyNode, TopologySnapshot,
-  WorldMutation, WorldState,
+  SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot, Topology, TopologyNode,
+  TopologySnapshot, WorldMutation, WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,9 +74,6 @@ impl GameState {
       .get(&scenario_id)
       .cloned()
       .ok_or(SimulationError::UnknownScenario(scenario_id))?;
-    if scenario.sources.is_empty() {
-      return Err(SimulationError::ScenarioMissingSources(scenario_id));
-    }
     if scenario.factories.is_empty() {
       return Err(SimulationError::ScenarioMissingFactories(scenario_id));
     }
@@ -154,7 +149,7 @@ impl GameState {
       .power
       .clone()
       .map(|spec| PowerPlant::new(&content, spec, Inventory::new(64, 64)));
-    let topology = Topology::from_layout(&scenario.layout);
+    let topology = Topology::from_scenario(&scenario);
     let mut batteries = std::collections::BTreeMap::new();
     if power.is_some() {
       for source in &sources {
@@ -184,6 +179,7 @@ impl GameState {
         sources,
         haulers,
         factories,
+        structures: Vec::new(),
         power,
         batteries,
         power_lines: std::collections::BTreeSet::new(),
@@ -268,6 +264,28 @@ impl GameState {
           .dispatch
           .intents
           .push(DispatchIntent::retrieve(MINING_DRILL, factory.node, source.node));
+      }
+    }
+    for (site_index, site) in self.world.scenario.build_sites.iter().enumerate() {
+      if self
+        .world
+        .structures
+        .iter()
+        .any(|structure| structure.node == NodeId::Structure(site_index as u8))
+      {
+        continue;
+      }
+      if let Some(factory) = self
+        .world
+        .factories
+        .iter_mut()
+        .find(|factory| factory.production.inventory.count(site.item) > 0)
+      {
+        factory.dispatch.intents.push(DispatchIntent::retrieve(
+          site.item,
+          factory.node,
+          NodeId::BuildSite(site_index as u8),
+        ));
       }
     }
     if let Some(power) = &mut self.world.power {
@@ -514,7 +532,11 @@ impl GameState {
             carry_limit,
           )
         }
-        NodeId::Road | NodeId::PowerPlant | NodeId::Transit(_) => 0,
+        NodeId::Road
+        | NodeId::PowerPlant
+        | NodeId::BuildSite(_)
+        | NodeId::Structure(_)
+        | NodeId::Transit(_) => 0,
       };
       self.metrics.units_collected += moved;
       if moved > 0 {
@@ -567,7 +589,11 @@ impl GameState {
             carried,
           )
         }
-        NodeId::Source(_) | NodeId::Road | NodeId::Transit(_) => 0,
+        NodeId::Source(_)
+        | NodeId::Road
+        | NodeId::BuildSite(_)
+        | NodeId::Structure(_)
+        | NodeId::Transit(_) => 0,
       };
       self.metrics.units_delivered += delivered;
       if delivered > 0 {
@@ -617,13 +643,20 @@ impl GameState {
             .remove_exact(assignment.item, 1)
             .is_ok()
           {
-            let NodeId::Source(source_index) = assignment.destination else {
-              continue;
-            };
-            self
-              .world
-              .queued_mutations
-              .push(WorldMutation::DeploySource(source_index));
+            match assignment.destination {
+              NodeId::Source(source_index) => self
+                .world
+                .queued_mutations
+                .push(WorldMutation::DeploySource(source_index)),
+              NodeId::BuildSite(site_index) => {
+                self.world.queued_mutations.push(WorldMutation::SpawnStructure {
+                  site_index,
+                  item: assignment.item,
+                  hauler_id: self.world.haulers[hauler_index].id,
+                });
+              }
+              _ => continue,
+            }
             events.push(format!(
               "dispatch deploy {} queued at {} by hauler-{}",
               assignment.item,
@@ -683,6 +716,40 @@ impl GameState {
             .remove(&self.world.topology.position(source.node));
           self.metrics.world_deletions += 1;
           events.push(format!("world delete depleted mining drill at {}", source.node));
+        }
+        WorldMutation::SpawnStructure {
+          site_index,
+          item,
+          hauler_id,
+        } => {
+          let build_site = NodeId::BuildSite(site_index);
+          let structure = NodeId::Structure(site_index);
+          let Some(node) = self
+            .world
+            .topology
+            .nodes
+            .iter_mut()
+            .find(|node| node.id == build_site)
+          else {
+            continue;
+          };
+          node.id = structure;
+          self.world.topology.blocked.insert(node.position);
+          self.world.structures.push(StructureSnapshot {
+            node: structure,
+            item,
+          });
+          if let Some(hauler) = self
+            .world
+            .haulers
+            .iter_mut()
+            .find(|hauler| hauler.id == hauler_id)
+          {
+            hauler.target = structure;
+            hauler.clear_assignment();
+          }
+          self.metrics.deployments += 1;
+          events.push(format!("world spawn {item} at {structure}"));
         }
         WorldMutation::MoveHauler {
           hauler_id,
@@ -1184,6 +1251,7 @@ impl GameState {
           dispatch: factory.dispatch.clone(),
         })
         .collect(),
+      structures: self.world.structures.clone(),
       power: self.world.power.as_ref().map(|power| {
         power.snapshot(self.world.batteries.values().cloned())
       }),
@@ -1939,6 +2007,66 @@ mod tests {
         .get(MINING_DRILL.as_str())
         .copied()
         .unwrap_or(0)
+    );
+  }
+
+  #[test]
+  fn spawnable_factory_inventory_constructs_a_blocking_world_structure() {
+    use factory_content::{BUILDING_DEPLOYMENT_SCENARIO, STORAGE_WAREHOUSE};
+
+    let mut state =
+      GameState::new(ContentDatabase::starter(), BUILDING_DEPLOYMENT_SCENARIO).unwrap();
+    let initial = state.snapshot(Vec::new());
+    let site_position = GridPosition { x: 4, y: 1 };
+
+    assert!(initial
+      .topology
+      .nodes
+      .iter()
+      .any(|node| node.id == NodeId::BuildSite(0) && node.position == site_position));
+    assert!(!initial.topology.blocked.contains(&site_position));
+    assert!(initial.structures.is_empty());
+
+    let snapshots = (0..16).map(|_| state.step()).collect::<Vec<_>>();
+    let built = snapshots
+      .iter()
+      .find(|snapshot| {
+        snapshot
+          .events
+          .iter()
+          .any(|event| event == "world spawn storage_warehouse at structure-0")
+      })
+      .expect("warehouse construction completes");
+
+    assert!(snapshots.iter().any(|snapshot| snapshot.events.iter().any(
+      |event| event.contains("dispatch retrieve") && event.contains("factory")
+    )));
+    assert_eq!(
+      vec![StructureSnapshot {
+        node: NodeId::Structure(0),
+        item: STORAGE_WAREHOUSE,
+      }],
+      built.structures
+    );
+    assert!(built.topology.blocked.contains(&site_position));
+    assert!(built
+      .topology
+      .nodes
+      .iter()
+      .any(|node| node.id == NodeId::Structure(0) && node.position == site_position));
+    assert!(!built
+      .topology
+      .nodes
+      .iter()
+      .any(|node| node.id == NodeId::BuildSite(0)));
+    assert_eq!(1, state.metrics().deployments);
+    assert_eq!(1, state.world.structures.len());
+    assert_eq!(
+      0,
+      state.world.factories[0]
+        .production
+        .inventory
+        .count(STORAGE_WAREHOUSE)
     );
   }
 

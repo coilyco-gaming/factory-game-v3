@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use factory_content::{
-  ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
-  DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO,
-  PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO,
-  PRODUCTION_CHAIN_SCENARIO,
+  ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
+  DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO,
+  IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
+  POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
   BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot,
@@ -23,7 +23,7 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 9] = [
+const DEMO_SCENARIOS: [ScenarioId; 10] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
@@ -33,6 +33,7 @@ const DEMO_SCENARIOS: [ScenarioId; 9] = [
   PRODUCTION_CHAIN_SCENARIO,
   DISTRIBUTED_CHAIN_SCENARIO,
   POWER_LINE_SCENARIO,
+  BUILDING_DEPLOYMENT_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -51,6 +52,8 @@ const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
 const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
 const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
 const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
+const NODE_BUILD_SITE: Color = Color::srgb(0.42, 0.35, 0.56);
+const NODE_STRUCTURE: Color = Color::srgb(0.64, 0.38, 0.72);
 const GRID_OBSTACLE: Color = Color::srgb(0.42, 0.24, 0.18);
 const GRID_POWER_LINE: Color = Color::srgb(0.26, 0.78, 0.92);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
@@ -410,6 +413,7 @@ fn spawn_control_deck(commands: &mut Commands) {
           (ControlAction::SelectScenario(6), "DRILL CHAIN"),
           (ControlAction::SelectScenario(7), "FREIGHT LINE"),
           (ControlAction::SelectScenario(8), "GRID LINK"),
+          (ControlAction::SelectScenario(9), "BUILD"),
         ],
       );
       spawn_control_row(
@@ -509,6 +513,8 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeId::Road => Vec2::new(100.0, 34.0),
       NodeId::Factory(_) => Vec2::new(132.0, 82.0),
       NodeId::PowerPlant => Vec2::new(132.0, 82.0),
+      NodeId::BuildSite(_) => Vec2::new(124.0, 74.0),
+      NodeId::Structure(_) => Vec2::new(132.0, 82.0),
       NodeId::Transit(_) => Vec2::new(28.0, 28.0),
     };
     commands.spawn((
@@ -1267,6 +1273,8 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
         NodeActivity::Demanding
       }
     }),
+    NodeId::BuildSite(_) => NodeActivity::Demanding,
+    NodeId::Structure(_) => NodeActivity::Ready,
     NodeId::Transit(_) => NodeActivity::Idle,
   }
 }
@@ -1300,6 +1308,8 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::PowerPlant, NodeActivity::Powering) => NODE_POWER_ACTIVE,
     (NodeId::PowerPlant, NodeActivity::Ready) => NODE_POWER_CHARGED,
     (NodeId::PowerPlant, _) => NODE_POWER_IDLE,
+    (NodeId::BuildSite(_), _) => NODE_BUILD_SITE,
+    (NodeId::Structure(_), _) => NODE_STRUCTURE,
     (NodeId::Transit(_), _) => NODE_ROAD,
   }
 }
@@ -1439,6 +1449,13 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
         )
       })
       .unwrap_or_else(|| "coal plant".into()),
+    NodeId::BuildSite(index) => format!("build-site-{index}\nawaiting structure"),
+    NodeId::Structure(_) => snapshot
+      .structures
+      .iter()
+      .find(|structure| structure.node == node)
+      .map(|structure| format!("{}\nspawned: {}", structure.node, structure.item))
+      .unwrap_or_else(|| node.to_string()),
     NodeId::Transit(position) => format!("transit\n{}, {}", position.x, position.y),
   };
   let battery = snapshot.power.as_ref().and_then(|power| {
@@ -1764,8 +1781,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(POWER_LINE_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(BUILDING_DEPLOYMENT_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(9, host.scene_revision);
+    assert_eq!(10, host.scene_revision);
   }
 
   #[test]

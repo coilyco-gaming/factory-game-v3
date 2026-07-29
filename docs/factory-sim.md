@@ -4,8 +4,8 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 
 ## Crates
 
-- `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, per-object batteries, automatic power lines, fuel-burning power, and tick stepping.
+- `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, build sites, hauler capacity, power, starting objects, and occupied-grid layouts.
+- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment, construction, and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, per-object batteries, automatic power lines, fuel-burning power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -34,10 +34,13 @@ The world generalizes to N sources, N factories, and N haulers:
 - deployment scenarios start with a spawnable drill in factory inventory,
   retrieve it into a capable hauler, carry it to a dormant source, and queue
   source activation for the deterministic world-mutation boundary
+- construction scenarios advertise spawnable factory inventory, retrieve it
+  into a physically capable hauler, and replace the destination build-site node
+  with an occupied structure at the world-mutation boundary
 - finite ore and its empty drill queue ordered deletion after the last stockpile
   is hauled, then release the source's occupied grid cell
 
-The eight layouts and their proof goals are listed in
+The ten layouts and their proof goals are listed in
 [factory-scenarios.md](factory-scenarios.md).
 
 ## Run

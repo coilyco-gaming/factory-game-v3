@@ -66,6 +66,7 @@ pub const PATHFINDING_DEMO_SCENARIO: ScenarioId = ScenarioId::new("pathfinding-d
 pub const PRODUCTION_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("production-chain");
 pub const DISTRIBUTED_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("distributed-chain");
 pub const POWER_LINE_SCENARIO: ScenarioId = ScenarioId::new("power-line-demo");
+pub const BUILDING_DEPLOYMENT_SCENARIO: ScenarioId = ScenarioId::new("building-deployment");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -123,6 +124,12 @@ pub struct SourceSpec {
   pub deposit: u32,
   pub mining_speed: u32,
   pub requires_deployment: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct BuildSiteSpec {
+  pub item: ItemId,
+  pub position: GridPoint,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -204,6 +211,7 @@ pub struct ScenarioDefinition {
   pub name: String,
   pub sources: Vec<SourceSpec>,
   pub factories: Vec<FactorySpec>,
+  pub build_sites: Vec<BuildSiteSpec>,
   pub hauler_count: u32,
   pub hauler_capacity: u32,
   pub hauler_weight_capacity: u32,
@@ -410,6 +418,7 @@ impl ContentDatabase {
           requires_deployment: false,
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
+        build_sites: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -430,6 +439,7 @@ impl ContentDatabase {
           requires_deployment: false,
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
+        build_sites: Vec::new(),
         hauler_count: 3,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -458,6 +468,7 @@ impl ContentDatabase {
           },
         ],
         factories: vec![FactorySpec::new(BUILDING_MATERIALS, 4, 20)],
+        build_sites: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 2,
         hauler_weight_capacity: 32,
@@ -486,6 +497,7 @@ impl ContentDatabase {
           },
         ],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
+        build_sites: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -519,6 +531,7 @@ impl ContentDatabase {
           FactorySpec::new(IRON_BARS, 6, 100)
             .with_starting_items(BTreeMap::from([(MINING_DRILL, 1)])),
         ],
+        build_sites: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 100,
@@ -539,6 +552,7 @@ impl ContentDatabase {
           requires_deployment: false,
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
+        build_sites: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -581,6 +595,7 @@ impl ContentDatabase {
           FactorySpec::new(MOTORS, 40, 20),
           FactorySpec::new(MINING_DRILL, 20, 5),
         ],
+        build_sites: Vec::new(),
         hauler_count: 0,
         hauler_capacity: 5,
         hauler_weight_capacity: 100,
@@ -618,6 +633,7 @@ impl ContentDatabase {
           FactorySpec::new(IRON_BARS, 18, 100),
           FactorySpec::new(FRAMES, 20, 10),
         ],
+        build_sites: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 5,
         hauler_weight_capacity: 100,
@@ -646,6 +662,7 @@ impl ContentDatabase {
           requires_deployment: false,
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 12, 40)],
+        build_sites: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -668,6 +685,36 @@ impl ContentDatabase {
           road_position: GridPoint { x: 4, y: 0 },
           factory_positions: vec![GridPoint { x: 4, y: 1 }],
           power_plant_position: Some(GridPoint { x: 0, y: 1 }),
+          obstacles: Vec::new(),
+        },
+      },
+    );
+    scenarios.insert(
+      BUILDING_DEPLOYMENT_SCENARIO,
+      ScenarioDefinition {
+        id: BUILDING_DEPLOYMENT_SCENARIO,
+        name: "Warehouse Construction".into(),
+        sources: Vec::new(),
+        factories: vec![
+          FactorySpec::new(IRON_BARS, 6, 20)
+            .with_starting_items(BTreeMap::from([(STORAGE_WAREHOUSE, 1)])),
+        ],
+        build_sites: vec![BuildSiteSpec {
+          item: STORAGE_WAREHOUSE,
+          position: GridPoint { x: 4, y: 1 },
+        }],
+        hauler_count: 1,
+        hauler_capacity: 1,
+        hauler_weight_capacity: 500,
+        hauler_volume_capacity: 250,
+        power: None,
+        layout: LayoutSpec {
+          width: 5,
+          height: 3,
+          source_positions: Vec::new(),
+          road_position: GridPoint { x: 1, y: 1 },
+          factory_positions: vec![GridPoint { x: 0, y: 1 }],
+          power_plant_position: None,
           obstacles: Vec::new(),
         },
       },

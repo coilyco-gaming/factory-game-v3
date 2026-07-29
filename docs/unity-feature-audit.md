@@ -28,9 +28,10 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Automatic power lines** - working - Rust owns one-time nearest-target
   selection, greedy eight-neighbor construction, pass-through line cells,
   1,000-capacity line batteries, snapshots, and viewer projection.
-* **World mutation** - working core - Rust owns scenario creation,
-  retrieve/deploy mutation, occupancy, and ordered deletion. General
-  player-driven spawn, placement, and deletion remain.
+* **World mutation** - working core - Rust owns scenario creation, spawnable
+  factory-output retrieval, build-site deployment, topology replacement,
+  spawned-structure occupancy, source activation, and ordered deletion.
+  Player-driven placement and general structure deletion remain.
 * **Player controls and UI** - partial - Rust owns playback controls,
   scenario selection, snapshots, metrics, and activity presentation. Camera
   navigation, object selection, placement, and programming remain.

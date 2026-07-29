@@ -21,13 +21,13 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through nine scenarios, including powered ironworks, drill
+The viewer rotates through ten scenarios, including powered ironworks, drill
 deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
 production chain. A separated freight line makes haulers carry foundry output
-to a downstream frame factory. The grid-link scene draws power-line cells as
-the coal plant joins a distant consumer network. Each scene displays:
+to a downstream frame factory. Grid-link draws power cells, while build turns a
+typed site into an occupied warehouse. Each scene displays:
 
-- active or awaiting-drill source, road, factory, power-plant, and blocked cells
+- source, road, factory, build-site, structure, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
 - independent craft progress and output item for every factory
