@@ -1,31 +1,41 @@
-# C# decommission batches
+# Completed C# decommission
 
-The Rust migration removes retained C# only after deterministic tests cover its
-state transitions and the viewer exposes player-visible state.
+The repository removed its Unity gameplay and C# dependency surface after the
+Rust workspace passed every parity gate. Git history retains the reference.
 
-## Removed batch one: movement and deployment
+## File-to-Rust proof
 
-Rust covers the behavior removed from:
+- `Battery`, `Power`, and `PowerLine` components map to `factory_sim::power`,
+  owner batteries, generation, balancing, consumption, and automatic line
+  construction tests.
+- `Dispatch`, `DispatchReceiver`, `ResourceInserter`, and
+  `ResourceRetriever` map to typed intents and receiver phases, nearest-target
+  resolution, arbitration, adjacent transfers, and buffer-policy tests.
+- `Resources`, `Mining`, and `Production` map to capacity-aware inventories,
+  finite or manifest extraction, indexed factories, recipes, and chain tests.
+- `Player`, `StatusData`, `StatusUILeft`, and `StatusUIRight` map to the Bevy
+  control deck, bounded camera focus, zoom, focused inspection, global totals,
+  metrics, and activity feed.
+- `SpriteMap`, `GameController`, and `WorldObject` map to typed topology,
+  deterministic `GameState` ticks, snapshot projection, and queued spawn,
+  movement, deployment, and deletion mutations.
+- `FactoryGameContent` and `GameContent` map to the complete typed
+  `factory_content` catalog and scenario definitions.
+- coal plant, factory, foundry, mining drill, ore, power line, radar, and truck
+  classes map respectively to powered nodes, indexed production, sources,
+  deployment target resolution, line batteries, and haulers.
+- `ExampleComponent` was a C# test fixture. `Util` only humanized strings.
+  Unity object wrappers, telemetry bootstrap, and YAML serialization were
+  engine plumbing rather than gameplay.
 
-- `Assets/Scripts/Components/PathfindingComponent.cs`
-- `Assets/Scripts/Components/MovementComponent.cs`
-- `Assets/Scripts/Components/DeploymentComponent.cs`
-- the corresponding truck wiring in `WorldObject.cs` and
-  `WorldObjects/WorldObjectTruck.cs`
+The first movement, pathfinding, and deployment batch had already been removed
+after DETOUR and DEPLOY proof. The final batch removed the remaining 64 script
+and metadata files, `tests.csproj`, and 1,661 Unity-only plugin and metadata
+files. Those plugins supplied C5, PathFinder, xUnit, YAML, .NET extensions, and
+OpenTelemetry solely to the retired C# path.
 
-Deterministic simulation tests cover path success and failure, obstacle detours,
-queued movement, transit arbitration, retrieve and deploy transitions,
-depleted-ore deletion, and drill teardown. The Bevy viewer exposes each
-player-visible state through DETOUR and DEPLOY.
+## Preserved assets
 
-The repository removed the three component files, their `.meta` files, and only
-their direct truck and core fields together. Mining, dispatch, resources,
-production, and power C# remain reference material until their wider object and
-content dependencies reach the same proof boundary.
-
-## Final deletion gate
-
-The repository removes all of `Assets/Scripts/`, `tests.csproj`, and C#-only
-plugins only after every remaining gameplay component reaches a proven Rust
-replacement or an explicit obsolete decision. Retained visual assets follow a
-separate decision.
+The deletion does not touch scenes, textures, materials, building and vehicle
+art, fonts, shaders, or TextMesh Pro resources. Those assets are inert migration
+inputs and can be evaluated separately for future Bevy presentation work.

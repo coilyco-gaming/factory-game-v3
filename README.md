@@ -1,6 +1,8 @@
 # Factory Game V3
 
-This repository is in transition from Unity/C# to Rust/Bevy. Unity project settings and editor/package scaffolding have been removed. Gameplay source and reusable assets remain as migration references.
+This repository ships the Rust/Bevy factory simulation and browser viewer.
+Reusable art from the retired Unity prototype remains available for future
+presentation work.
 
 ## Validation
 
@@ -10,7 +12,9 @@ Run the lightweight migration baseline through ward:
 ward exec test
 ```
 
-That verb runs the repo's pre-commit baseline and the Rust workspace tests with a bounded timeout. CI calls the same bounded script directly because ward repo verbs require a tracked branch. The retained `tests.csproj` project is reference-only and is not part of the active gate.
+That verb runs the repo's pre-commit baseline and Rust workspace tests with a
+bounded timeout. CI calls the same bounded script directly because ward repo
+verbs require a tracked branch.
 
 The headless Rust slice can also run directly:
 
@@ -37,8 +41,8 @@ ward exec image-build
 ## Inventory
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
-See [docs/unity-parity.md](docs/unity-parity.md) for the C# parity map and
-decommission gates.
+See [docs/unity-parity.md](docs/unity-parity.md) for the completed historical
+parity map.
 
 ## See also
 

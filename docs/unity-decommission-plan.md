@@ -1,19 +1,15 @@
-# Unity decommission plan
+# Unity decommission result
 
-The retained C# tree remains a migration reference until a Rust test and viewer
-surface cover each player-visible behavior.
+The Rust migration completed every decommission gate.
 
-## Order
+## Completed order
 
-1. The agent completes general structure deletion and player-driven placement.
-2. The agent adds player-facing programming and logistics policy controls.
-3. The agent proves every retained C# gameplay component is covered or
-   explicitly obsolete.
-4. The agent removes `Assets/Scripts/`, `tests.csproj`, and C#-only plugins in a
-   dedicated deletion change.
+1. Rust tests and the viewer proved each retained gameplay behavior.
+2. The audit marked Unity engine plumbing and never-shipped editing controls
+   obsolete.
+3. The repository removed `Assets/Scripts/`, `tests.csproj`, and all C#-only
+   plugins.
+4. The repository retained reusable visual assets for a separate art decision.
 
-Retained textures, materials, and other reusable art have a separate decision.
-C# decommission does not require deleting them.
-
-The proof and removed first batch live in
+The full proof and deletion inventory live in
 [csharp-decommission.md](csharp-decommission.md).

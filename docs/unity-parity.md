@@ -1,8 +1,7 @@
-# Unity parity and decommission gates
+# Completed Unity parity
 
-The retained C# tree is the Rust migration reference. A component can leave only
-when Rust owns its behavior, deterministic tests cover its transitions, and the
-viewer exposes player-visible state.
+Git history retains the Unity reference. Rust now owns every retained behavior,
+tests cover its transitions, and the viewer exposes player-visible state.
 
 ## Current parity
 
@@ -57,5 +56,5 @@ viewer exposes player-visible state.
 * **Observability** - substantial - snapshots, JSONL, run metrics, events, the
   activity feed, and the Bevy projection cover the active Rust systems.
 
-The ordered removal gates and progress links live in
-[unity-decommission-plan.md](unity-decommission-plan.md).
+The completed deletion record lives in
+[csharp-decommission.md](csharp-decommission.md).

@@ -1,8 +1,8 @@
 # Unity feature audit
 
-This audit maps every retained Unity gameplay subsystem to its Rust replacement
-status. “Working” means the Rust path has deterministic tests and, where the
-behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
+This completed historical audit maps every former Unity gameplay subsystem to
+its Rust replacement. “Working” means deterministic tests and, where visual, a
+surface exposed by the Bevy/Wasm viewer.
 
 * **Content catalog** - working - `factory_content` owns all active resources,
   products, spawnable recipes, physical values, timing, multipliers, manifest
@@ -42,5 +42,5 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Observability** - working - Rust owns structured snapshots, event feeds,
   deterministic metrics, and headless JSONL output.
 
-The agent updates this file when a remaining item becomes working, then removes
-the superseded C# subsystem in the same or a following verified slice.
+Every row is working. The repository removed the superseded C# gameplay and
+dependency surface after the final full gate.

@@ -27,5 +27,5 @@ commands:
     description: "Serve the simulation viewer with trunk hot reload."
 
 catalog:
-  description: "Factory-game-v3 migration baseline. A deterministic Rust simulation with a Bevy snapshot viewer, while Unity/C# remains reference-only."
+  description: "Factory-game-v3 is a deterministic Rust simulation with a native and Wasm Bevy snapshot viewer."
   dependsOn: []

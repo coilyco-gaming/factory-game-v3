@@ -25,3 +25,24 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
   gold focus cursor, zoom input, inspection, and aggregate status.
 - Next - land, perform the final retained-C# audit, and remove the superseded
   gameplay tree only if every remaining file is covered or obsolete.
+
+### 2026-07-29 - final C# audit and deletion
+
+- Evidence - every remaining component and world-object class maps to a tested
+  Rust subsystem. Example fixtures, Unity wrappers, telemetry bootstrap, YAML
+  serialization, and never-shipped editing controls are explicitly obsolete.
+- Done - the repository removed 1,726 tracked files: the remaining gameplay
+  scripts, Unity-only C# dependency plugins, their metadata, and `tests.csproj`.
+- Preserved - scenes, textures, materials, art, fonts, shaders, and TextMesh Pro
+  resources remain untouched for a separate presentation decision.
+- Next - run the full repository and web-build gates, land the decommission,
+  verify canonical main, and close the contract issue.
+
+### 2026-07-29 - final validation
+
+- Evidence - no tracked C#, C# project, or DLL remains. The full pre-commit and
+  58-test Rust gate passes after all 129,534 deleted lines leave the tree.
+- Evidence - the production Trunk/Wasm build succeeds with the exact source
+  state and the live server remains on the player-view distribution.
+- Next - land canonical main, verify its commit and clean tree, then close issue
+  37 with the parity and deletion evidence.
