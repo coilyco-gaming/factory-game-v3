@@ -55,3 +55,21 @@ Earlier append-only entries live in [part 1](unity-parity-run-1.md).
   discarded or rewritten.
 - Next - land the checkpoint, then port per-object batteries and adjacent
   energy balancing on top of the indexed world.
+
+### 2026-07-29 - object batteries
+
+- Done - powered sources, factories, haulers, and the coal plant now own
+  separate batteries with Unity capacities and adjacent balancing.
+- Evidence - tests cover minimum capacity, clamped charge, rejected overdraw,
+  capacity-weighted balance, disconnected isolation, energy conservation, and
+  snapshot exposure. The viewer prints local charge on powered nodes.
+- Decision - a powered component consumes only its owner's battery. The
+  aggregate gauge remains a derived summary, not simulation authority.
+- Next - validate, rebuild Wasm, land, then port automatic power-line routing.
+
+### 2026-07-29 - battery validation
+
+- Evidence - the full gate and all 49 Rust tests pass. Trunk applied the Wasm
+  build with local battery charge in powered-node labels.
+- Decision - this is the last entry in this journal part before its size cap.
+- Next - land the checkpoint and continue power-line work in part 3.

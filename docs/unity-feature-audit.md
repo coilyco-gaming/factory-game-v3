@@ -22,9 +22,9 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Movement and pathfinding** - working - Rust owns deterministic A-star
   routing, diagonals, occupied targets, queued movement, recalculation,
   no-path state, and transit conflict arbitration.
-* **Battery and generation** - working aggregate - Rust owns finite charge,
-  fuel burn, system energy costs, and power starvation. Per-object battery
-  balancing remains.
+* **Battery and generation** - working - Rust owns node and hauler batteries,
+  minimum capacity, clamped charge, overdraw rejection, capacity-weighted
+  adjacent balancing, fuel burn, owner-specific system costs, and starvation.
 * **Automatic power lines** - not started - Rust still needs nearest-generator
   routing and line construction.
 * **World mutation** - working core - Rust owns scenario creation,

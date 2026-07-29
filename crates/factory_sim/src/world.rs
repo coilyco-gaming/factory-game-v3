@@ -1,6 +1,6 @@
 use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, DispatchReceiverState};
 use crate::mining::MiningExtractor;
-use crate::power::{PowerPlant, PowerSnapshot};
+use crate::power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
@@ -471,6 +471,7 @@ pub struct WorldState {
   pub haulers: Vec<Hauler>,
   pub factories: Vec<FactoryNode>,
   pub power: Option<PowerPlant>,
+  pub batteries: BTreeMap<BatteryOwner, Battery>,
   pub topology: Topology,
   pub queued_mutations: Vec<WorldMutation>,
 }

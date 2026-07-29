@@ -4,12 +4,50 @@ use crate::NodeId;
 use factory_content::{ContentDatabase, ItemId, PowerSpec};
 use serde::Serialize;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BatteryOwner {
+  Node(NodeId),
+  Hauler(u8),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Battery {
+  pub owner: BatteryOwner,
+  pub energy: u32,
+  pub capacity: u32,
+}
+
+impl Battery {
+  pub fn new(owner: BatteryOwner, energy: u32, capacity: u32) -> Self {
+    let capacity = capacity.max(5);
+    Self {
+      owner,
+      energy: energy.min(capacity),
+      capacity,
+    }
+  }
+
+  pub fn charge(&mut self, amount: u32) -> u32 {
+    let accepted = amount.min(self.capacity.saturating_sub(self.energy));
+    self.energy += accepted;
+    accepted
+  }
+
+  pub fn consume(&mut self, amount: u32) -> bool {
+    if self.energy < amount {
+      return false;
+    }
+    self.energy -= amount;
+    true
+  }
+}
+
 #[derive(Clone, Debug)]
 pub struct PowerPlant {
   pub fuel: Inventory,
   pub dispatch: DispatchBoard,
   pub spec: PowerSpec,
-  pub energy: u32,
 }
 
 impl PowerPlant {
@@ -22,7 +60,6 @@ impl PowerPlant {
       fuel,
       dispatch: DispatchBoard::new(),
       spec,
-      energy: 0,
     }
   }
 
@@ -33,8 +70,12 @@ impl PowerPlant {
       .collect();
   }
 
-  pub fn generate(&mut self, events: &mut Vec<String>) -> (u32, u32) {
-    if self.energy >= self.spec.grid_capacity
+  pub fn generate(
+    &mut self,
+    battery: &mut Battery,
+    events: &mut Vec<String>,
+  ) -> (u32, u32) {
+    if battery.energy >= battery.capacity
       || self.fuel.count(self.spec.fuel_item) < self.spec.burn_rate
     {
       return (0, 0);
@@ -42,46 +83,25 @@ impl PowerPlant {
     let burned = self
       .fuel
       .remove_up_to(self.spec.fuel_item, self.spec.burn_rate);
-    let generated = self
-      .spec
-      .gain_rate
-      .min(self.spec.grid_capacity.saturating_sub(self.energy));
-    self.energy += generated;
+    let generated = battery.charge(self.spec.gain_rate);
     events.push(format!(
       "power burn {} {} generated {} grid {}/{}",
-      burned, self.spec.fuel_item, generated, self.energy, self.spec.grid_capacity
+      burned, self.spec.fuel_item, generated, battery.energy, battery.capacity
     ));
     (burned, generated)
   }
 
-  pub fn consume(&mut self, amount: u32, consumer: &str, events: &mut Vec<String>) -> bool {
-    if amount == 0 {
-      return true;
-    }
-    if self.energy < amount {
-      events.push(format!(
-        "power starved {consumer} need {} grid {}/{}",
-        amount, self.energy, self.spec.grid_capacity
-      ));
-      return false;
-    }
-    self.energy -= amount;
-    events.push(format!(
-      "power consume {consumer} {} grid {}/{}",
-      amount, self.energy, self.spec.grid_capacity
-    ));
-    true
-  }
-
-  pub fn snapshot(&self) -> PowerSnapshot {
+  pub fn snapshot(&self, batteries: impl Iterator<Item = Battery>) -> PowerSnapshot {
+    let batteries = batteries.collect::<Vec<_>>();
     PowerSnapshot {
       fuel_item: self.spec.fuel_item,
       fuel: self.fuel.snapshot(),
-      energy: self.energy,
-      capacity: self.spec.grid_capacity,
+      energy: batteries.iter().map(|battery| battery.energy).sum(),
+      capacity: batteries.iter().map(|battery| battery.capacity).sum(),
       burn_rate: self.spec.burn_rate,
       gain_rate: self.spec.gain_rate,
       dispatch: self.dispatch.clone(),
+      batteries,
     }
   }
 }
@@ -95,4 +115,5 @@ pub struct PowerSnapshot {
   pub burn_rate: u32,
   pub gain_rate: u32,
   pub dispatch: DispatchBoard,
+  pub batteries: Vec<Battery>,
 }

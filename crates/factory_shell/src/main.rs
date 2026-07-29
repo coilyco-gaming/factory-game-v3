@@ -5,8 +5,8 @@ use factory_content::{
   PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
-  DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
-  TickSnapshot,
+  BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot,
+  NodeId, TickSnapshot,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -1359,7 +1359,7 @@ fn route_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
 }
 
 fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
-  match node {
+  let label = match node {
     NodeId::Source(_) => snapshot
       .sources
       .iter()
@@ -1418,7 +1418,16 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       })
       .unwrap_or_else(|| "coal plant".into()),
     NodeId::Transit(position) => format!("transit\n{}, {}", position.x, position.y),
-  }
+  };
+  let battery = snapshot.power.as_ref().and_then(|power| {
+    power
+      .batteries
+      .iter()
+      .find(|battery| battery.owner == BatteryOwner::Node(node))
+  });
+  battery.map_or(label.clone(), |battery| {
+    format!("{label}\nbattery: {}/{}", battery.energy, battery.capacity)
+  })
 }
 
 fn hauler_label_value(hauler: &HaulerSnapshot) -> String {

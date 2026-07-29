@@ -30,7 +30,7 @@ to a downstream frame factory. Each scene displays:
 - hauler position, cargo, and dispatch phase
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
 - independent craft progress and output item for every factory
-- coal-plant fuel, power-grid energy, generation, consumption, and starvation
+- coal-plant fuel, total energy, per-node batteries, consumption, and starvation
 - current tick, run metrics, and a bounded rolling activity feed
 
 The scene rebuilds its generated primitives when the scenario changes. Hauler

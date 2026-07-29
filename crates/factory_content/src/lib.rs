@@ -495,7 +495,7 @@ impl ContentDatabase {
           fuel_buffer: 5,
           burn_rate: 1,
           gain_rate: 12,
-          grid_capacity: 48,
+          grid_capacity: 1_000,
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,

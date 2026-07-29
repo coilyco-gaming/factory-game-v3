@@ -35,10 +35,10 @@ viewer exposes player-visible state.
   application, and deterministic transit-cell conflict arbitration. Shared
   building endpoints remain available to fleets.
 * **Battery and power** - substantial - Rust owns a finite power grid,
-  fuel-burning generation, capacity clamping, shared energy consumption,
-  starvation, coal demand, and energy metrics. The grid is an aggregate of the
-  Unity adjacent-battery balancing network. Per-object batteries and automatic
-  power-line placement remain.
+  node and hauler batteries, minimum capacity, capacity clamping,
+  capacity-weighted adjacent balancing, owner-specific energy consumption,
+  fuel-burning generation, starvation, coal demand, and energy metrics.
+  Automatic power-line placement remains.
 * **World mutation and deployment** - partial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
   source activation, depleted-ore deletion, drill teardown, and occupancy

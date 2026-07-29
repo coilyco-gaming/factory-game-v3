@@ -5,7 +5,7 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 ## Crates
 
 - `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, fuel-burning power, and tick stepping.
+- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, per-object batteries, fuel-burning power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -24,14 +24,15 @@ The world generalizes to N sources, N factories, and N haulers:
 - scenario layouts define grid bounds, object positions, and static obstacles,
   deterministic A-star routing supports cardinal and diagonal movement, allows
   arrival at an occupied target, and reports a sealed route
-- haulers queue movement for the world-mutation boundary; competing moves into
+- haulers queue movement for the world-mutation boundary, competing moves into
   one transit cell resolve in hauler order while building endpoints remain
   shareable
 - dispatch arbitration is deterministic: factory demand minus in-flight cargo is handed to unassigned empty haulers in index order (collect-phase haulers count at carry limit), so demand is never double-served
 - deterministic mine, intent-refresh, assign, collect, deliver, craft-progress, and move steps
 - powered scenarios generate a finite shared grid from fuel, route coal to the
-  plant as ordinary logistics demand, and charge mining, dispatch, and
-  production before those systems can advance
+  plant as ordinary logistics demand, balance adjacent batteries by capacity,
+  and charge each mining, dispatch, inserter, or production owner before work
+  can advance
 - deployment scenarios start with a spawnable drill in factory inventory,
   retrieve it into a capable hauler, carry it to a dormant source, and queue
   source activation for the deterministic world-mutation boundary

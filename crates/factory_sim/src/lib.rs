@@ -17,7 +17,7 @@ pub use dispatch::{
 };
 pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
-pub use power::{PowerPlant, PowerSnapshot};
+pub use power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
 pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
@@ -122,7 +122,7 @@ impl GameState {
       })
       .collect::<Result<Vec<_>, SimulationError>>()?;
 
-    let sources = scenario
+    let sources: Vec<SourceNode> = scenario
       .sources
       .iter()
       .enumerate()
@@ -136,7 +136,7 @@ impl GameState {
         )
       })
       .collect();
-    let haulers = (0..scenario.hauler_count)
+    let haulers: Vec<Hauler> = (0..scenario.hauler_count)
       .map(|index| {
         Hauler::new(
           index as u8,
@@ -154,6 +154,29 @@ impl GameState {
       .power
       .clone()
       .map(|spec| PowerPlant::new(&content, spec, Inventory::new(64, 64)));
+    let topology = Topology::from_layout(&scenario.layout);
+    let mut batteries = std::collections::BTreeMap::new();
+    if power.is_some() {
+      for source in &sources {
+        let owner = BatteryOwner::Node(source.node);
+        batteries.insert(owner, Battery::new(owner, 0, 100));
+      }
+      for factory in &factories {
+        let owner = BatteryOwner::Node(factory.node);
+        batteries.insert(owner, Battery::new(owner, 0, 1_000));
+      }
+      for hauler in &haulers {
+        let owner = BatteryOwner::Hauler(hauler.id);
+        batteries.insert(owner, Battery::new(owner, 0, 250));
+      }
+      let owner = BatteryOwner::Node(NodeId::PowerPlant);
+      let capacity = power
+        .as_ref()
+        .expect("powered scenario has a power plant")
+        .spec
+        .grid_capacity;
+      batteries.insert(owner, Battery::new(owner, 0, capacity));
+    }
 
     Ok(Self {
       world: WorldState {
@@ -162,7 +185,8 @@ impl GameState {
         haulers,
         factories,
         power,
-        topology: Topology::from_layout(&scenario.layout),
+        batteries,
+        topology,
         queued_mutations: Vec::new(),
         scenario,
       },
@@ -185,8 +209,9 @@ impl GameState {
       if !self.world.sources[source_index].deployed {
         continue;
       }
-      let consumer = format!("mining-{}", self.world.sources[source_index].node);
-      if !self.consume_power(mining_cost, &consumer, events) {
+      let node = self.world.sources[source_index].node;
+      let consumer = format!("mining-{node}");
+      if !self.consume_power(node, mining_cost, &consumer, events) {
         continue;
       }
       let source = &mut self.world.sources[source_index];
@@ -317,7 +342,7 @@ impl GameState {
         .power
         .as_ref()
         .map_or(0, |power| power.spec.dispatch_cost);
-      if !self.consume_power(dispatch_cost, "dispatch-deploy", events) {
+      if !self.consume_power(intent.from, dispatch_cost, "dispatch-deploy", events) {
         break;
       }
       let hauler = &mut self.world.haulers[hauler_index];
@@ -390,7 +415,7 @@ impl GameState {
         .power
         .as_ref()
         .map_or(0, |power| power.spec.dispatch_cost);
-      if !self.consume_power(dispatch_cost, "dispatch", events) {
+      if !self.consume_power(destination, dispatch_cost, "dispatch", events) {
         break;
       }
       let hauler = &mut self.world.haulers[hauler_index];
@@ -738,7 +763,8 @@ impl GameState {
         continue;
       }
       let consumer = format!("inserter-{}", target.node);
-      if !self.consume_power(1, &consumer, events) {
+      let node = target.node;
+      if !self.consume_power(node, 1, &consumer, events) {
         continue;
       }
       let quantity = INSERTION_RATE.min(needed);
@@ -793,7 +819,7 @@ impl GameState {
         .wants_power();
       let node = self.world.factories[factory_index].node;
       if wants_power
-        && !self.consume_power(production_cost, &node.to_string(), events)
+        && !self.consume_power(node, production_cost, &node.to_string(), events)
       {
         continue;
       }
@@ -808,20 +834,148 @@ impl GameState {
     let Some(power) = &mut self.world.power else {
       return;
     };
-    let (burned, generated) = power.generate(events);
+    let owner = BatteryOwner::Node(NodeId::PowerPlant);
+    let battery = self
+      .world
+      .batteries
+      .get_mut(&owner)
+      .expect("powered scenario has a plant battery");
+    let (burned, generated) = power.generate(battery, events);
     self.metrics.fuel_burned += burned;
     self.metrics.energy_generated += generated;
+    self.balance_batteries(events);
   }
 
-  fn consume_power(&mut self, amount: u32, consumer: &str, events: &mut Vec<String>) -> bool {
-    let Some(power) = &mut self.world.power else {
+  fn balance_batteries(&mut self, events: &mut Vec<String>) {
+    let positions = self
+      .world
+      .batteries
+      .keys()
+      .copied()
+      .map(|owner| {
+        let position = match owner {
+          BatteryOwner::Node(node) => self.world.topology.position(node),
+          BatteryOwner::Hauler(id) => {
+            let hauler = self
+              .world
+              .haulers
+              .iter()
+              .find(|hauler| hauler.id == id)
+              .expect("battery owner has a hauler");
+            self.world.topology.position(hauler.position)
+          }
+        };
+        (owner, position)
+      })
+      .collect::<std::collections::BTreeMap<_, _>>();
+    let mut unseen = positions.keys().copied().collect::<std::collections::BTreeSet<_>>();
+
+    while let Some(start) = unseen.pop_first() {
+      let mut component = vec![start];
+      let mut cursor = 0;
+      while cursor < component.len() {
+        let owner = component[cursor];
+        cursor += 1;
+        let neighbors = unseen
+          .iter()
+          .copied()
+          .filter(|candidate| {
+            positions[&owner] == positions[candidate]
+              || adjacent(positions[&owner], positions[candidate])
+          })
+          .collect::<Vec<_>>();
+        for neighbor in neighbors {
+          unseen.remove(&neighbor);
+          component.push(neighbor);
+        }
+      }
+      self.balance_battery_component(&component, events);
+    }
+  }
+
+  fn balance_battery_component(
+    &mut self,
+    owners: &[BatteryOwner],
+    events: &mut Vec<String>,
+  ) {
+    let total_energy = owners
+      .iter()
+      .map(|owner| u64::from(self.world.batteries[owner].energy))
+      .sum::<u64>();
+    let total_capacity = owners
+      .iter()
+      .map(|owner| u64::from(self.world.batteries[owner].capacity))
+      .sum::<u64>();
+    if total_capacity == 0 {
+      return;
+    }
+    let mut assigned = 0_u64;
+    let mut shares = owners
+      .iter()
+      .map(|owner| {
+        let capacity = u64::from(self.world.batteries[owner].capacity);
+        let numerator = total_energy * capacity;
+        let energy = numerator / total_capacity;
+        assigned += energy;
+        (*owner, energy as u32, numerator % total_capacity)
+      })
+      .collect::<Vec<_>>();
+    shares.sort_by_key(|(owner, _, remainder)| (std::cmp::Reverse(*remainder), *owner));
+    for (_, energy, _) in shares
+      .iter_mut()
+      .take(total_energy.saturating_sub(assigned) as usize)
+    {
+      *energy += 1;
+    }
+    shares.sort_by_key(|(owner, _, _)| *owner);
+    let changed = shares.iter().any(|(owner, energy, _)| {
+      self.world.batteries[owner].energy != *energy
+    });
+    for (owner, energy, _) in shares {
+      self.world
+        .batteries
+        .get_mut(&owner)
+        .expect("component owner has a battery")
+        .energy = energy;
+    }
+    if changed && owners.len() > 1 {
+      events.push(format!(
+        "power balance {} energy across {} adjacent batteries",
+        total_energy,
+        owners.len()
+      ));
+    }
+  }
+
+  fn consume_power(
+    &mut self,
+    node: NodeId,
+    amount: u32,
+    consumer: &str,
+    events: &mut Vec<String>,
+  ) -> bool {
+    if self.world.power.is_none() || amount == 0 {
       return true;
+    }
+    let owner = BatteryOwner::Node(node);
+    let Some(battery) = self.world.batteries.get_mut(&owner) else {
+      events.push(format!("power starved {consumer} missing battery at {node}"));
+      self.metrics.power_starvations += 1;
+      return false;
     };
-    if power.consume(amount, consumer, events) {
+    if battery.consume(amount) {
       self.metrics.energy_consumed += amount;
+      events.push(format!(
+        "power consume {consumer} {amount} battery {}/{} at {node}",
+        battery.energy, battery.capacity
+      ));
       true
     } else {
       self.metrics.power_starvations += 1;
+      events.push(format!(
+        "power starved {consumer} need {amount} battery {}/{} at {node}",
+        battery.energy, battery.capacity
+      ));
       false
     }
   }
@@ -965,7 +1119,9 @@ impl GameState {
           dispatch: factory.dispatch.clone(),
         })
         .collect(),
-      power: self.world.power.as_ref().map(PowerPlant::snapshot),
+      power: self.world.power.as_ref().map(|power| {
+        power.snapshot(self.world.batteries.values().cloned())
+      }),
       events,
     }
   }
@@ -1523,6 +1679,98 @@ mod tests {
       .events
       .iter()
       .any(|event| event.starts_with("power starved mining")));
+  }
+
+  #[test]
+  fn batteries_clamp_capacity_and_reject_overdraw() {
+    let owner = BatteryOwner::Node(NodeId::Factory(0));
+    let mut battery = Battery::new(owner, 9, 0);
+
+    assert_eq!(5, battery.capacity);
+    assert_eq!(5, battery.energy);
+    assert_eq!(0, battery.charge(10));
+    assert!(!battery.consume(6));
+    assert_eq!(5, battery.energy);
+    assert!(battery.consume(3));
+    assert_eq!(2, battery.energy);
+  }
+
+  #[test]
+  fn adjacent_batteries_balance_by_capacity_without_losing_energy() {
+    let mut state =
+      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    state.world.batteries.clear();
+    let first = BatteryOwner::Node(NodeId::Source(0));
+    let second = BatteryOwner::Node(NodeId::Source(1));
+    state
+      .world
+      .batteries
+      .insert(first, Battery::new(first, 25, 100));
+    state
+      .world
+      .batteries
+      .insert(second, Battery::new(second, 75, 200));
+
+    state.balance_batteries(&mut Vec::new());
+
+    assert_eq!(33, state.world.batteries[&first].energy);
+    assert_eq!(67, state.world.batteries[&second].energy);
+    assert_eq!(
+      100,
+      state
+        .world
+        .batteries
+        .values()
+        .map(|battery| battery.energy)
+        .sum::<u32>()
+    );
+  }
+
+  #[test]
+  fn disconnected_batteries_do_not_exchange_energy() {
+    let mut state =
+      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    state.world.batteries.clear();
+    let source = BatteryOwner::Node(NodeId::Source(0));
+    let factory = BatteryOwner::Node(NodeId::Factory(0));
+    state
+      .world
+      .batteries
+      .insert(source, Battery::new(source, 25, 100));
+    state
+      .world
+      .batteries
+      .insert(factory, Battery::new(factory, 75, 100));
+
+    state.balance_batteries(&mut Vec::new());
+
+    assert_eq!(25, state.world.batteries[&source].energy);
+    assert_eq!(75, state.world.batteries[&factory].energy);
+  }
+
+  #[test]
+  fn powered_snapshots_expose_every_object_battery() {
+    let mut state =
+      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    let snapshot = state.step();
+    let power = snapshot.power.unwrap();
+
+    assert_eq!(6, power.batteries.len());
+    assert_eq!(
+      power.energy,
+      power
+        .batteries
+        .iter()
+        .map(|battery| battery.energy)
+        .sum::<u32>()
+    );
+    assert!(power.batteries.iter().any(
+      |battery| battery.owner == BatteryOwner::Node(NodeId::PowerPlant)
+    ));
+    assert!(power
+      .batteries
+      .iter()
+      .any(|battery| battery.owner == BatteryOwner::Hauler(0)));
   }
 
   #[test]
