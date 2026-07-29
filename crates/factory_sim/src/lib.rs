@@ -248,22 +248,32 @@ impl GameState {
     for factory in &mut self.world.factories {
       factory.refresh_dispatch(&self.content);
     }
-    for source in self
-      .world
-      .sources
-      .iter()
-      .filter(|source| !source.deployed && !source.exhausted)
-    {
-      if let Some(factory) = self
-        .world
-        .factories
-        .iter_mut()
-        .find(|factory| factory.production.inventory.count(MINING_DRILL) > 0)
+    let mut claimed_targets = std::collections::BTreeSet::new();
+    for factory_index in 0..self.world.factories.len() {
+      let factory_node = self.world.factories[factory_index].node;
+      if self.world.factories[factory_index]
+        .production
+        .inventory
+        .count(MINING_DRILL)
+        == 0
       {
-        factory
+        continue;
+      }
+      let target = self
+        .world
+        .sources
+        .iter()
+        .filter(|source| {
+          !source.deployed && !source.exhausted && !claimed_targets.contains(&source.node)
+        })
+        .min_by_key(|source| self.dispatch_distance(factory_node, source.node))
+        .map(|source| source.node);
+      if let Some(target) = target {
+        claimed_targets.insert(target);
+        self.world.factories[factory_index]
           .dispatch
           .intents
-          .push(DispatchIntent::retrieve(MINING_DRILL, factory.node, source.node));
+          .push(DispatchIntent::retrieve(MINING_DRILL, factory_node, target));
       }
     }
     for (site_index, site) in self.world.scenario.build_sites.iter().enumerate() {
@@ -275,12 +285,18 @@ impl GameState {
       {
         continue;
       }
-      if let Some(factory) = self
+      if let Some(factory_index) = self
         .world
         .factories
-        .iter_mut()
-        .find(|factory| factory.production.inventory.count(site.item) > 0)
+        .iter()
+        .enumerate()
+        .filter(|(_, factory)| factory.production.inventory.count(site.item) > 0)
+        .min_by_key(|(_, factory)| {
+          self.dispatch_distance(factory.node, NodeId::BuildSite(site_index as u8))
+        })
+        .map(|(index, _)| index)
       {
+        let factory = &mut self.world.factories[factory_index];
         factory.dispatch.intents.push(DispatchIntent::retrieve(
           site.item,
           factory.node,
@@ -408,24 +424,27 @@ impl GameState {
       if !matches!(hauler.dispatch, DispatchReceiverState::Unassigned) || !hauler.cargo.is_empty() {
         continue;
       }
-      let source_node = self.world.sources.iter().find_map(|source| {
-        source
-          .dispatch
-          .intents
-          .iter()
-          .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
-          .then_some(source.node)
-      });
-      let source_node = source_node.or_else(|| {
-        self.world.factories.iter().find_map(|factory| {
+      let source_node = self
+        .world
+        .sources
+        .iter()
+        .filter(|source| {
+          source
+            .dispatch
+            .intents
+            .iter()
+            .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
+        })
+        .map(|source| source.node)
+        .chain(self.world.factories.iter().filter_map(|factory| {
           factory
             .dispatch
             .intents
             .iter()
             .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
             .then_some(factory.node)
-        })
-      });
+        }))
+        .min_by_key(|source| self.dispatch_distance(*source, destination));
       let source_node = match source_node {
         Some(node) => node,
         None => break,
@@ -450,6 +469,15 @@ impl GameState {
         hauler.id
       ));
     }
+  }
+
+  fn dispatch_distance(&self, from: NodeId, to: NodeId) -> (u32, NodeId) {
+    let from = self.world.topology.position(from);
+    let to_position = self.world.topology.position(to);
+    (
+      from.x.abs_diff(to_position.x).pow(2) + from.y.abs_diff(to_position.y).pow(2),
+      to,
+    )
   }
 
   fn advance_receiver_phases(&mut self, events: &mut Vec<String>) {
@@ -1291,11 +1319,11 @@ pub fn sample_game_state() -> GameState {
 mod tests {
   use super::*;
   use factory_content::{
-    ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS,
-    COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS,
-    IRON_BARS_FLEET_SCENARIO, FRAMES, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
-    PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
-    POWER_LINE_SCENARIO,
+    ContentDatabase, GridPoint, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL,
+    COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, FRAMES,
+    IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
+    PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO,
+    PRODUCTION_CHAIN_SCENARIO, STONE,
   };
 
   #[test]
@@ -1599,6 +1627,94 @@ mod tests {
       .map(|intent| intent.item.as_str())
       .collect();
     assert_eq!(vec![IRON_BARS.as_str(), STONE.as_str()], intent_items);
+  }
+
+  #[test]
+  fn dispatch_targets_the_nearest_matching_world_object() {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists");
+    scenario.sources.push(scenario.sources[0].clone());
+    scenario.layout.width = 6;
+    scenario.layout.height = 3;
+    scenario.layout.source_positions =
+      vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
+    scenario.layout.road_position = GridPoint { x: 3, y: 0 };
+    scenario.layout.factory_positions = vec![GridPoint { x: 5, y: 1 }];
+
+    let mut state = GameState::new(content, IRON_BARS_SCENARIO).unwrap();
+    let first = state.step();
+    let DispatchReceiverState::Assigned(assignment) = &first.haulers[0].dispatch else {
+      panic!("nearest source receives the dispatch");
+    };
+
+    assert_eq!(IRON_ORE, assignment.item);
+    assert_eq!(NodeId::Source(1), assignment.source);
+    assert_eq!(NodeId::Factory(0), assignment.destination);
+  }
+
+  #[test]
+  fn scenario_factory_buffer_is_the_dispatch_threshold() {
+    let mut content = ContentDatabase::starter();
+    content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists")
+      .factories[0]
+      .input_buffer = 4;
+    let mut state = GameState::new(content, IRON_BARS_SCENARIO).unwrap();
+    let factory = &mut state.world.factories[0];
+
+    factory
+      .production
+      .inventory
+      .insert_exact(&state.content, IRON_ORE, 4)
+      .expect("configured reservation holds the buffer");
+    factory.refresh_dispatch(&state.content);
+    assert!(factory
+      .dispatch
+      .intents
+      .iter()
+      .all(|intent| intent.item != IRON_ORE));
+
+    factory
+      .production
+      .inventory
+      .remove_exact(IRON_ORE, 1)
+      .expect("buffer stock can be consumed");
+    factory.refresh_dispatch(&state.content);
+    assert!(factory
+      .dispatch
+      .intents
+      .iter()
+      .any(|intent| intent.item == IRON_ORE));
+  }
+
+  #[test]
+  fn deployment_targets_the_nearest_unoccupied_matching_source() {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&DEPLOYMENT_DEMO_SCENARIO)
+      .expect("deployment scenario exists");
+    scenario.sources.push(scenario.sources[0].clone());
+    scenario.layout.width = 6;
+    scenario.layout.height = 3;
+    scenario.layout.source_positions =
+      vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
+    scenario.layout.road_position = GridPoint { x: 3, y: 0 };
+    scenario.layout.factory_positions = vec![GridPoint { x: 5, y: 1 }];
+
+    let mut state = GameState::new(content, DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let first = state.step();
+    let DispatchReceiverState::Assigned(assignment) = &first.haulers[0].dispatch else {
+      panic!("drill receives the nearest deployment target");
+    };
+
+    assert_eq!(MINING_DRILL, assignment.item);
+    assert_eq!(NodeId::Source(1), assignment.destination);
   }
 
   #[test]

@@ -15,10 +15,11 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Production** - working - Rust owns indexed factories, multi-input recipes,
   progress, output capacity, power gating, and an end-to-end five-factory
   mining-drill chain.
-* **Dispatch** - working core - Rust owns collect, deliver, retrieve, deploy,
+* **Dispatch** - working - Rust owns collect, deliver, retrieve, deploy,
   fleet arbitration, in-flight work, one-phase-per-tick receiver transitions,
-  fuel delivery, factory-output supply, and occupied-target avoidance. General
-  world-object-type targeting remains.
+  fuel delivery, factory-output supply, nearest matching world-object
+  resolution, per-factory buffer thresholds, duplicate-target exclusion, and
+  occupied-target avoidance.
 * **Movement and pathfinding** - working - Rust owns deterministic A-star
   routing, diagonals, occupied targets, queued movement, recalculation,
   no-path state, and transit conflict arbitration.

@@ -27,8 +27,9 @@ viewer exposes player-visible state.
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
   in-flight demand accounting, receiver assignment, coal delivery,
   factory-output supply, one-phase-per-tick lifecycle transitions, adjacent
-  transfers, and occupied-target avoidance. General world-object-type matching
-  and configurable buffer policy remain.
+  transfers, nearest matching provider and deployment-target selection,
+  duplicate-target exclusion, scenario-configurable per-factory buffers, and
+  occupied-target avoidance.
 * **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
   bounds and layouts, occupied static cells, deterministic A-star search,
   cardinal and diagonal movement with corner rules, blocked-target arrival,

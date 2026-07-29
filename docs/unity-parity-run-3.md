@@ -52,3 +52,22 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
 - Evidence - Trunk applied the tenth viewer scene and the live BUILD control now
   shows the full warehouse trip and topology replacement.
 - Next - land and audit Unity's configurable dispatch target and buffer policy.
+
+### 2026-07-29 - dispatch policy audit
+
+- Evidence - Unity resolves non-`Me` dispatch objects by matching world-object
+  type, ordering matches by distance from the dispatcher, rejecting an already
+  claimed deploy target, then choosing the nearest compatible free receiver.
+- Decision - Rust keeps typed endpoints, resolves providers and deployment
+  targets by squared grid distance with node-id tie-breaking, and retains its
+  safer scenario-owned per-factory unit buffer instead of Unity's fixed
+  four-stack constant.
+- Evidence - focused tests prove nearest matching source selection, nearest
+  unoccupied drill target selection, and a configured buffer acting as the
+  exact intent threshold. All 55 existing and new Rust tests pass.
+- Next - run the full gate, land, then audit player placement and selection.
+
+### 2026-07-29 - dispatch policy validation
+
+- Evidence - the full gate passes with all 55 Rust tests.
+- Next - land and begin the player interaction audit.
