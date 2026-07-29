@@ -22,7 +22,7 @@ through Bevy entities.
 ## Showcase
 
 The viewer rotates through six scenarios, including powered ironworks, drill
-deployment, and occupied-grid obstacle detours. Each scene displays:
+deployment, and a collision-arbitrated obstacle convoy. Each scene displays:
 
 - active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase

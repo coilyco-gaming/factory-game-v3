@@ -528,6 +528,26 @@ impl GameState {
           self.metrics.deployments += 1;
           events.push(format!("world deploy mining drill at {}", source.node));
         }
+        WorldMutation::MoveHauler {
+          hauler_id,
+          from,
+          to,
+          target,
+        } => {
+          let Some(hauler) = self
+            .world
+            .haulers
+            .iter_mut()
+            .find(|hauler| hauler.id == hauler_id && hauler.position == from)
+          else {
+            continue;
+          };
+          hauler.position = to;
+          events.push(format!(
+            "move hauler-{} {} -> {} toward {}",
+            hauler.id, from, to, target
+          ));
+        }
       }
     }
   }
@@ -570,7 +590,8 @@ impl GameState {
     }
   }
 
-  fn move_haulers(&mut self, events: &mut Vec<String>) {
+  fn queue_hauler_movements(&mut self, events: &mut Vec<String>) {
+    let mut reserved_transit = std::collections::BTreeSet::new();
     for hauler in &mut self.world.haulers {
       let target = match &hauler.dispatch {
         DispatchReceiverState::Assigned(assignment) => match assignment.phase {
@@ -596,13 +617,22 @@ impl GameState {
         ));
         continue;
       };
-      hauler.position = next;
-      if next != current {
-        events.push(format!(
-          "move hauler-{} {} -> {} toward {}",
-          hauler.id, current, next, target
-        ));
+      if next == current {
+        continue;
       }
+      if matches!(next, NodeId::Transit(_)) && !reserved_transit.insert(next) {
+        events.push(format!(
+          "move hauler-{} blocked by queued transit occupancy at {}",
+          hauler.id, next
+        ));
+        continue;
+      }
+      self.world.queued_mutations.push(WorldMutation::MoveHauler {
+        hauler_id: hauler.id,
+        from: current,
+        to: next,
+        target,
+      });
     }
   }
 
@@ -617,7 +647,7 @@ impl GameState {
     self.deliver(&mut events);
     self.retrieve_and_deploy(&mut events);
     self.advance_production(&mut events);
-    self.move_haulers(&mut events);
+    self.queue_hauler_movements(&mut events);
     self.apply_world_mutations(&mut events);
     self.metrics.ticks = self.world.tick;
     if events.is_empty() {
@@ -1209,5 +1239,47 @@ mod tests {
       first.topology.obstacles.len(),
       "the occupied cell is exposed to projections"
     );
+  }
+
+  #[test]
+  fn movement_queue_applies_after_deterministic_transit_arbitration() {
+    let mut content = ContentDatabase::starter();
+    content
+      .scenarios
+      .get_mut(&PATHFINDING_DEMO_SCENARIO)
+      .expect("pathfinding scenario exists")
+      .hauler_count = 2;
+    let mut state = GameState::new(content, PATHFINDING_DEMO_SCENARIO).unwrap();
+    for hauler in &mut state.world.haulers {
+      hauler.position = NodeId::Road;
+      hauler.assign(DispatchAssignment {
+        item: IRON_ORE,
+        source: NodeId::Source(0),
+        destination: NodeId::Factory,
+        phase: DispatchPhase::Deliver,
+      });
+    }
+    let mut events = Vec::new();
+
+    state.queue_hauler_movements(&mut events);
+
+    assert!(state
+      .world
+      .haulers
+      .iter()
+      .all(|hauler| hauler.position == NodeId::Road));
+    assert_eq!(1, state.world.queued_mutations.len());
+    assert!(events
+      .iter()
+      .any(|event| event.contains("hauler-1 blocked by queued transit occupancy")));
+
+    state.apply_world_mutations(&mut events);
+
+    assert_eq!(
+      NodeId::Transit(GridPosition { x: 2, y: 1 }),
+      state.world.haulers[0].position
+    );
+    assert_eq!(NodeId::Road, state.world.haulers[1].position);
+    assert!(state.world.queued_mutations.is_empty());
   }
 }

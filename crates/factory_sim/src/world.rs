@@ -8,7 +8,7 @@ use serde::{Serialize, Serializer};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodeId {
   Source(u8),
   Road,
@@ -435,6 +435,12 @@ pub struct TickSnapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorldMutation {
   DeploySource(u8),
+  MoveHauler {
+    hauler_id: u8,
+    from: NodeId,
+    to: NodeId,
+    target: NodeId,
+  },
 }
 
 #[derive(Clone, Debug)]

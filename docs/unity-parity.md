@@ -29,17 +29,18 @@ viewer exposes any state a player previously needed to understand.
 * **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
   bounds and layouts, occupied static cells, deterministic A-star search,
   cardinal and diagonal movement with corner rules, blocked-target arrival,
-  transit cells, no-path reporting, and per-tick path recalculation. Moving
-  object collision arbitration and explicit deferred movement queues remain.
+  transit cells, no-path reporting, per-tick path recalculation, queued movement
+  application, and deterministic transit-cell conflict arbitration. Shared
+  building endpoints remain available to fleets.
 * **Battery and power** - substantial - Rust owns a finite power grid,
   fuel-burning generation, capacity clamping, shared energy consumption,
   starvation, coal demand, and energy metrics. The grid is an aggregate of the
   Unity adjacent-battery balancing network. Per-object batteries and automatic
   power-line placement remain.
 * **World mutation and deployment** - partial - Rust owns scenario-starting
-  objects, retrieval into hauler cargo, deployment at a target, and a queued
-  source-activation mutation applied at a deterministic tick boundary. General
-  spawn, move, delete, player placement, and teardown operations remain.
+  objects, retrieval into hauler cargo, deployment at a target, queued movement,
+  and source activation at a deterministic tick boundary. General spawn, delete,
+  player placement, and teardown operations remain.
 * **Player and UI interaction** - early - Bevy owns playback controls and
   read-only projection. World editing, selection, placement, and programmable
   logistics controls remain.
@@ -48,16 +49,14 @@ viewer exposes any state a player previously needed to understand.
 
 ## Decommission order
 
-1. The agent adds moving-object collision arbitration and queues movement at
-   the shared world-mutation boundary.
-2. The agent expands deferred world mutation from deployed source activation to
+1. The agent expands deferred world mutation from deployed source activation to
    general spawn, move, delete, and teardown operations.
-3. The agent ports the remaining content catalog and multi-building production
+2. The agent ports the remaining content catalog and multi-building production
    chains.
-4. The agent adds player-facing programming and logistics policy controls.
-5. The agent proves every retained C# gameplay component is either covered by a
+3. The agent adds player-facing programming and logistics policy controls.
+4. The agent proves every retained C# gameplay component is either covered by a
    Rust test and viewer surface or explicitly retired as obsolete.
-6. The agent removes `Assets/Scripts/`, `tests.csproj`, and C#-only plugins in a
+5. The agent removes `Assets/Scripts/`, `tests.csproj`, and C#-only plugins in a
    dedicated deletion change after the proof is complete.
 
 Retained visual assets have a separate decision. C# decommission does not
