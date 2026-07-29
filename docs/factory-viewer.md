@@ -33,6 +33,7 @@ typed site into an occupied warehouse. Each scene displays:
 - independent craft progress and output item for every factory
 - coal-plant fuel, total energy, per-node batteries, consumption, and starvation
 - current tick, run metrics, and a bounded rolling activity feed
+- focused-cell status plus global object and stored-resource totals
 
 The scene rebuilds its generated primitives when the scenario changes. Hauler
 sprites move smoothly between the discrete positions in each authoritative
@@ -67,6 +68,8 @@ The keyboard mirrors the same typed actions:
 - `F` toggles between 2 and 8 ticks per second.
 - `C` advances to the next scenario.
 - `L` toggles automatic scenario cycling.
+- `WASD` or arrow keys move the bounded grid focus and camera.
+- `Q`/`E` or the mouse wheel zoom from level one through ten.
 
 ## Development
 
@@ -74,7 +77,3 @@ The keyboard mirrors the same typed actions:
 - `ward exec shell-serve` starts the browser viewer with Trunk hot reload.
 - `ward exec shell-build-web` builds the static Wasm bundle.
 - `ward exec cargo-test` proves hosted ticks match direct simulation.
-
-## Deferred
-
-Scenario editing, camera controls, production art, recording, and gameplay editing remain deferred.

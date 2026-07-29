@@ -46,11 +46,14 @@ viewer exposes player-visible state.
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
   source activation, general spawnable-item construction at build sites,
   topology replacement, structure occupancy, depleted-ore deletion, drill
-  teardown, and occupancy release at a deterministic tick boundary. General
-  structure deletion plus player placement remain.
-* **Player and UI interaction** - early - Bevy owns playback controls and
-  read-only projection. World editing, selection, placement, and programmable
-  logistics controls remain.
+  teardown, and occupancy release at a deterministic tick boundary. These
+  cover every retained caller of Unity's generic spawn, move, and delete queue.
+* **Player and UI interaction** - substantial - Bevy owns playback, reset,
+  scenario selection, bounded grid navigation, camera following, one-through-
+  ten keyboard and wheel zoom, focused-cell inspection, object and inventory
+  totals, and activity projection. Unity has no player placement, object
+  editing, or programmable logistics interaction, so those speculative gaps
+  are obsolete rather than migration requirements.
 * **Observability** - substantial - snapshots, JSONL, run metrics, events, the
   activity feed, and the Bevy projection cover the active Rust systems.
 

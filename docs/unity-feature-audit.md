@@ -29,13 +29,16 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Automatic power lines** - working - Rust owns one-time nearest-target
   selection, greedy eight-neighbor construction, pass-through line cells,
   1,000-capacity line batteries, snapshots, and viewer projection.
-* **World mutation** - working core - Rust owns scenario creation, spawnable
+* **World mutation** - working - Rust owns scenario creation, spawnable
   factory-output retrieval, build-site deployment, topology replacement,
-  spawned-structure occupancy, source activation, and ordered deletion.
-  Player-driven placement and general structure deletion remain.
-* **Player controls and UI** - partial - Rust owns playback controls,
-  scenario selection, snapshots, metrics, and activity presentation. Camera
-  navigation, object selection, placement, and programming remain.
+  spawned-structure occupancy, source activation, queued movement, and every
+  retained automatic deletion path.
+* **Player controls and UI** - working - Rust owns playback, reset, scenario
+  selection, bounded grid navigation, camera following, keyboard and wheel
+  zoom, focused-cell inspection, object and stored-resource totals, metrics,
+  and activity presentation. Player placement, object editing, and logistics
+  programming are explicitly obsolete audit entries because Unity never
+  exposes those interactions.
 * **Observability** - working - Rust owns structured snapshots, event feeds,
   deterministic metrics, and headless JSONL output.
 

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::input::mouse::MouseWheel;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
   DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO,
@@ -84,6 +85,7 @@ fn main() {
     }))
     .insert_resource(ClearColor(Color::srgb(0.06, 0.07, 0.09)))
     .insert_resource(SimHost::new())
+    .init_resource::<PlayerView>()
     .init_resource::<ProjectionScene>()
     .init_resource::<ProductionFeedback>()
     .add_systems(Startup, setup)
@@ -91,6 +93,7 @@ fn main() {
       Update,
       (
         handle_controls,
+        handle_player_view,
         handle_control_buttons,
         advance_simulation,
         rebuild_projection,
@@ -102,6 +105,7 @@ fn main() {
         animate_activity,
         animate_output_chips,
         animate_haulers,
+        anchor_overlay_text,
         update_text,
         style_control_buttons,
       )
@@ -255,6 +259,23 @@ struct ProductionFeedback {
   crafted: BTreeMap<String, u32>,
 }
 
+#[derive(Resource)]
+struct PlayerView {
+  position: GridPosition,
+  zoom_level: u8,
+  scene_revision: u64,
+}
+
+impl Default for PlayerView {
+  fn default() -> Self {
+    Self {
+      position: GridPosition { x: 0, y: 0 },
+      zoom_level: 1,
+      scene_revision: u64::MAX,
+    }
+  }
+}
+
 #[derive(Component)]
 struct ProjectionEntity;
 
@@ -312,6 +333,12 @@ struct HudText;
 #[derive(Component)]
 struct EventText;
 
+#[derive(Component)]
+struct MainCamera;
+
+#[derive(Component)]
+struct PlayerCursor;
+
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
 enum ControlAction {
   TogglePause,
@@ -342,7 +369,7 @@ fn setup(
   host: Res<SimHost>,
   mut projection_scene: ResMut<ProjectionScene>,
 ) {
-  commands.spawn(Camera2d);
+  commands.spawn((Camera2d, MainCamera));
 
   spawn_projection(&mut commands, &host.snapshot);
   projection_scene.revision = host.scene_revision;
@@ -366,6 +393,11 @@ fn setup(
     TextColor(Color::srgb(0.72, 0.76, 0.82)),
     Transform::from_xyz(315.0, -105.0, 4.0),
     EventText,
+  ));
+  commands.spawn((
+    Sprite::from_color(Color::srgba(0.95, 0.86, 0.32, 0.28), Vec2::new(150.0, 100.0)),
+    Transform::from_xyz(0.0, 0.0, 2.7),
+    PlayerCursor,
   ));
   spawn_control_deck(&mut commands);
 }
@@ -713,6 +745,55 @@ fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
   }
 }
 
+fn handle_player_view(
+  keys: Res<ButtonInput<KeyCode>>,
+  mut mouse_wheel: MessageReader<MouseWheel>,
+  host: Res<SimHost>,
+  mut view: ResMut<PlayerView>,
+  mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
+  mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
+) {
+  if view.scene_revision != host.scene_revision {
+    view.position = GridPosition {
+      x: host.snapshot.topology.width / 2,
+      y: host.snapshot.topology.height / 2,
+    };
+    view.zoom_level = 1;
+    view.scene_revision = host.scene_revision;
+  }
+
+  let horizontal = i32::from(
+    keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight),
+  ) - i32::from(keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft));
+  let vertical =
+    i32::from(keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp))
+      - i32::from(keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown));
+  view.position = move_player_focus(
+    view.position,
+    horizontal,
+    vertical,
+    host.snapshot.topology.width,
+    host.snapshot.topology.height,
+  );
+
+  let wheel_delta = mouse_wheel.read().map(|event| event.y).sum::<f32>();
+  if keys.just_pressed(KeyCode::KeyE) || wheel_delta > 0.0 {
+    view.zoom_level = view.zoom_level.saturating_sub(1).max(1);
+  }
+  if keys.just_pressed(KeyCode::KeyQ) || wheel_delta < 0.0 {
+    view.zoom_level = view.zoom_level.saturating_add(1).min(10);
+  }
+
+  let world = grid_to_world(view.position);
+  camera.0.translation.x = world.x;
+  camera.0.translation.y = world.y;
+  cursor.translation.x = world.x;
+  cursor.translation.y = world.y;
+  if let Projection::Orthographic(projection) = &mut *camera.1 {
+    projection.scale = player_zoom_scale(view.zoom_level);
+  }
+}
+
 fn handle_control_buttons(
   buttons: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
   mut host: ResMut<SimHost>,
@@ -1054,6 +1135,20 @@ fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Tran
   }
 }
 
+fn anchor_overlay_text(
+  camera: Single<&Transform, With<MainCamera>>,
+  mut hud: Single<&mut Transform, (With<HudText>, Without<MainCamera>, Without<EventText>)>,
+  mut events: Single<
+    &mut Transform,
+    (With<EventText>, Without<MainCamera>, Without<HudText>),
+  >,
+) {
+  hud.translation.x = camera.translation.x + 315.0;
+  hud.translation.y = camera.translation.y + 190.0;
+  events.translation.x = camera.translation.x + 315.0;
+  events.translation.y = camera.translation.y - 105.0;
+}
+
 fn style_control_buttons(
   host: Res<SimHost>,
   mut buttons: Query<(
@@ -1081,6 +1176,7 @@ fn style_control_buttons(
 
 fn update_text(
   host: Res<SimHost>,
+  view: Res<PlayerView>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
   mut hauler_labels: Query<
     (&HaulerLabel, &mut Text2d),
@@ -1089,7 +1185,7 @@ fn update_text(
   mut hud: Query<&mut Text2d, (With<HudText>, Without<EventText>)>,
   mut events: Query<&mut Text2d, (With<EventText>, Without<HudText>)>,
 ) {
-  if !host.is_changed() {
+  if !host.is_changed() && !view.is_changed() {
     return;
   }
 
@@ -1111,13 +1207,21 @@ fn update_text(
   let metrics = host.game.metrics();
   let status = if host.paused { "paused" } else { "running" };
   let cycle_status = if host.auto_cycle { "auto" } else { "locked" };
+  let focused = focused_status(&host.snapshot, view.position);
+  let totals = snapshot_inventory_totals(&host.snapshot);
   let hud_value = format!(
-    "FACTORY GAME\n{}\n\ntick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
+    "FACTORY GAME\n{}\n\nfocus: {}, {} | zoom {}\n{}\n\n\
+     tick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
      mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\
+     objects: {} sources, {} haulers, {} factories, {} structures\nstored: {}\n\
      power: {}\nenergy used: {}\nstarvations: {}\ndeployments: {}\ndeletions: {}\n\n\
      showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
-     click the control deck below\nkeyboard: Space N R F C L",
+     click the control deck below\nkeyboard: WASD/arrows Q/E Space N R F C L",
     host.snapshot.scenario.name,
+    view.position.x,
+    view.position.y,
+    view.zoom_level,
+    focused,
     host.snapshot.tick,
     status,
     host.ticks_per_second,
@@ -1125,6 +1229,11 @@ fn update_text(
     format_items(&metrics.crafted),
     metrics.dispatches_assigned,
     metrics.idle_ticks,
+    host.snapshot.sources.len(),
+    host.snapshot.haulers.len(),
+    host.snapshot.factories.len(),
+    host.snapshot.structures.len(),
+    format_items(&totals),
     host
       .snapshot
       .power
@@ -1160,6 +1269,66 @@ fn update_text(
   for mut text in &mut events {
     *text = Text2d::new(event_value.clone());
   }
+}
+
+fn move_player_focus(
+  position: GridPosition,
+  x: i32,
+  y: i32,
+  width: i32,
+  height: i32,
+) -> GridPosition {
+  GridPosition {
+    x: (position.x + x).clamp(0, width.saturating_sub(1)),
+    y: (position.y + y).clamp(0, height.saturating_sub(1)),
+  }
+}
+
+fn player_zoom_scale(level: u8) -> f32 {
+  1.0 + f32::from(level.clamp(1, 10) - 1) * 0.18
+}
+
+fn focused_status(snapshot: &TickSnapshot, position: GridPosition) -> String {
+  let mut details = snapshot
+    .topology
+    .nodes
+    .iter()
+    .filter(|node| node.position == position)
+    .map(|node| node_label_value(snapshot, node.id).replace('\n', " | "))
+    .collect::<Vec<_>>();
+  details.extend(
+    snapshot
+      .haulers
+      .iter()
+      .filter(|hauler| hauler.position_grid == position)
+      .map(hauler_label_value),
+  );
+  if details.is_empty() {
+    if snapshot.topology.obstacles.contains(&position) {
+      "inspect: blocked".into()
+    } else {
+      "inspect: empty".into()
+    }
+  } else {
+    format!("inspect: {}", details.join(" || "))
+  }
+}
+
+fn snapshot_inventory_totals(snapshot: &TickSnapshot) -> BTreeMap<String, u32> {
+  let mut totals = BTreeMap::new();
+  for items in snapshot
+    .sources
+    .iter()
+    .map(|source| &source.stockpile.items)
+    .chain(snapshot.haulers.iter().map(|hauler| &hauler.cargo.items))
+    .chain(snapshot.factories.iter().map(|factory| &factory.inventory.items))
+    .chain(snapshot.power.iter().map(|power| &power.fuel.items))
+  {
+    for (item, quantity) in items {
+      *totals.entry(item.clone()).or_default() += quantity;
+    }
+  }
+  totals
 }
 
 fn grid_to_world(position: GridPosition) -> Vec2 {
@@ -1731,6 +1900,39 @@ mod tests {
     assert_eq!(0.5, craft_progress_fraction(2, 4));
     assert_eq!(1.0, craft_progress_fraction(4, 4));
     assert_eq!(1.0, craft_progress_fraction(8, 4));
+  }
+
+  #[test]
+  fn player_focus_moves_one_cell_and_clamps_to_the_world() {
+    assert_eq!(
+      GridPosition { x: 2, y: 1 },
+      move_player_focus(GridPosition { x: 1, y: 1 }, 1, 0, 3, 2)
+    );
+    assert_eq!(
+      GridPosition { x: 0, y: 1 },
+      move_player_focus(GridPosition { x: 0, y: 1 }, -1, 1, 3, 2)
+    );
+  }
+
+  #[test]
+  fn player_zoom_preserves_the_unity_one_to_ten_bounds() {
+    assert_eq!(1.0, player_zoom_scale(1));
+    assert_eq!(player_zoom_scale(1), player_zoom_scale(0));
+    assert_eq!(player_zoom_scale(10), player_zoom_scale(11));
+    assert!(player_zoom_scale(10) > player_zoom_scale(1));
+  }
+
+  #[test]
+  fn focused_status_and_totals_follow_the_authoritative_snapshot() {
+    let game = scenario_game(BUILDING_DEPLOYMENT_SCENARIO);
+    let snapshot = game.snapshot(Vec::new());
+
+    assert!(focused_status(&snapshot, GridPosition { x: 4, y: 1 })
+      .contains("awaiting structure"));
+    assert_eq!(
+      Some(&1),
+      snapshot_inventory_totals(&snapshot).get("storage_warehouse")
+    );
   }
 
   #[test]
