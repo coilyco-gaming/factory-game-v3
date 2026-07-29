@@ -25,8 +25,9 @@ behavior is visual, a scenario exposed by the Bevy/Wasm viewer.
 * **Battery and generation** - working - Rust owns node and hauler batteries,
   minimum capacity, clamped charge, overdraw rejection, capacity-weighted
   adjacent balancing, fuel burn, owner-specific system costs, and starvation.
-* **Automatic power lines** - not started - Rust still needs nearest-generator
-  routing and line construction.
+* **Automatic power lines** - working - Rust owns one-time nearest-target
+  selection, greedy eight-neighbor construction, pass-through line cells,
+  1,000-capacity line batteries, snapshots, and viewer projection.
 * **World mutation** - working core - Rust owns scenario creation,
   retrieve/deploy mutation, occupancy, and ordered deletion. General
   player-driven spawn, placement, and deletion remain.

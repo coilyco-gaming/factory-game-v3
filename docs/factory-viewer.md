@@ -21,10 +21,11 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through eight scenarios, including powered ironworks, drill
+The viewer rotates through nine scenarios, including powered ironworks, drill
 deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
 production chain. A separated freight line makes haulers carry foundry output
-to a downstream frame factory. Each scene displays:
+to a downstream frame factory. The grid-link scene draws power-line cells as
+the coal plant joins a distant consumer network. Each scene displays:
 
 - active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
@@ -72,9 +73,8 @@ The keyboard mirrors the same typed actions:
 - `ward exec shell-run` starts the native viewer.
 - `ward exec shell-serve` starts the browser viewer with Trunk hot reload.
 - `ward exec shell-build-web` builds the static Wasm bundle.
-- `ward exec cargo-test` proves the viewer-hosted tick stream matches direct
-  simulation stepping.
+- `ward exec cargo-test` proves hosted ticks match direct simulation.
+
 ## Deferred
 
-Scenario editing, camera controls, production art, recording playback, and
-gameplay editing remain deferred while the viewer is an observability surface.
+Scenario editing, camera controls, production art, recording, and gameplay editing remain deferred.

@@ -38,7 +38,8 @@ viewer exposes player-visible state.
   node and hauler batteries, minimum capacity, capacity clamping,
   capacity-weighted adjacent balancing, owner-specific energy consumption,
   fuel-burning generation, starvation, coal demand, and energy metrics.
-  Automatic power-line placement remains.
+  Generators greedily construct battery-backed lines toward the nearest
+  disconnected battery, and the viewer projects each line cell.
 * **World mutation and deployment** - partial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
   source activation, depleted-ore deletion, drill teardown, and occupancy

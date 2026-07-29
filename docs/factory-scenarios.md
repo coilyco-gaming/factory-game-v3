@@ -1,6 +1,6 @@
 # Factory simulation scenarios
 
-The deterministic showcase covers eight layouts:
+The deterministic showcase covers nine layouts:
 
 - **Iron bars** - one hauler supplies one foundry from a finite iron deposit.
 - **Iron bars fleet** - three haulers arbitrate the same bounded demand.
@@ -15,6 +15,8 @@ The deterministic showcase covers eight layouts:
 - **Distributed frame line** - separated factories force haulers to discover
   foundry output, retrieve it from an adjacent cell, cross the grid, and satisfy
   downstream frame demand.
+- **Automatic grid link** - a distant coal plant greedily constructs three
+  battery-backed line cells that energize an ironworks network.
 
 Every scenario is available through the headless CLI and the Bevy/Wasm control
 deck. The viewer cycles through them automatically after quiet completion.

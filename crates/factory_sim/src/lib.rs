@@ -186,6 +186,8 @@ impl GameState {
         factories,
         power,
         batteries,
+        power_lines: std::collections::BTreeSet::new(),
+        power_lines_built: false,
         topology,
         queued_mutations: Vec::new(),
         scenario,
@@ -843,7 +845,68 @@ impl GameState {
     let (burned, generated) = power.generate(battery, events);
     self.metrics.fuel_burned += burned;
     self.metrics.energy_generated += generated;
+    self.construct_power_lines(events);
     self.balance_batteries(events);
+  }
+
+  fn construct_power_lines(&mut self, events: &mut Vec<String>) {
+    if self.world.power_lines_built {
+      return;
+    }
+    let plant = self.world.topology.position(NodeId::PowerPlant);
+    let target = self
+      .world
+      .batteries
+      .keys()
+      .filter_map(|owner| match owner {
+        BatteryOwner::Node(node) if *node != NodeId::PowerPlant => {
+          Some((*owner, self.world.topology.position(*node)))
+        }
+        BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
+      })
+      .min_by_key(|(owner, position)| {
+        (
+          plant.x.abs_diff(position.x).pow(2) + plant.y.abs_diff(position.y).pow(2),
+          *owner,
+        )
+      });
+    let Some((_, target)) = target else {
+      events.push("power line no battery target found".into());
+      return;
+    };
+
+    let mut current = plant;
+    let mut built = Vec::new();
+    while !adjacent(current, target) {
+      current = GridPosition {
+        x: current.x + (target.x - current.x).signum(),
+        y: current.y + (target.y - current.y).signum(),
+      };
+      if current == target
+        || current.x < 0
+        || current.y < 0
+        || current.x >= self.world.topology.width
+        || current.y >= self.world.topology.height
+      {
+        break;
+      }
+      if self.world.power_lines.insert(current) {
+        let owner = BatteryOwner::PowerLine(current);
+        self
+          .world
+          .batteries
+          .insert(owner, Battery::new(owner, 0, 1_000));
+        built.push(current);
+      }
+    }
+    self.world.power_lines_built = true;
+    events.push(format!(
+      "power line built {} cells {:?} toward {},{}",
+      built.len(),
+      built,
+      target.x,
+      target.y
+    ));
   }
 
   fn balance_batteries(&mut self, events: &mut Vec<String>) {
@@ -864,6 +927,7 @@ impl GameState {
               .expect("battery owner has a hauler");
             self.world.topology.position(hauler.position)
           }
+          BatteryOwner::PowerLine(position) => position,
         };
         (owner, position)
       })
@@ -1078,6 +1142,7 @@ impl GameState {
         nodes: self.world.topology.nodes.clone(),
         blocked: self.world.topology.blocked.clone(),
         obstacles: self.world.topology.obstacles.clone(),
+        power_lines: self.world.power_lines.clone(),
       },
       sources: self
         .world
@@ -1162,6 +1227,7 @@ mod tests {
     COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS,
     IRON_BARS_FLEET_SCENARIO, FRAMES, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
     PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
+    POWER_LINE_SCENARIO,
   };
 
   #[test]
@@ -1771,6 +1837,49 @@ mod tests {
       .batteries
       .iter()
       .any(|battery| battery.owner == BatteryOwner::Hauler(0)));
+  }
+
+  #[test]
+  fn generator_builds_one_greedy_battery_backed_power_line() {
+    let mut state = GameState::new(ContentDatabase::starter(), POWER_LINE_SCENARIO).unwrap();
+
+    let first = state.step();
+    assert_eq!(
+      std::collections::BTreeSet::from([
+        GridPosition { x: 1, y: 1 },
+        GridPosition { x: 2, y: 1 },
+        GridPosition { x: 3, y: 1 },
+      ]),
+      first.topology.power_lines
+    );
+    assert!(first
+      .events
+      .iter()
+      .any(|event| event.starts_with("power line built 3 cells")));
+    for position in &first.topology.power_lines {
+      assert!(first.power.as_ref().unwrap().batteries.iter().any(
+        |battery| battery.owner == BatteryOwner::PowerLine(*position)
+      ));
+    }
+    assert!(
+      first
+        .power
+        .as_ref()
+        .unwrap()
+        .batteries
+        .iter()
+        .find(|battery| battery.owner == BatteryOwner::Node(NodeId::Factory(0)))
+        .unwrap()
+        .energy
+        > 0
+    );
+
+    let second = state.step();
+    assert_eq!(first.topology.power_lines, second.topology.power_lines);
+    assert!(second
+      .events
+      .iter()
+      .all(|event| !event.starts_with("power line built")));
   }
 
   #[test]

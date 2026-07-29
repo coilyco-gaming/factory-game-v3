@@ -1,6 +1,6 @@
 use crate::dispatch::{DispatchBoard, DispatchIntent};
 use crate::resources::{Inventory, InventorySnapshot};
-use crate::NodeId;
+use crate::{GridPosition, NodeId};
 use factory_content::{ContentDatabase, ItemId, PowerSpec};
 use serde::Serialize;
 
@@ -9,6 +9,7 @@ use serde::Serialize;
 pub enum BatteryOwner {
   Node(NodeId),
   Hauler(u8),
+  PowerLine(GridPosition),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

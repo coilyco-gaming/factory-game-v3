@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
   DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO,
-  PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
+  PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO,
+  PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
   BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot,
@@ -22,7 +23,7 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 8] = [
+const DEMO_SCENARIOS: [ScenarioId; 9] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
@@ -31,6 +32,7 @@ const DEMO_SCENARIOS: [ScenarioId; 8] = [
   PATHFINDING_DEMO_SCENARIO,
   PRODUCTION_CHAIN_SCENARIO,
   DISTRIBUTED_CHAIN_SCENARIO,
+  POWER_LINE_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -50,6 +52,7 @@ const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
 const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
 const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
 const GRID_OBSTACLE: Color = Color::srgb(0.42, 0.24, 0.18);
+const GRID_POWER_LINE: Color = Color::srgb(0.26, 0.78, 0.92);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
 const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
 const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
@@ -406,6 +409,7 @@ fn spawn_control_deck(commands: &mut Commands) {
         &[
           (ControlAction::SelectScenario(6), "DRILL CHAIN"),
           (ControlAction::SelectScenario(7), "FREIGHT LINE"),
+          (ControlAction::SelectScenario(8), "GRID LINK"),
         ],
       );
       spawn_control_row(
@@ -461,6 +465,24 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
 
 fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   spawn_connections(commands, snapshot);
+  for power_line in &snapshot.topology.power_lines {
+    let position = grid_to_world(*power_line);
+    commands.spawn((
+      Sprite::from_color(GRID_POWER_LINE, Vec2::new(78.0, 16.0)),
+      Transform::from_xyz(position.x, position.y, 0.9),
+      ProjectionEntity,
+    ));
+    commands.spawn((
+      Text2d::new("POWER"),
+      TextFont {
+        font_size: FontSize::Px(11.0),
+        ..default()
+      },
+      TextColor(Color::srgb(0.82, 0.97, 1.0)),
+      Transform::from_xyz(position.x, position.y, 1.0),
+      ProjectionEntity,
+    ));
+  }
   for obstacle in &snapshot.topology.obstacles {
     let position = grid_to_world(*obstacle);
     commands.spawn((
@@ -1648,6 +1670,24 @@ mod tests {
   }
 
   #[test]
+  fn power_line_projection_tracks_generated_grid_cells() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    host.select_scenario(8, "test selected");
+
+    assert!(host.snapshot.topology.power_lines.is_empty());
+    host.step_once();
+
+    assert_eq!(3, host.snapshot.topology.power_lines.len());
+    assert!(node_label_value(&host.snapshot, NodeId::Factory(0)).contains("battery:"));
+    assert!(host
+      .snapshot
+      .events
+      .iter()
+      .any(|event| event.starts_with("power line built")));
+  }
+
+  #[test]
   fn cargo_badge_state_tracks_authoritative_inventory() {
     let mut host = SimHost::new();
     host.auto_cycle = false;
@@ -1722,8 +1762,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(DISTRIBUTED_CHAIN_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(POWER_LINE_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(8, host.scene_revision);
+    assert_eq!(9, host.scene_revision);
   }
 
   #[test]

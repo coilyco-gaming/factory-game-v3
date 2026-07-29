@@ -65,6 +65,7 @@ pub const DEPLOYMENT_DEMO_SCENARIO: ScenarioId = ScenarioId::new("deployment-dem
 pub const PATHFINDING_DEMO_SCENARIO: ScenarioId = ScenarioId::new("pathfinding-demo");
 pub const PRODUCTION_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("production-chain");
 pub const DISTRIBUTED_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("distributed-chain");
+pub const POWER_LINE_SCENARIO: ScenarioId = ScenarioId::new("power-line-demo");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -491,11 +492,11 @@ impl ContentDatabase {
         hauler_volume_capacity: 32,
         power: Some(PowerSpec {
           fuel_item: COAL,
-          initial_fuel: 2,
-          fuel_buffer: 5,
-          burn_rate: 1,
-          gain_rate: 12,
-          grid_capacity: 1_000,
+          initial_fuel: 8,
+          fuel_buffer: 20,
+          burn_rate: 4,
+          gain_rate: 160,
+          grid_capacity: 10_000,
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
@@ -629,6 +630,44 @@ impl ContentDatabase {
           road_position: GridPoint { x: 1, y: 1 },
           factory_positions: vec![GridPoint { x: 2, y: 0 }, GridPoint { x: 4, y: 1 }],
           power_plant_position: None,
+          obstacles: Vec::new(),
+        },
+      },
+    );
+    scenarios.insert(
+      POWER_LINE_SCENARIO,
+      ScenarioDefinition {
+        id: POWER_LINE_SCENARIO,
+        name: "Automatic Grid Link".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 36,
+          mining_speed: 3,
+          requires_deployment: false,
+        }],
+        factories: vec![FactorySpec::new(IRON_BARS, 12, 40)],
+        hauler_count: 1,
+        hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
+        power: Some(PowerSpec {
+          fuel_item: COAL,
+          initial_fuel: 40,
+          fuel_buffer: 40,
+          burn_rate: 4,
+          gain_rate: 160,
+          grid_capacity: 10_000,
+          mining_cost: 1,
+          dispatch_cost: 1,
+          production_cost: 2,
+        }),
+        layout: LayoutSpec {
+          width: 5,
+          height: 3,
+          source_positions: vec![GridPoint { x: 4, y: 2 }],
+          road_position: GridPoint { x: 4, y: 0 },
+          factory_positions: vec![GridPoint { x: 4, y: 1 }],
+          power_plant_position: Some(GridPoint { x: 0, y: 1 }),
           obstacles: Vec::new(),
         },
       },
