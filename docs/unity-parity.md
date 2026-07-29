@@ -26,9 +26,11 @@ viewer exposes any state a player previously needed to understand.
   in-flight demand accounting, receiver assignment, coal delivery to a
   separate consumer, and lifecycle transitions. General target-type matching,
   buffer policy, and blocked-adjacency behavior remain.
-* **Movement and pathfinding** - early - Rust owns deterministic multi-hop
-  movement through a hub topology. General grid occupancy, A-star pathfinding,
-  path invalidation, and deferred movement queues remain.
+* **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
+  bounds and layouts, occupied static cells, deterministic A-star search,
+  cardinal and diagonal movement with corner rules, blocked-target arrival,
+  transit cells, no-path reporting, and per-tick path recalculation. Moving
+  object collision arbitration and explicit deferred movement queues remain.
 * **Battery and power** - substantial - Rust owns a finite power grid,
   fuel-burning generation, capacity clamping, shared energy consumption,
   starvation, coal demand, and energy metrics. The grid is an aggregate of the
@@ -46,8 +48,8 @@ viewer exposes any state a player previously needed to understand.
 
 ## Decommission order
 
-1. The agent replaces the hub topology with a general occupied grid and
-   deterministic pathfinding.
+1. The agent adds moving-object collision arbitration and queues movement at
+   the shared world-mutation boundary.
 2. The agent expands deferred world mutation from deployed source activation to
    general spawn, move, delete, and teardown operations.
 3. The agent ports the remaining content catalog and multi-building production

@@ -4,8 +4,8 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 
 ## Crates
 
-- `factory_content` - typed item and scenario IDs plus starter production data. Items carry manifest and spawnable-object flags, and scenarios define sources, hauler capacity, power, and starting factory objects.
-- `factory_sim` - deterministic inventory, mining extraction, typed dispatch protocol with multi-hauler arbitration, queued deployment mutation, a hub-shaped world topology, hauler movement, fuel-burning power grid, factory, and tick stepping.
+- `factory_content` - typed item and scenario IDs plus starter production data. Items carry manifest and spawnable-object flags, and scenarios define sources, hauler capacity, power, starting factory objects, and occupied-grid layouts.
+- `factory_sim` - deterministic inventory, mining extraction, typed dispatch protocol with multi-hauler arbitration, queued deployment mutation, occupied-grid A-star pathfinding, hauler movement, fuel-burning power grid, factory, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -16,7 +16,9 @@ The world generalizes to N sources and N haulers around one factory:
 - haulers have fixed quantity, weight, and volume limits plus explicit collect, deliver, retrieve, or deploy assignment state, and can be assigned from any position
 - recipes may have multiple ingredients: crafting starts only when every input is stocked and consumes all of them
 - the factory has reserved input capacity per ingredient and advertises one dispatch intent per under-buffered input, in item-id order
-- the topology is hub-shaped: every source and the factory hang off one road node, so any trip is at most two hops and routing needs no search
+- scenario layouts define grid bounds, object positions, and static obstacles;
+  deterministic A-star routing supports cardinal and diagonal movement, allows
+  arrival at an occupied target, and reports a sealed route
 - dispatch arbitration is deterministic: factory demand minus in-flight cargo is handed to unassigned empty haulers in index order (collect-phase haulers count at carry limit), so demand is never double-served
 - deterministic mine, intent-refresh, assign, collect, deliver, craft-progress, and move steps
 - powered scenarios generate a finite shared grid from fuel, route coal to the
@@ -26,7 +28,7 @@ The world generalizes to N sources and N haulers around one factory:
   retrieve it into a capable hauler, carry it to a dormant source, and queue
   source activation for the deterministic world-mutation boundary
 
-Starter scenarios: `iron-bars` (one source, one hauler), `iron-bars-fleet` (one richer source, three haulers competing over a six-unit input buffer - only two are needed per wave), `building-materials` (a finite iron ore source plus a manifest stone source feeding a two-ingredient recipe with two haulers), `powered-ironworks` (iron and coal sources feeding a factory plus a fuel-burning plant over one shared finite grid), and `deployment-demo` (a hauler installs a mining drill before ore extraction can begin).
+Starter scenarios: `iron-bars` (one source, one hauler), `iron-bars-fleet` (one richer source, three haulers competing over a six-unit input buffer - only two are needed per wave), `building-materials` (a finite iron ore source plus a manifest stone source feeding a two-ingredient recipe with two haulers), `powered-ironworks` (iron and coal sources feeding a factory plus a fuel-burning plant over one shared finite grid), `deployment-demo` (a hauler installs a mining drill before ore extraction can begin), and `pathfinding-demo` (a hauler follows the deterministic route around a blocked grid cell).
 
 The first recipe is intentionally small. It exercises the container and production flow without adding pathfinding or rendering.
 

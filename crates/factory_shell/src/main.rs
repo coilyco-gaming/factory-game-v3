@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
-  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, POWERED_IRONWORKS_SCENARIO,
+  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
+  POWERED_IRONWORKS_SCENARIO,
 };
 use factory_sim::{
   DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot, NodeId,
@@ -21,12 +22,13 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 5] = [
+const DEMO_SCENARIOS: [ScenarioId; 6] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
   POWERED_IRONWORKS_SCENARIO,
   DEPLOYMENT_DEMO_SCENARIO,
+  PATHFINDING_DEMO_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -45,6 +47,7 @@ const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
 const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
 const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
 const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
+const GRID_OBSTACLE: Color = Color::srgb(0.42, 0.24, 0.18);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
 const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
 const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
@@ -403,6 +406,7 @@ fn spawn_control_deck(commands: &mut Commands) {
           (ControlAction::SelectScenario(2), "MATERIALS"),
           (ControlAction::SelectScenario(3), "POWER"),
           (ControlAction::SelectScenario(4), "DEPLOY"),
+          (ControlAction::SelectScenario(5), "DETOUR"),
         ],
       );
     });
@@ -447,6 +451,25 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
 
 fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   spawn_connections(commands, snapshot);
+  for obstacle in &snapshot.topology.obstacles {
+    let position = grid_to_world(*obstacle);
+    commands.spawn((
+      Sprite::from_color(GRID_OBSTACLE, Vec2::splat(76.0)),
+      Transform::from_xyz(position.x, position.y, 0.8)
+        .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_4)),
+      ProjectionEntity,
+    ));
+    commands.spawn((
+      Text2d::new("BLOCKED"),
+      TextFont {
+        font_size: FontSize::Px(13.0),
+        ..default()
+      },
+      TextColor(Color::srgb(1.0, 0.76, 0.52)),
+      Transform::from_xyz(position.x, position.y, 1.0),
+      ProjectionEntity,
+    ));
+  }
   for node in &snapshot.topology.nodes {
     let position = grid_to_world(node.position);
     let size = match node.id {
@@ -454,6 +477,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeId::Road => Vec2::new(100.0, 34.0),
       NodeId::Factory => Vec2::new(132.0, 82.0),
       NodeId::PowerPlant => Vec2::new(132.0, 82.0),
+      NodeId::Transit(_) => Vec2::new(28.0, 28.0),
     };
     commands.spawn((
       Sprite::from_color(node_color(snapshot, node.id), size),
@@ -1184,6 +1208,7 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
         NodeActivity::Demanding
       }
     }),
+    NodeId::Transit(_) => NodeActivity::Idle,
   }
 }
 
@@ -1216,6 +1241,7 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::PowerPlant, NodeActivity::Powering) => NODE_POWER_ACTIVE,
     (NodeId::PowerPlant, NodeActivity::Ready) => NODE_POWER_CHARGED,
     (NodeId::PowerPlant, _) => NODE_POWER_IDLE,
+    (NodeId::Transit(_), _) => NODE_ROAD,
   }
 }
 
@@ -1337,6 +1363,7 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
         )
       })
       .unwrap_or_else(|| "coal plant".into()),
+    NodeId::Transit(position) => format!("transit\n{}, {}", position.x, position.y),
   }
 }
 
@@ -1625,8 +1652,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(DEPLOYMENT_DEMO_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(PATHFINDING_DEMO_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(5, host.scene_revision);
+    assert_eq!(6, host.scene_revision);
   }
 
   #[test]

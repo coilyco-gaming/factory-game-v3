@@ -30,6 +30,7 @@ pub use world::{
 pub enum SimulationError {
   UnknownScenario(ScenarioId),
   ScenarioMissingSources(ScenarioId),
+  ScenarioLayoutMismatch(ScenarioId),
   RecipeMissingIngredients(ItemId),
 }
 
@@ -39,6 +40,9 @@ impl fmt::Display for SimulationError {
       Self::UnknownScenario(id) => write!(f, "unknown scenario: {id}"),
       Self::ScenarioMissingSources(id) => {
         write!(f, "scenario {id} must define at least one source")
+      }
+      Self::ScenarioLayoutMismatch(id) => {
+        write!(f, "scenario {id} layout does not match its world objects")
       }
       Self::RecipeMissingIngredients(id) => {
         write!(f, "recipe for {id} must have at least one ingredient")
@@ -64,6 +68,11 @@ impl GameState {
       .ok_or(SimulationError::UnknownScenario(scenario_id))?;
     if scenario.sources.is_empty() {
       return Err(SimulationError::ScenarioMissingSources(scenario_id));
+    }
+    if scenario.sources.len() != scenario.layout.source_positions.len()
+      || scenario.power.is_some() != scenario.layout.power_plant_position.is_some()
+    {
+      return Err(SimulationError::ScenarioLayoutMismatch(scenario_id));
     }
     let product = content.item(scenario.product_item).clone();
     if product.ingredients.is_empty() {
@@ -121,7 +130,6 @@ impl GameState {
       .power
       .clone()
       .map(|spec| PowerPlant::new(&content, spec, Inventory::new(64, 64)));
-    let has_power = power.is_some();
 
     Ok(Self {
       world: WorldState {
@@ -130,7 +138,7 @@ impl GameState {
         haulers,
         factory: FactoryNode::new(production, scenario.craft_input_buffer),
         power,
-        topology: Topology::for_sources(scenario.sources.len() as u8, has_power),
+        topology: Topology::from_layout(&scenario.layout),
         queued_mutations: Vec::new(),
         scenario,
       },
@@ -434,7 +442,7 @@ impl GameState {
             carried,
           )
         }
-        NodeId::Source(_) | NodeId::Road => 0,
+        NodeId::Source(_) | NodeId::Road | NodeId::Transit(_) => 0,
       };
       self.metrics.units_delivered += delivered;
       if delivered > 0 {
@@ -581,7 +589,13 @@ impl GameState {
       };
       hauler.set_target(target);
       let current = hauler.position;
-      let next = self.world.topology.step_toward(current, target);
+      let Some(next) = self.world.topology.step_toward(current, target) else {
+        events.push(format!(
+          "move hauler-{} no available path {} -> {}",
+          hauler.id, current, target
+        ));
+        continue;
+      };
       hauler.position = next;
       if next != current {
         events.push(format!(
@@ -624,7 +638,11 @@ impl GameState {
         name: self.world.scenario.name.clone(),
       },
       topology: TopologySnapshot {
+        width: self.world.topology.width,
+        height: self.world.topology.height,
         nodes: self.world.topology.nodes.clone(),
+        blocked: self.world.topology.blocked.clone(),
+        obstacles: self.world.topology.obstacles.clone(),
       },
       sources: self
         .world
@@ -679,7 +697,8 @@ mod tests {
   use factory_content::{
     ContentDatabase, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS,
     COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
-    IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, POWERED_IRONWORKS_SCENARIO, STONE,
+    IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, PATHFINDING_DEMO_SCENARIO,
+    POWERED_IRONWORKS_SCENARIO, STONE,
   };
 
   #[test]
@@ -1168,5 +1187,27 @@ mod tests {
     let second_run: Vec<_> = (0..12).map(|_| second.step()).collect();
     assert_eq!(first_run, second_run);
     assert_eq!(first.metrics(), second.metrics());
+  }
+
+  #[test]
+  fn pathfinding_scenario_routes_around_the_blocked_cell() {
+    let mut state = GameState::new(ContentDatabase::starter(), PATHFINDING_DEMO_SCENARIO).unwrap();
+    let first = state.step();
+    let second = state.step();
+    let third = state.step();
+    let fourth = state.step();
+
+    assert_eq!(NodeId::Road, first.haulers[0].position);
+    assert_eq!(
+      NodeId::Transit(GridPosition { x: 2, y: 1 }),
+      second.haulers[0].position
+    );
+    assert_eq!(NodeId::Factory, third.haulers[0].position);
+    assert!(fourth.events.iter().any(|event| event.contains("deliver 3")));
+    assert_eq!(
+      1,
+      first.topology.obstacles.len(),
+      "the occupied cell is exposed to projections"
+    );
   }
 }

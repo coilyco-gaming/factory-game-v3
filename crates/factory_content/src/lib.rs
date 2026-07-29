@@ -56,6 +56,7 @@ pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-flee
 pub const BUILDING_MATERIALS_SCENARIO: ScenarioId = ScenarioId::new("building-materials");
 pub const POWERED_IRONWORKS_SCENARIO: ScenarioId = ScenarioId::new("powered-ironworks");
 pub const DEPLOYMENT_DEMO_SCENARIO: ScenarioId = ScenarioId::new("deployment-demo");
+pub const PATHFINDING_DEMO_SCENARIO: ScenarioId = ScenarioId::new("pathfinding-demo");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -115,6 +116,42 @@ pub struct SourceSpec {
   pub requires_deployment: bool,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+pub struct GridPoint {
+  pub x: i32,
+  pub y: i32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct LayoutSpec {
+  pub width: i32,
+  pub height: i32,
+  pub source_positions: Vec<GridPoint>,
+  pub road_position: GridPoint,
+  pub factory_position: GridPoint,
+  pub power_plant_position: Option<GridPoint>,
+  pub obstacles: Vec<GridPoint>,
+}
+
+impl LayoutSpec {
+  pub fn linear(source_count: u8, include_power_plant: bool) -> Self {
+    Self {
+      width: 3,
+      height: i32::from(source_count).max(2),
+      source_positions: (0..source_count)
+        .map(|index| GridPoint {
+          x: 0,
+          y: i32::from(index),
+        })
+        .collect(),
+      road_position: GridPoint { x: 1, y: 0 },
+      factory_position: GridPoint { x: 2, y: 0 },
+      power_plant_position: include_power_plant.then_some(GridPoint { x: 2, y: 1 }),
+      obstacles: Vec::new(),
+    }
+  }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PowerSpec {
   pub fuel_item: ItemId,
@@ -142,6 +179,7 @@ pub struct ScenarioDefinition {
   pub craft_output_buffer: u32,
   pub power: Option<PowerSpec>,
   pub factory_starting_items: BTreeMap<ItemId, u32>,
+  pub layout: LayoutSpec,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -253,6 +291,7 @@ impl ContentDatabase {
         craft_output_buffer: 20,
         power: None,
         factory_starting_items: BTreeMap::new(),
+        layout: LayoutSpec::linear(1, false),
       },
     );
     scenarios.insert(
@@ -275,6 +314,7 @@ impl ContentDatabase {
         craft_output_buffer: 20,
         power: None,
         factory_starting_items: BTreeMap::new(),
+        layout: LayoutSpec::linear(1, false),
       },
     );
     scenarios.insert(
@@ -305,6 +345,7 @@ impl ContentDatabase {
         craft_output_buffer: 20,
         power: None,
         factory_starting_items: BTreeMap::new(),
+        layout: LayoutSpec::linear(2, false),
       },
     );
     scenarios.insert(
@@ -345,6 +386,7 @@ impl ContentDatabase {
           production_cost: 2,
         }),
         factory_starting_items: BTreeMap::new(),
+        layout: LayoutSpec::linear(2, true),
       },
     );
     scenarios.insert(
@@ -367,6 +409,38 @@ impl ContentDatabase {
         craft_output_buffer: 20,
         power: None,
         factory_starting_items: BTreeMap::from([(MINING_DRILL, 1)]),
+        layout: LayoutSpec::linear(1, false),
+      },
+    );
+    scenarios.insert(
+      PATHFINDING_DEMO_SCENARIO,
+      ScenarioDefinition {
+        id: PATHFINDING_DEMO_SCENARIO,
+        name: "Obstacle Detour".into(),
+        sources: vec![SourceSpec {
+          item: IRON_ORE,
+          deposit: 18,
+          mining_speed: 3,
+          requires_deployment: false,
+        }],
+        product_item: IRON_BARS,
+        hauler_count: 1,
+        hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
+        craft_input_buffer: 6,
+        craft_output_buffer: 20,
+        power: None,
+        factory_starting_items: BTreeMap::new(),
+        layout: LayoutSpec {
+          width: 4,
+          height: 3,
+          source_positions: vec![GridPoint { x: 0, y: 1 }],
+          road_position: GridPoint { x: 1, y: 0 },
+          factory_position: GridPoint { x: 3, y: 1 },
+          power_plant_position: None,
+          obstacles: vec![GridPoint { x: 1, y: 1 }],
+        },
       },
     );
 

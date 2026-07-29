@@ -21,10 +21,10 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through `iron-bars`, `iron-bars-fleet`, `building-materials`,
-`powered-ironworks`, and `deployment-demo`. Each scene displays:
+The viewer rotates through six scenarios, including powered ironworks, drill
+deployment, and occupied-grid obstacle detours. Each scene displays:
 
-- active or awaiting-drill source, road, factory, and power-plant topology nodes
+- active or awaiting-drill source, road, factory, power-plant, and blocked cells
 - hauler position, cargo, and dispatch phase
 - source and factory inventory
 - factory craft progress
