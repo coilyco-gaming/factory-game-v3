@@ -46,3 +46,13 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
   state and the live server remains on the player-view distribution.
 - Next - land canonical main, verify its commit and clean tree, then close issue
   37 with the parity and deletion evidence.
+
+### 2026-07-29 - canonical CI correction
+
+- Evidence - Forgejo's gate failed only because `docs/FEATURES.md` reached 4,099
+  characters against the catalog's 4,000-character cap. An exact release-image
+  reproduction identified the same hook and no gameplay failure.
+- Done - the feature inventory now preserves the shipped boundaries in 2,835
+  characters. Diagnostic-only container files were removed before validation.
+- Next - rerun the full gate, push the one evidence-backed correction, verify
+  remote CI, and close issue 37.
