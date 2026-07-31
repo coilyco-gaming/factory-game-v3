@@ -107,6 +107,7 @@ fn main() {
         animate_haulers,
         anchor_overlay_text,
         update_text,
+        sync_annotation_visibility,
         style_control_buttons,
       )
         .chain(),
@@ -123,6 +124,7 @@ struct SimHost {
   accumulated_seconds: f32,
   scenario_index: usize,
   auto_cycle: bool,
+  annotations_visible: bool,
   idle_streak: u16,
   completed_scenarios: u32,
   scene_revision: u64,
@@ -142,6 +144,7 @@ impl SimHost {
       accumulated_seconds: 0.0,
       scenario_index: 0,
       auto_cycle: true,
+      annotations_visible: true,
       idle_streak: 0,
       completed_scenarios: 0,
       scene_revision: 0,
@@ -203,6 +206,7 @@ impl SimHost {
       ControlAction::Reset => self.reset(),
       ControlAction::ToggleSpeed => self.toggle_speed(),
       ControlAction::ToggleAutoCycle => self.toggle_auto_cycle(),
+      ControlAction::ToggleAnnotations => self.annotations_visible = !self.annotations_visible,
       ControlAction::SelectScenario(index) => {
         self.select_scenario(index, "scenario selected");
       }
@@ -339,6 +343,18 @@ struct MainCamera;
 #[derive(Component)]
 struct PlayerCursor;
 
+#[derive(Component)]
+struct Annotation;
+
+#[derive(Component)]
+struct ControlDeckContent;
+
+#[derive(Component)]
+struct ControlDeck;
+
+#[derive(Component)]
+struct DeckToggleLabel;
+
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
 enum ControlAction {
   TogglePause,
@@ -346,6 +362,7 @@ enum ControlAction {
   Reset,
   ToggleSpeed,
   ToggleAutoCycle,
+  ToggleAnnotations,
   SelectScenario(usize),
 }
 
@@ -355,6 +372,7 @@ impl ControlAction {
       Self::TogglePause => host.paused,
       Self::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
       Self::ToggleAutoCycle => host.auto_cycle,
+      Self::ToggleAnnotations => !host.annotations_visible,
       Self::SelectScenario(index) => host.scenario_index == index,
       Self::Step | Self::Reset => false,
     }
@@ -383,6 +401,7 @@ fn setup(
     TextColor(Color::srgb(0.91, 0.92, 0.94)),
     Transform::from_xyz(315.0, 190.0, 4.0),
     HudText,
+    Annotation,
   ));
   commands.spawn((
     Text2d::new(""),
@@ -393,11 +412,13 @@ fn setup(
     TextColor(Color::srgb(0.72, 0.76, 0.82)),
     Transform::from_xyz(315.0, -105.0, 4.0),
     EventText,
+    Annotation,
   ));
   commands.spawn((
     Sprite::from_color(Color::srgba(0.95, 0.86, 0.32, 0.28), Vec2::new(150.0, 100.0)),
     Transform::from_xyz(0.0, 0.0, 2.7),
     PlayerCursor,
+    Annotation,
   ));
   spawn_control_deck(&mut commands);
 }
@@ -419,46 +440,81 @@ fn spawn_control_deck(commands: &mut Commands) {
       BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.94)),
       BorderColor::all(BUTTON_BORDER),
       GlobalZIndex(100),
+      ControlDeck,
     ))
     .with_children(|panel| {
       panel.spawn((
-        Text::new("CONTROL DECK"),
-        TextFont {
-          font_size: FontSize::Px(13.0),
+        Button,
+        ControlButton(ControlAction::ToggleAnnotations),
+        Node {
+          height: px(34),
+          border: UiRect::all(px(1)),
+          justify_content: JustifyContent::Center,
+          align_items: AlignItems::Center,
+          padding: UiRect::axes(px(7), px(3)),
           ..default()
         },
-        TextColor(Color::srgb(0.72, 0.76, 0.82)),
+        BackgroundColor(BUTTON_NORMAL),
+        BorderColor::all(BUTTON_BORDER),
+        children![(
+          Text::new("HIDE UI"),
+          TextFont {
+            font_size: FontSize::Px(12.0),
+            ..default()
+          },
+          TextColor(Color::srgb(0.92, 0.94, 0.97)),
+          DeckToggleLabel,
+        )],
       ));
-      spawn_control_row(
-        panel,
-        &[
-          (ControlAction::TogglePause, "PLAY / PAUSE"),
-          (ControlAction::Step, "STEP"),
-          (ControlAction::Reset, "RESET"),
-          (ControlAction::ToggleSpeed, "SPEED"),
-          (ControlAction::ToggleAutoCycle, "AUTO"),
-        ],
-      );
-      spawn_control_row(
-        panel,
-        &[
-          (ControlAction::SelectScenario(6), "DRILL CHAIN"),
-          (ControlAction::SelectScenario(7), "FREIGHT LINE"),
-          (ControlAction::SelectScenario(8), "GRID LINK"),
-          (ControlAction::SelectScenario(9), "BUILD"),
-        ],
-      );
-      spawn_control_row(
-        panel,
-        &[
-          (ControlAction::SelectScenario(0), "IRON"),
-          (ControlAction::SelectScenario(1), "FLEET"),
-          (ControlAction::SelectScenario(2), "MATERIALS"),
-          (ControlAction::SelectScenario(3), "POWER"),
-          (ControlAction::SelectScenario(4), "DEPLOY"),
-          (ControlAction::SelectScenario(5), "DETOUR"),
-        ],
-      );
+      panel
+        .spawn((
+          Node {
+            flex_direction: FlexDirection::Column,
+            row_gap: px(7),
+            ..default()
+          },
+          ControlDeckContent,
+        ))
+        .with_children(|content| {
+          content.spawn((
+            Text::new("CONTROL DECK"),
+            TextFont {
+              font_size: FontSize::Px(13.0),
+              ..default()
+            },
+            TextColor(Color::srgb(0.72, 0.76, 0.82)),
+          ));
+          spawn_control_row(
+            content,
+            &[
+              (ControlAction::TogglePause, "PLAY / PAUSE"),
+              (ControlAction::Step, "STEP"),
+              (ControlAction::Reset, "RESET"),
+              (ControlAction::ToggleSpeed, "SPEED"),
+              (ControlAction::ToggleAutoCycle, "AUTO"),
+            ],
+          );
+          spawn_control_row(
+            content,
+            &[
+              (ControlAction::SelectScenario(6), "DRILL CHAIN"),
+              (ControlAction::SelectScenario(7), "FREIGHT LINE"),
+              (ControlAction::SelectScenario(8), "GRID LINK"),
+              (ControlAction::SelectScenario(9), "BUILD"),
+            ],
+          );
+          spawn_control_row(
+            content,
+            &[
+              (ControlAction::SelectScenario(0), "IRON"),
+              (ControlAction::SelectScenario(1), "FLEET"),
+              (ControlAction::SelectScenario(2), "MATERIALS"),
+              (ControlAction::SelectScenario(3), "POWER"),
+              (ControlAction::SelectScenario(4), "DEPLOY"),
+              (ControlAction::SelectScenario(5), "DETOUR"),
+            ],
+          );
+        });
     });
 }
 
@@ -516,6 +572,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       },
       TextColor(Color::srgb(0.82, 0.97, 1.0)),
       Transform::from_xyz(position.x, position.y, 1.0),
+      Annotation,
       ProjectionEntity,
     ));
   }
@@ -535,6 +592,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       },
       TextColor(Color::srgb(1.0, 0.76, 0.52)),
       Transform::from_xyz(position.x, position.y, 1.0),
+      Annotation,
       ProjectionEntity,
     ));
   }
@@ -564,6 +622,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       TextColor(Color::srgb(0.96, 0.96, 0.94)),
       Transform::from_xyz(position.x, position.y + 58.0, 3.0),
       NodeLabel(node.id),
+      Annotation,
       ProjectionEntity,
     ));
     if matches!(node.id, NodeId::Factory(_)) {
@@ -589,6 +648,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       ),
       Transform::from_xyz(position.x, position.y, 2.5),
       CargoBadge(hauler.id),
+      Annotation,
       HaulerTarget(position),
       ProjectionEntity,
     ));
@@ -601,6 +661,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       TextColor(Color::srgb(0.72, 0.80, 0.96)),
       Transform::from_xyz(position.x, position.y - 28.0, 3.0),
       HaulerLabel(hauler.id),
+      Annotation,
       HaulerTarget(Vec2::new(position.x, position.y - 28.0)),
       ProjectionEntity,
     ));
@@ -629,6 +690,7 @@ fn spawn_craft_gauge(
       Vec2::new(CRAFT_GAUGE_WIDTH + 4.0, 10.0),
     ),
     Transform::from_xyz(factory.x, y, 1.5),
+    Annotation,
     ProjectionEntity,
   ));
   commands.spawn((
@@ -644,6 +706,7 @@ fn spawn_craft_gauge(
       left,
       max_width: CRAFT_GAUGE_WIDTH,
     },
+    Annotation,
     ProjectionEntity,
   ));
 }
@@ -661,6 +724,7 @@ fn spawn_power_gauge(commands: &mut Commands, snapshot: &TickSnapshot, plant: Ve
       Vec2::new(POWER_GAUGE_WIDTH + 4.0, 10.0),
     ),
     Transform::from_xyz(plant.x, y, 1.5),
+    Annotation,
     ProjectionEntity,
   ));
   commands.spawn((
@@ -675,6 +739,7 @@ fn spawn_power_gauge(commands: &mut Commands, snapshot: &TickSnapshot, plant: Ve
       left,
       max_width: POWER_GAUGE_WIDTH,
     },
+    Annotation,
     ProjectionEntity,
   ));
 }
@@ -1170,6 +1235,37 @@ fn style_control_buttons(
       BUTTON_ACTIVE
     } else {
       BUTTON_BORDER
+    });
+  }
+}
+
+fn sync_annotation_visibility(
+  host: Res<SimHost>,
+  mut annotations: Query<&mut Visibility, With<Annotation>>,
+  mut deck: Single<&mut Node, (With<ControlDeck>, Without<ControlDeckContent>)>,
+  mut content: Single<&mut Node, (With<ControlDeckContent>, Without<ControlDeck>)>,
+  mut toggle_labels: Query<&mut Text, With<DeckToggleLabel>>,
+) {
+  let visibility = if host.annotations_visible {
+    Visibility::Visible
+  } else {
+    Visibility::Hidden
+  };
+  for mut annotation in &mut annotations {
+    *annotation = visibility;
+  }
+
+  deck.width = if host.annotations_visible { px(452) } else { px(112) };
+  content.display = if host.annotations_visible {
+    Display::Flex
+  } else {
+    Display::None
+  };
+  for mut label in &mut toggle_labels {
+    *label = Text::new(if host.annotations_visible {
+      "HIDE UI"
+    } else {
+      "SHOW UI"
     });
   }
 }
@@ -1724,6 +1820,10 @@ mod tests {
     assert!(!host.auto_cycle);
     assert!(!ControlAction::ToggleAutoCycle.is_selected(&host));
 
+    host.apply_control(ControlAction::ToggleAnnotations);
+    assert!(!host.annotations_visible);
+    assert!(ControlAction::ToggleAnnotations.is_selected(&host));
+
     host.apply_control(ControlAction::SelectScenario(2));
     assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
     assert!(ControlAction::SelectScenario(2).is_selected(&host));
@@ -1750,6 +1850,32 @@ mod tests {
     let host = app.world().resource::<SimHost>();
     assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
     assert_eq!(1, host.scene_revision);
+  }
+
+  #[test]
+  fn focus_mode_hides_annotations_and_collapses_the_control_deck() {
+    let mut host = SimHost::new();
+    host.annotations_visible = false;
+    let mut app = App::new();
+    app.insert_resource(host);
+    app.add_systems(Update, sync_annotation_visibility);
+    let annotation = app.world_mut().spawn((Annotation, Visibility::Visible)).id();
+    let deck = app.world_mut().spawn((Node::default(), ControlDeck)).id();
+    let content = app
+      .world_mut()
+      .spawn((Node::default(), ControlDeckContent))
+      .id();
+    let label = app
+      .world_mut()
+      .spawn((Text::new("HIDE UI"), DeckToggleLabel))
+      .id();
+
+    app.update();
+
+    assert_eq!(Visibility::Hidden, *app.world().get::<Visibility>(annotation).unwrap());
+    assert_eq!(px(112), app.world().get::<Node>(deck).unwrap().width);
+    assert_eq!(Display::None, app.world().get::<Node>(content).unwrap().display);
+    assert_eq!("SHOW UI", app.world().get::<Text>(label).unwrap().as_str());
   }
 
   #[test]

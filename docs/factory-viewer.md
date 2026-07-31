@@ -55,10 +55,11 @@ viewer presentation policy only.
 
 ## Controls
 
-The screen-space control deck works with a mouse or touch in native and web
-builds. It provides play or pause, single-step, reset, speed, automatic cycle,
-and direct buttons for every starter scenario. Active scenario and toggle
-buttons stay highlighted.
+The control deck works with mouse or touch in native and web builds. It provides
+play or pause, single-step, reset, speed, automatic cycle, and starter-scenario
+buttons. `HIDE UI` enters focus mode by hiding HUD and event text, labels,
+focus cursor, badges, and gauges, then collapses the deck to a `SHOW UI` restore
+button. Active scenario and toggle buttons stay highlighted.
 
 The keyboard mirrors the same typed actions:
 
