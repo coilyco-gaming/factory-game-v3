@@ -6,7 +6,7 @@ use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::radar::{DeploymentRadar, RadarSnapshot};
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, VecDeque};
 use std::fmt;
@@ -49,7 +49,7 @@ impl Serialize for NodeId {
   }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct GridPosition {
   pub x: i32,
   pub y: i32,

@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{de, Deserialize, Deserializer, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -14,11 +14,27 @@ impl ItemId {
   pub const fn as_str(self) -> &'static str {
     self.0
   }
+
+  pub fn resolve(value: &str) -> Option<Self> {
+    Self::ALL.iter().copied().find(|id| id.0 == value)
+  }
 }
 
 impl fmt::Display for ItemId {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     f.write_str(self.0)
+  }
+}
+
+impl<'de> Deserialize<'de> for ItemId {
+  // The inner &'static str cannot borrow from runtime input, so a saved id is
+  // resolved back to its interned constant. See docs/compact-persistence.md.
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: Deserializer<'de>,
+  {
+    let raw = String::deserialize(deserializer)?;
+    Self::resolve(&raw).ok_or_else(|| de::Error::custom(format!("unknown item id {raw:?}")))
   }
 }
 
@@ -56,6 +72,27 @@ pub const STORAGE_WAREHOUSE: ItemId = ItemId::new("storage_warehouse");
 pub const COAL_PLANT: ItemId = ItemId::new("coal_plant");
 pub const FACTORY_BUILDING: ItemId = ItemId::new("factory");
 pub const MINING_DRILL: ItemId = ItemId::new("mining_drill");
+
+impl ItemId {
+  // Every catalog id, so a saved id can resolve back to its interned constant.
+  // `every_catalog_item_resolves` guards this against catalog growth.
+  pub const ALL: [Self; 14] = [
+    IRON_ORE,
+    IRON_BARS,
+    COPPER_ORE,
+    COPPER_BARS,
+    COAL,
+    STONE,
+    BUILDING_MATERIALS,
+    MOTORS,
+    CIRCUITS,
+    FRAMES,
+    STORAGE_WAREHOUSE,
+    COAL_PLANT,
+    FACTORY_BUILDING,
+    MINING_DRILL,
+  ];
+}
 
 pub const IRON_BARS_SCENARIO: ScenarioId = ScenarioId::new("iron-bars");
 pub const IRON_BARS_FLEET_SCENARIO: ScenarioId = ScenarioId::new("iron-bars-fleet");
@@ -1461,6 +1498,17 @@ impl ContentDatabase {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn every_catalog_item_resolves() {
+    for id in ItemId::ALL {
+      assert_eq!(ItemId::resolve(id.as_str()), Some(id));
+    }
+    for id in ContentDatabase::starter().items.keys() {
+      assert_eq!(ItemId::resolve(id.as_str()), Some(*id), "{id} is absent from ItemId::ALL");
+    }
+    assert_eq!(ItemId::resolve("no_such_item"), None);
+  }
 
   #[test]
   fn starter_catalog_matches_the_active_unity_item_set() {

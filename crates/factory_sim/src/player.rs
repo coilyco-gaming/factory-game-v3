@@ -1,17 +1,18 @@
 use crate::GridPosition;
 use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 
 pub const COMPACT_WORLD_WIDTH: i32 = 16;
 pub const COMPACT_WORLD_HEIGHT: i32 = 16;
 pub const COMPACT_SCENARIO_NAME: &str = "Compact Freight Yard";
+pub const COMPACT_SAVE_VERSION: u32 = 1;
 const MARKET_CYCLE_TICKS: u64 = 20;
 const BUILDING_UNLOCK_SALES: [u32; 4] = [20, 50, 90, 140];
 const TRUCK_CAPACITY: u32 = 10;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompactRecipe {
   IronBars,
   CopperBars,
@@ -61,7 +62,7 @@ pub struct CompactBuildingSnapshot {
   pub road_connected: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CompactTruckTask {
   Idle,
   CollectRaw { deposit: u16, building: u16 },
@@ -80,7 +81,7 @@ pub struct CompactTruckSnapshot {
   pub route: Vec<GridPosition>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompactMarketSnapshot {
   pub cycle: u32,
   pub demand_per_cycle: u32,
@@ -152,7 +153,43 @@ impl fmt::Display for CompactEditError {
 
 impl std::error::Error for CompactEditError {}
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CompactSaveError {
+  UnsupportedVersion { found: u32, supported: u32 },
+  Malformed(String),
+}
+
+impl fmt::Display for CompactSaveError {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    match self {
+      Self::UnsupportedVersion { found, supported } => {
+        write!(f, "save format version {found} is not supported ({supported})")
+      }
+      Self::Malformed(detail) => write!(f, "save is malformed: {detail}"),
+    }
+  }
+}
+
+impl std::error::Error for CompactSaveError {}
+
+#[derive(Serialize)]
+struct CompactSaveRef<'a> {
+  version: u32,
+  game: &'a CompactGame,
+}
+
+// CompactSaveVersionProbe owns the version, so the body reader ignores it.
+#[derive(Deserialize)]
+struct CompactSaveEnvelope {
+  game: CompactGame,
+}
+
+#[derive(Deserialize)]
+struct CompactSaveVersionProbe {
+  version: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct CompactDeposit {
   position: GridPosition,
   item: ItemId,
@@ -160,7 +197,7 @@ struct CompactDeposit {
   stockpile: u32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct CompactBuilding {
   id: u16,
   position: GridPosition,
@@ -170,7 +207,7 @@ struct CompactBuilding {
   craft_progress: u8,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct CompactTruck {
   id: u16,
   position: GridPosition,
@@ -180,7 +217,7 @@ struct CompactTruck {
   route: VecDeque<GridPosition>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CompactGame {
   tick: u64,
   roads: BTreeSet<GridPosition>,
@@ -201,6 +238,32 @@ impl Default for CompactGame {
 
 impl CompactGame {
   pub const WAREHOUSE_POSITION: GridPosition = GridPosition { x: 8, y: 8 };
+
+  // Persistence is string in, string out so the format stays testable without
+  // a browser. See docs/compact-persistence.md.
+  pub fn to_save_string(&self) -> Result<String, CompactSaveError> {
+    let envelope = CompactSaveRef {
+      version: COMPACT_SAVE_VERSION,
+      game: self,
+    };
+    serde_json::to_string(&envelope).map_err(|error| CompactSaveError::Malformed(error.to_string()))
+  }
+
+  pub fn from_save_string(raw: &str) -> Result<Self, CompactSaveError> {
+    // Read the version before the body, so a future format reports its version
+    // rather than a field-shaped parse error from the current one.
+    let probe: CompactSaveVersionProbe =
+      serde_json::from_str(raw).map_err(|error| CompactSaveError::Malformed(error.to_string()))?;
+    if probe.version != COMPACT_SAVE_VERSION {
+      return Err(CompactSaveError::UnsupportedVersion {
+        found: probe.version,
+        supported: COMPACT_SAVE_VERSION,
+      });
+    }
+    let envelope: CompactSaveEnvelope =
+      serde_json::from_str(raw).map_err(|error| CompactSaveError::Malformed(error.to_string()))?;
+    Ok(envelope.game)
+  }
 
   pub fn new() -> Self {
     let roads = BTreeSet::from([
@@ -935,5 +998,89 @@ mod tests {
     assert!(snapshot.market.sold_total >= 20);
     assert!(snapshot.market.demand_per_cycle > 4);
     assert!(snapshot.allowance.limit > 2);
+  }
+
+  fn played_game() -> CompactGame {
+    let mut game = CompactGame::new();
+    road_line(
+      &mut game,
+      (2..=9)
+        .map(|y| GridPosition { x: 7, y })
+        .chain((3..=7).map(|x| GridPosition { x, y: 2 }))
+        .chain([GridPosition { x: 2, y: 3 }]),
+    );
+    let building = game
+      .place_building(GridPosition { x: 6, y: 3 })
+      .expect("building fronts the route");
+    game
+      .configure_building(building, CompactRecipe::IronBars)
+      .unwrap();
+    for _ in 0..400 {
+      game.step();
+    }
+    game
+  }
+
+  #[test]
+  fn a_played_game_round_trips_through_a_save() {
+    let mut game = played_game();
+    let restored = CompactGame::from_save_string(&game.to_save_string().unwrap()).unwrap();
+
+    assert_eq!(game, restored);
+  }
+
+  #[test]
+  fn a_restored_game_keeps_stepping_identically() {
+    // Equality alone would still pass if a save dropped state the projection
+    // hides, so the restored game has to stay identical under simulation.
+    let mut game = played_game();
+    let mut restored = CompactGame::from_save_string(&game.to_save_string().unwrap()).unwrap();
+
+    for _ in 0..200 {
+      assert_eq!(game.step(), restored.step());
+    }
+    assert_eq!(game, restored);
+  }
+
+  #[test]
+  fn a_save_from_another_version_is_refused() {
+    let mut game = CompactGame::new();
+    let raw = game.to_save_string().unwrap();
+    let future = raw.replacen(
+      &format!("\"version\":{COMPACT_SAVE_VERSION}"),
+      "\"version\":9999",
+      1,
+    );
+
+    assert_eq!(
+      Err(CompactSaveError::UnsupportedVersion {
+        found: 9999,
+        supported: COMPACT_SAVE_VERSION,
+      }),
+      CompactGame::from_save_string(&future)
+    );
+  }
+
+  #[test]
+  fn a_save_naming_an_unknown_item_is_refused() {
+    let mut game = played_game();
+    let raw = game.to_save_string().unwrap();
+    let corrupt = raw.replace("iron_ore", "unobtanium");
+
+    assert!(matches!(
+      CompactGame::from_save_string(&corrupt),
+      Err(CompactSaveError::Malformed(_))
+    ));
+  }
+
+  #[test]
+  fn a_truncated_save_is_refused_rather_than_partially_loaded() {
+    let mut game = played_game();
+    let raw = game.to_save_string().unwrap();
+
+    assert!(matches!(
+      CompactGame::from_save_string(&raw[..raw.len() / 2]),
+      Err(CompactSaveError::Malformed(_))
+    ));
   }
 }

@@ -1,3 +1,5 @@
+mod storage;
+
 use bevy::asset::AssetMetaCheck;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
@@ -19,6 +21,7 @@ const MIN_VISIBLE_CELLS: f32 = 10.0;
 const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
 const INLINE_SEPARATOR: &str = " // ";
+const AUTOSAVE_SECONDS: f32 = 5.0;
 
 const GROUND_ART: &str = "factory/terrain/ground.png";
 const ROAD_ART: &str = "factory/logistics/road-straight-ns.png";
@@ -78,6 +81,7 @@ fn main() {
         update_camera,
         handle_pointer_edits,
         advance_simulation,
+        autosave,
         rebuild_dynamic_projection,
         animate_trucks,
         update_ui_text,
@@ -164,11 +168,13 @@ struct SimHost {
   selected_building: Option<u16>,
   feedback: String,
   snapshot_revision: u64,
+  seconds_since_save: f32,
+  saved_revision: u64,
 }
 
 impl SimHost {
   fn new() -> Self {
-    let mut game = CompactGame::new();
+    let (mut game, feedback) = Self::restore_or_start();
     let snapshot = game.snapshot();
     Self {
       game,
@@ -178,8 +184,37 @@ impl SimHost {
       accumulated_seconds: 0.0,
       tool: ToolMode::Inspect,
       selected_building: None,
-      feedback: "Draw a road from the warehouse apron toward a deposit.".into(),
+      feedback,
       snapshot_revision: 1,
+      seconds_since_save: 0.0,
+      saved_revision: 0,
+    }
+  }
+
+  fn restore_or_start() -> (CompactGame, String) {
+    // An unreadable save never blocks play, and its slot is left intact.
+    // See docs/compact-persistence.md.
+    match storage::load().map(|raw| CompactGame::from_save_string(&raw)) {
+      Some(Ok(game)) => (game, "Restored your last session.".into()),
+      Some(Err(error)) => (
+        CompactGame::new(),
+        format!("Could not read the saved session ({error}). Started fresh."),
+      ),
+      None => (
+        CompactGame::new(),
+        "Draw a road from the warehouse apron toward a deposit.".into(),
+      ),
+    }
+  }
+
+  fn save_now(&self) {
+    match self.game.to_save_string() {
+      Ok(raw) => {
+        if let Err(error) = storage::store(&raw) {
+          warn!("could not persist the session: {error}");
+        }
+      }
+      Err(error) => warn!("could not serialize the session: {error}"),
     }
   }
 
@@ -200,6 +235,7 @@ impl SimHost {
   }
 
   fn reset(&mut self) {
+    storage::clear();
     self.game = CompactGame::new();
     self.snapshot = self.game.snapshot();
     self.paused = true;
@@ -208,6 +244,8 @@ impl SimHost {
     self.selected_building = None;
     self.feedback = "World reset. Draw a road from the warehouse apron.".into();
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
+    self.seconds_since_save = 0.0;
+    self.saved_revision = self.snapshot_revision;
   }
 
   fn edit_cell(&mut self, cell: GridPosition) {
@@ -905,6 +943,21 @@ fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
     host.step_once();
     ticks += 1;
   }
+}
+
+// Autosave is time-based rather than per-tick: at eight ticks a second a
+// per-tick write would serialize and store the world eight times a second.
+fn autosave(time: Res<Time>, mut host: ResMut<SimHost>) {
+  host.seconds_since_save += time.delta_secs();
+  if host.seconds_since_save < AUTOSAVE_SECONDS {
+    return;
+  }
+  host.seconds_since_save = 0.0;
+  if host.saved_revision == host.snapshot_revision {
+    return;
+  }
+  host.save_now();
+  host.saved_revision = host.snapshot_revision;
 }
 
 fn rebuild_dynamic_projection(

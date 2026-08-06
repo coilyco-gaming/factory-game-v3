@@ -2551,6 +2551,7 @@ dependencies = [
  "factory_content",
  "factory_sim",
  "serde_json",
+ "web-sys",
 ]
 
 [[package]]
@@ -2559,6 +2560,7 @@ version = "0.1.0"
 dependencies = [
  "factory_content",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

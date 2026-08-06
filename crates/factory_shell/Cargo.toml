@@ -10,5 +10,9 @@ bevy = "0.19"
 factory_content = { path = "../factory_content" }
 factory_sim = { path = "../factory_sim" }
 
+# Browser session storage. Native uses std::fs, so this stays wasm-only.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["Storage", "Window"] }
+
 [dev-dependencies]
 serde_json = "1"

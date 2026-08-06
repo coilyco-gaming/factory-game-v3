@@ -24,8 +24,9 @@ pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
 pub use player::{
   CompactAllowanceSnapshot, CompactBuildingSnapshot, CompactDepositSnapshot, CompactEditError,
-  CompactGame, CompactMarketSnapshot, CompactRecipe, CompactSnapshot, CompactTruckSnapshot,
-  CompactTruckTask, COMPACT_SCENARIO_NAME, COMPACT_WORLD_HEIGHT, COMPACT_WORLD_WIDTH,
+  CompactGame, CompactMarketSnapshot, CompactRecipe, CompactSaveError, CompactSnapshot,
+  CompactTruckSnapshot, CompactTruckTask, COMPACT_SAVE_VERSION, COMPACT_SCENARIO_NAME,
+  COMPACT_WORLD_HEIGHT, COMPACT_WORLD_WIDTH,
 };
 pub use power::{
   Battery, BatteryOwner, GeneratorSnapshot, PowerGenerator, PowerGrid, PowerSnapshot,
