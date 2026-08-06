@@ -605,11 +605,11 @@ fn status_metrics() -> [(HudField, Color); 3] {
   ]
 }
 
-fn status_label(field: HudField) -> Option<&'static str> {
+fn status_label(field: HudField) -> &'static str {
   match field {
-    HudField::Resources => Some("RESOURCES"),
-    HudField::Materials => Some("MATERIALS"),
-    HudField::Power => None,
+    HudField::Resources => "RESOURCES",
+    HudField::Materials => "MATERIALS",
+    HudField::Power => "POWER",
   }
 }
 
@@ -630,21 +630,20 @@ fn spawn_status_metric(
       BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
     ))
     .with_children(|metric| {
-      if let Some(label) = status_label(field) {
-        metric.spawn((
-          Text::new(label),
-          TextFont {
-            font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
-            ..default()
-          },
-          TextColor(accent),
-          Node {
-            width: px(STATUS_LABEL_WIDTH),
-            flex_shrink: 0.0,
-            ..default()
-          },
-        ));
-      } else {
+      metric.spawn((
+        Text::new(status_label(field)),
+        TextFont {
+          font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
+          ..default()
+        },
+        TextColor(accent),
+        Node {
+          width: px(STATUS_LABEL_WIDTH),
+          flex_shrink: 0.0,
+          ..default()
+        },
+      ));
+      if field == HudField::Power {
         spawn_status_battery_icon(metric, accent);
       }
       if field == HudField::Resources {
@@ -2876,7 +2875,7 @@ mod tests {
       status_metrics().map(|(field, _)| field)
     );
     assert_eq!(
-      [Some("RESOURCES"), Some("MATERIALS"), None],
+      ["RESOURCES", "MATERIALS", "POWER"],
       status_metrics().map(|(field, _)| status_label(field))
     );
 
@@ -2884,6 +2883,7 @@ mod tests {
     assert_eq!(percent(100), row.width);
     assert_eq!(FlexDirection::Row, row.flex_direction);
     assert_eq!(1.0, row.flex_grow);
+    assert_eq!(px(12), row.column_gap);
     assert_eq!([IRON_ORE, COPPER_ORE, COAL, STONE], status_resource_items());
     assert_eq!(24.0, STATUS_TITLE_FONT_SIZE);
     assert_eq!(15.0, STATUS_SUBTITLE_FONT_SIZE);
