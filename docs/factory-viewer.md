@@ -33,16 +33,13 @@ test suite, but do not appear in the player-facing UI. Each world displays:
 - independent craft progress and output item for every factory
 - generator mode and fuel, total energy, node batteries, use, and starvation
 - radar deployment item, target resource, current claim, and claim activity
-- material-flow metrics, per-object alerts, and a bounded rolling activity feed
-- global object and stored-resource totals
+- material-flow metrics plus global object and stored-resource totals
 
 The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. Screen-space panels align persistent metrics into
-columns and keep ten one-line events outside the world projection. The host
-retains the same ten events across scenarios. A presentation offset keeps
-labels between those top panels and the control deck. Local sprites overlay
-matching identities without LFS. See [factory-art.md](factory-art.md). Cursor
-focus shows the selected object's latest alert in a bottom-left overlay.
+authoritative snapshots. One full-width top bar groups persistent metrics, and
+one compact control panel sits at bottom right. Recent activity and focused
+alert overlays are intentionally absent. A presentation offset keeps labels
+between the two screen-edge surfaces. See [factory-art.md](factory-art.md).
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active
@@ -52,11 +49,11 @@ into simulation state.
 
 ## Controls
 
-The control deck works with mouse or touch in native and web builds. It provides
-play or pause, single-step, reset, speed, and world selection. `HIDE UI` enters
-focus mode by hiding HUD and event text, labels,
-focus cursor, badges, and gauges, then collapses the deck to a `SHOW UI` restore
-button. Active scenario and toggle buttons stay highlighted.
+The bottom-right control panel works with mouse or touch in native and web
+builds. It provides play or pause, single-step, reset, and speed controls.
+`HIDE UI` hides the top bar, labels, focus cursor, badges, and gauges, then
+collapses the panel to a `SHOW UI` restore button. Active toggles stay
+highlighted.
 
 The keyboard mirrors the same typed actions:
 

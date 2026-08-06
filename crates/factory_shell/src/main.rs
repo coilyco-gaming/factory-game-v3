@@ -6,17 +6,15 @@ use factory_content::{
   MINING_DRILL, STONE, STORAGE_WAREHOUSE, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
-  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
-  HaulerId, HaulerSnapshot, NodeId, TickSnapshot, TopologyNode,
+  BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerId,
+  HaulerSnapshot, NodeId, TickSnapshot, TopologyNode,
 };
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
-const MAX_RECENT_EVENTS: usize = 10;
-const HUD_VALUE_MAX_CHARS: usize = 52;
-const ACTIVITY_ENTRY_MAX_CHARS: usize = 52;
+const HUD_VALUE_MAX_CHARS: usize = 32;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -39,7 +37,9 @@ const CARGO_ART_SIZE: f32 = 28.0;
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
-const CAMERA_UI_OFFSET_Y: f32 = 52.0;
+const CAMERA_UI_OFFSET_Y: f32 = 64.0;
+const CONTROL_DECK_WIDTH: f32 = 360.0;
+const COLLAPSED_CONTROL_DECK_WIDTH: f32 = 104.0;
 const BUTTON_NORMAL: Color = Color::srgb(0.14, 0.17, 0.22);
 const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
 const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
@@ -125,7 +125,6 @@ fn main() {
         update_text,
         sync_annotation_visibility,
         sync_world_detail_visibility,
-        update_focus_alert,
         style_control_buttons,
       )
         .chain(),
@@ -216,7 +215,6 @@ struct SimHost {
   annotations_visible: bool,
   scene_revision: u64,
   snapshot_revision: u64,
-  recent_events: VecDeque<String>,
 }
 
 impl SimHost {
@@ -227,7 +225,6 @@ impl SimHost {
   fn for_scenario(scenario: ScenarioId) -> Self {
     let game = scenario_game(scenario);
     let snapshot = game.snapshot(Vec::new());
-    let scenario_name = snapshot.scenario.name.clone();
     Self {
       game,
       snapshot,
@@ -238,25 +235,18 @@ impl SimHost {
       annotations_visible: true,
       scene_revision: 0,
       snapshot_revision: 1,
-      recent_events: VecDeque::from([format!("t000 world started: {scenario_name}")]),
     }
   }
 
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
-    self.record_snapshot_events();
   }
 
   fn reset(&mut self) {
     self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
-    self
-      .snapshot
-      .events
-      .push(format!("scenario reset: {}", self.snapshot.scenario.name));
-    self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
   }
 
@@ -284,39 +274,18 @@ impl SimHost {
       ControlAction::ToggleSpeed => self.toggle_speed(),
       ControlAction::ToggleAnnotations => self.annotations_visible = !self.annotations_visible,
       ControlAction::SelectWorld(index) => {
-        self.select_world(index, "world selected");
+        self.select_world(index);
       }
     }
   }
 
-  fn select_world(&mut self, index: usize, reason: &str) {
+  fn select_world(&mut self, index: usize) {
     self.world_index = index % WORLD_SCENARIOS.len();
     self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
-    let scenario_name = self.snapshot.scenario.name.clone();
-    self
-      .snapshot
-      .events
-      .push(format!("{reason}: {scenario_name}"));
-    self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
     self.scene_revision += 1;
-  }
-
-  fn record_snapshot_events(&mut self) {
-    let entries = self
-      .snapshot
-      .events
-      .iter()
-      .map(|event| format!("t{:03} {event}", self.snapshot.tick))
-      .collect::<Vec<_>>();
-    for entry in entries {
-      self.recent_events.push_back(entry);
-      if self.recent_events.len() > MAX_RECENT_EVENTS {
-        self.recent_events.pop_front();
-      }
-    }
   }
 }
 
@@ -429,7 +398,7 @@ struct HudText;
 #[derive(Component)]
 struct HudTitleText;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum HudField {
   Flow,
   Stock,
@@ -442,16 +411,13 @@ enum HudField {
 struct HudValueText(HudField);
 
 #[derive(Component)]
-struct EventText;
+struct StatusBar;
 
 #[derive(Component)]
 struct MainCamera;
 
 #[derive(Component)]
 struct PlayerCursor;
-
-#[derive(Component)]
-struct FocusAlertText;
 
 #[derive(Component)]
 struct Annotation;
@@ -467,6 +433,9 @@ struct ControlDeck;
 
 #[derive(Component)]
 struct DeckToggleLabel;
+
+#[derive(Component)]
+struct DeckTitle;
 
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
 enum ControlAction {
@@ -504,7 +473,7 @@ fn setup(
   spawn_projection(&mut commands, &host.snapshot, &art);
   projection_scene.revision = host.scene_revision;
 
-  spawn_status_panels(&mut commands);
+  spawn_status_bar(&mut commands);
   commands.spawn((
     Sprite::from_color(
       Color::srgba(0.95, 0.86, 0.32, 0.28),
@@ -517,145 +486,131 @@ fn setup(
   spawn_control_deck(&mut commands);
 }
 
-fn spawn_status_panels(commands: &mut Commands) {
+fn spawn_status_bar(commands: &mut Commands) {
   commands
     .spawn((
       Node {
         position_type: PositionType::Absolute,
-        left: px(18),
-        top: px(18),
-        width: px(540),
-        flex_direction: FlexDirection::Column,
-        row_gap: px(2),
-        padding: UiRect::all(px(12)),
-        border: UiRect::all(px(1)),
+        left: px(0),
+        top: px(0),
+        width: percent(100),
+        height: px(88),
+        flex_direction: FlexDirection::Row,
+        align_items: AlignItems::Stretch,
+        padding: UiRect::axes(px(18), px(10)),
+        border: UiRect {
+          bottom: px(1),
+          ..default()
+        },
         ..default()
       },
-      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
+      BackgroundColor(Color::srgba(0.035, 0.045, 0.065, 0.96)),
       BorderColor::all(BUTTON_BORDER),
       GlobalZIndex(90),
       Annotation,
+      StatusBar,
     ))
     .with_children(|panel| {
-      panel.spawn((
-        Text::new("FACTORY GAME"),
-        TextFont {
-          font_size: FontSize::Px(14.0),
+      panel
+        .spawn(Node {
+          width: px(220),
+          height: percent(100),
+          flex_shrink: 0.0,
+          flex_direction: FlexDirection::Column,
+          justify_content: JustifyContent::Center,
+          row_gap: px(3),
+          padding: UiRect {
+            right: px(16),
+            ..default()
+          },
           ..default()
-        },
-        TextColor(Color::srgb(0.91, 0.92, 0.94)),
-        Node {
-          width: percent(100),
-          ..default()
-        },
-        HudText,
-        HudTitleText,
-      ));
-      for (label, field) in [
-        ("FLOW", HudField::Flow),
-        ("STOCK", HudField::Stock),
-        ("LOGISTICS", HudField::Logistics),
-        ("WORLD", HudField::World),
-        ("POWER", HudField::Power),
+        })
+        .with_children(|title| {
+          title.spawn((
+            Text::new("FACTORY GAME"),
+            TextFont {
+              font_size: FontSize::Px(16.0),
+              ..default()
+            },
+            TextColor(Color::srgb(0.94, 0.96, 0.98)),
+          ));
+          title.spawn((
+            Text::new(""),
+            TextFont {
+              font_size: FontSize::Px(10.0),
+              ..default()
+            },
+            TextLayout::no_wrap(),
+            TextColor(BUTTON_ACTIVE),
+            Node {
+              width: percent(100),
+              overflow: Overflow::clip_x(),
+              ..default()
+            },
+            HudText,
+            HudTitleText,
+          ));
+        });
+      for (label, field, accent) in [
+        ("FLOW", HudField::Flow, Color::srgb(0.96, 0.58, 0.28)),
+        ("STOCK", HudField::Stock, Color::srgb(0.95, 0.78, 0.36)),
+        (
+          "LOGISTICS",
+          HudField::Logistics,
+          Color::srgb(0.38, 0.78, 0.96),
+        ),
+        ("WORLD", HudField::World, Color::srgb(0.68, 0.62, 0.94)),
+        ("POWER", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
       ] {
-        spawn_status_row(panel, label, field);
+        spawn_status_metric(panel, label, field, accent);
       }
     });
-
-  commands
-    .spawn((
-      Node {
-        position_type: PositionType::Absolute,
-        right: px(18),
-        top: px(18),
-        width: px(420),
-        padding: UiRect::all(px(12)),
-        border: UiRect::all(px(1)),
-        ..default()
-      },
-      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
-      BorderColor::all(BUTTON_BORDER),
-      GlobalZIndex(90),
-      Annotation,
-    ))
-    .with_children(|panel| {
-      panel.spawn((
-        Text::new(""),
-        TextFont {
-          font_size: FontSize::Px(12.0),
-          ..default()
-        },
-        TextLayout::no_wrap(),
-        TextColor(Color::srgb(0.72, 0.76, 0.82)),
-        Node {
-          width: percent(100),
-          overflow: Overflow::clip_x(),
-          ..default()
-        },
-        EventText,
-      ));
-    });
-
-  commands.spawn((
-    Text::new(""),
-    TextFont {
-      font_size: FontSize::Px(12.0),
-      ..default()
-    },
-    TextLayout::no_wrap(),
-    TextColor(Color::srgb(1.0, 0.72, 0.42)),
-    Node {
-      position_type: PositionType::Absolute,
-      left: px(18),
-      bottom: px(18),
-      width: px(540),
-      padding: UiRect::axes(px(12), px(8)),
-      border: UiRect::all(px(1)),
-      overflow: Overflow::clip_x(),
-      ..default()
-    },
-    BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
-    BorderColor::all(BUTTON_PRESSED),
-    GlobalZIndex(90),
-    Visibility::Hidden,
-    FocusAlertText,
-    Annotation,
-  ));
 }
 
-fn spawn_status_row(parent: &mut ChildSpawnerCommands, label: &'static str, field: HudField) {
+fn spawn_status_metric(
+  parent: &mut ChildSpawnerCommands,
+  label: &'static str,
+  field: HudField,
+  accent: Color,
+) {
   parent
-    .spawn(Node {
-      width: percent(100),
-      flex_direction: FlexDirection::Row,
-      column_gap: px(10),
-      align_items: AlignItems::FlexStart,
-      ..default()
-    })
-    .with_children(|row| {
-      row.spawn((
+    .spawn((
+      Node {
+        width: percent(16),
+        height: percent(100),
+        min_width: px(0),
+        flex_grow: 1.0,
+        flex_direction: FlexDirection::Column,
+        justify_content: JustifyContent::Center,
+        row_gap: px(4),
+        padding: UiRect::axes(px(10), px(0)),
+        border: UiRect {
+          left: px(1),
+          ..default()
+        },
+        overflow: Overflow::clip(),
+        ..default()
+      },
+      BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
+    ))
+    .with_children(|metric| {
+      metric.spawn((
         Text::new(label),
         TextFont {
-          font_size: FontSize::Px(12.0),
+          font_size: FontSize::Px(10.0),
           ..default()
         },
-        TextColor(Color::srgb(0.62, 0.68, 0.76)),
-        Node {
-          width: px(84),
-          flex_shrink: 0.0,
-          ..default()
-        },
+        TextColor(accent),
       ));
-      row.spawn((
+      metric.spawn((
         Text::new(""),
         TextFont {
-          font_size: FontSize::Px(12.0),
+          font_size: FontSize::Px(10.5),
           ..default()
         },
         TextLayout::no_wrap(),
         TextColor(Color::srgb(0.91, 0.92, 0.94)),
         Node {
-          flex_grow: 1.0,
           min_width: px(0),
           overflow: Overflow::clip_x(),
           ..default()
@@ -673,42 +628,68 @@ fn spawn_control_deck(commands: &mut Commands) {
         position_type: PositionType::Absolute,
         right: px(18),
         bottom: px(18),
-        width: px(408),
+        width: px(CONTROL_DECK_WIDTH),
         flex_direction: FlexDirection::Column,
-        row_gap: px(5),
-        padding: UiRect::all(px(8)),
+        row_gap: px(8),
+        padding: UiRect::all(px(10)),
         border: UiRect::all(px(1)),
         ..default()
       },
-      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.94)),
+      BackgroundColor(Color::srgba(0.035, 0.045, 0.065, 0.96)),
       BorderColor::all(BUTTON_BORDER),
       GlobalZIndex(100),
       ControlDeck,
     ))
     .with_children(|panel| {
-      panel.spawn((
-        Button,
-        ControlButton(ControlAction::ToggleAnnotations),
-        Node {
+      panel
+        .spawn(Node {
+          width: percent(100),
           height: px(30),
-          border: UiRect::all(px(1)),
-          justify_content: JustifyContent::Center,
+          flex_direction: FlexDirection::Row,
           align_items: AlignItems::Center,
-          padding: UiRect::axes(px(5), px(2)),
+          column_gap: px(8),
           ..default()
-        },
-        BackgroundColor(BUTTON_NORMAL),
-        BorderColor::all(BUTTON_BORDER),
-        children![(
-          Text::new("HIDE UI"),
-          TextFont {
-            font_size: FontSize::Px(12.0),
-            ..default()
-          },
-          TextColor(Color::srgb(0.92, 0.94, 0.97)),
-          DeckToggleLabel,
-        )],
-      ));
+        })
+        .with_children(|header| {
+          header.spawn((
+            Text::new("FACTORY CONTROL"),
+            TextFont {
+              font_size: FontSize::Px(11.0),
+              ..default()
+            },
+            TextColor(BUTTON_ACTIVE),
+            Node {
+              flex_grow: 1.0,
+              ..default()
+            },
+            DeckTitle,
+          ));
+          header.spawn((
+            Button,
+            ControlButton(ControlAction::ToggleAnnotations),
+            Node {
+              width: px(92),
+              height: percent(100),
+              flex_shrink: 0.0,
+              border: UiRect::all(px(1)),
+              justify_content: JustifyContent::Center,
+              align_items: AlignItems::Center,
+              padding: UiRect::axes(px(5), px(2)),
+              ..default()
+            },
+            BackgroundColor(BUTTON_NORMAL),
+            BorderColor::all(BUTTON_BORDER),
+            children![(
+              Text::new("HIDE UI"),
+              TextFont {
+                font_size: FontSize::Px(11.0),
+                ..default()
+              },
+              TextColor(Color::srgb(0.92, 0.94, 0.97)),
+              DeckToggleLabel,
+            )],
+          ));
+        });
       panel
         .spawn((
           Node {
@@ -719,14 +700,6 @@ fn spawn_control_deck(commands: &mut Commands) {
           ControlDeckContent,
         ))
         .with_children(|content| {
-          content.spawn((
-            Text::new("CONTROL DECK"),
-            TextFont {
-              font_size: FontSize::Px(12.0),
-              ..default()
-            },
-            TextColor(Color::srgb(0.72, 0.76, 0.82)),
-          ));
           spawn_control_row(
             content,
             &[
@@ -736,7 +709,6 @@ fn spawn_control_deck(commands: &mut Commands) {
               (ControlAction::ToggleSpeed, "SPEED"),
             ],
           );
-          spawn_control_row(content, &[(ControlAction::SelectWorld(0), "V2 WORLD")]);
         });
     });
 }
@@ -1658,9 +1630,13 @@ fn style_control_buttons(
 fn sync_annotation_visibility(
   host: Res<SimHost>,
   mut last_visibility: Local<Option<bool>>,
-  mut annotations: Query<&mut Visibility, (With<Annotation>, Without<WorldDetail>)>,
+  mut annotations: Query<
+    &mut Visibility,
+    (With<Annotation>, Without<WorldDetail>, Without<DeckTitle>),
+  >,
   mut deck: Single<&mut Node, (With<ControlDeck>, Without<ControlDeckContent>)>,
   mut content: Single<&mut Node, (With<ControlDeckContent>, Without<ControlDeck>)>,
+  mut deck_titles: Query<&mut Visibility, (With<DeckTitle>, Without<Annotation>)>,
   mut toggle_labels: Query<&mut Text, With<DeckToggleLabel>>,
 ) {
   if *last_visibility == Some(host.annotations_visible) {
@@ -1678,15 +1654,22 @@ fn sync_annotation_visibility(
   }
 
   deck.width = if host.annotations_visible {
-    px(408)
+    px(CONTROL_DECK_WIDTH)
   } else {
-    px(104)
+    px(COLLAPSED_CONTROL_DECK_WIDTH)
   };
   content.display = if host.annotations_visible {
     Display::Flex
   } else {
     Display::None
   };
+  for mut title in &mut deck_titles {
+    *title = if host.annotations_visible {
+      Visibility::Visible
+    } else {
+      Visibility::Hidden
+    };
+  }
   for mut label in &mut toggle_labels {
     *label = Text::new(if host.annotations_visible {
       "HIDE UI"
@@ -1722,50 +1705,13 @@ fn sync_world_detail_visibility(
   }
 }
 
-fn update_focus_alert(
-  host: Res<SimHost>,
-  view: Res<PlayerView>,
-  mut last_state: Local<Option<(u64, GridPosition, bool)>>,
-  mut alert: Single<(&mut Text, &mut Visibility), With<FocusAlertText>>,
-) {
-  let state = (
-    host.snapshot_revision,
-    view.position,
-    host.annotations_visible,
-  );
-  if *last_state == Some(state) {
-    return;
-  }
-  *last_state = Some(state);
-
-  let value = focused_alert(&host.snapshot, view.position);
-  let visible = host.annotations_visible && !value.is_empty();
-  *alert.0 = Text::new(value);
-  *alert.1 = if visible {
-    Visibility::Visible
-  } else {
-    Visibility::Hidden
-  };
-}
-
 fn update_text(
   host: Res<SimHost>,
   mut last_snapshot_revision: Local<u64>,
-  mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
-  mut hauler_labels: Query<
-    (&HaulerLabel, &mut Text2d),
-    (Without<NodeLabel>, Without<HudText>, Without<EventText>),
-  >,
-  mut hud_title: Query<
-    &mut Text,
-    (
-      With<HudTitleText>,
-      Without<HudValueText>,
-      Without<EventText>,
-    ),
-  >,
-  mut hud_values: Query<(&HudValueText, &mut Text), (Without<HudTitleText>, Without<EventText>)>,
-  mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
+  mut node_labels: Query<(&NodeLabel, &mut Text2d), Without<HaulerLabel>>,
+  mut hauler_labels: Query<(&HaulerLabel, &mut Text2d), Without<NodeLabel>>,
+  mut hud_title: Query<&mut Text, (With<HudTitleText>, Without<HudValueText>)>,
+  mut hud_values: Query<(&HudValueText, &mut Text), Without<HudTitleText>>,
 ) {
   if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
@@ -1801,7 +1747,7 @@ fn update_text(
     .map(|power| format!("{}/{}", power.energy, power.capacity))
     .unwrap_or_else(|| "off-grid".into());
   for mut text in &mut hud_title {
-    *text = Text::new(format!("FACTORY GAME  /  {}", host.snapshot.scenario.name));
+    *text = Text::new(host.snapshot.scenario.name.to_uppercase());
   }
   for (field, mut text) in &mut hud_values {
     let value = match field.0 {
@@ -1839,23 +1785,6 @@ fn update_text(
       ),
     };
     *text = Text::new(truncate_for_display(&value, HUD_VALUE_MAX_CHARS));
-  }
-
-  let event_value = if host.recent_events.is_empty() {
-    "RECENT ACTIVITY\nwaiting for first tick".into()
-  } else {
-    let mut visible_events = host
-      .recent_events
-      .iter()
-      .rev()
-      .take(MAX_RECENT_EVENTS)
-      .map(|event| truncate_for_display(event, ACTIVITY_ENTRY_MAX_CHARS))
-      .collect::<Vec<_>>();
-    visible_events.reverse();
-    format!("RECENT ACTIVITY\n{}", visible_events.join("\n"))
-  };
-  for mut text in &mut events {
-    *text = Text::new(event_value.clone());
   }
 }
 
@@ -1971,71 +1900,6 @@ fn player_zoom_scale(
   let level = level.clamp(MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
   let progress = f32::from(level - MIN_ZOOM_LEVEL) / f32::from(MAX_ZOOM_LEVEL - MIN_ZOOM_LEVEL);
   detail * (overview / detail).powf(progress)
-}
-
-fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
-  match node {
-    NodeId::Source(_) => snapshot
-      .sources
-      .iter()
-      .find(|source| source.node == node)
-      .map(|source| &source.alerts),
-    NodeId::Factory(_) => snapshot
-      .factories
-      .iter()
-      .find(|factory| factory.node == node)
-      .map(|factory| &factory.alerts),
-    NodeId::Generator(_) => snapshot.power.as_ref().and_then(|power| {
-      power
-        .generators
-        .iter()
-        .find(|generator| generator.node == node)
-        .map(|generator| &generator.alerts)
-    }),
-    NodeId::Radar(_) => snapshot
-      .radars
-      .iter()
-      .find(|radar| radar.node == node)
-      .map(|radar| &radar.alerts),
-    NodeId::Structure(_) => snapshot
-      .structures
-      .iter()
-      .find(|structure| structure.node == node)
-      .map(|structure| &structure.alerts),
-    NodeId::Road | NodeId::BuildSite(_) | NodeId::Transit(_) => None,
-  }
-}
-
-fn focused_alert(snapshot: &TickSnapshot, position: GridPosition) -> String {
-  let node_alerts = snapshot
-    .topology
-    .nodes
-    .iter()
-    .filter(|node| node.position == position)
-    .filter_map(|node| {
-      node_alerts(snapshot, node.id)
-        .and_then(AlertHistory::latest)
-        .map(|alert| (alert.tick, format!("{}: {}", node.id, alert.message)))
-    });
-  let hauler_alerts = snapshot
-    .haulers
-    .iter()
-    .filter(|hauler| hauler.position_grid == position)
-    .filter_map(|hauler| {
-      hauler.alerts.latest().map(|alert| {
-        (
-          alert.tick,
-          format!("hauler-{}: {}", hauler.id, alert.message),
-        )
-      })
-    });
-  node_alerts
-    .chain(hauler_alerts)
-    .max_by_key(|(tick, _)| *tick)
-    .map(|(tick, message)| {
-      truncate_for_display(&format!("ALERT t{tick:03}  {message}"), HUD_VALUE_MAX_CHARS)
-    })
-    .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -2756,6 +2620,10 @@ mod tests {
       .world_mut()
       .spawn((Text::new("HIDE UI"), DeckToggleLabel))
       .id();
+    let title = app
+      .world_mut()
+      .spawn((Text::new("FACTORY CONTROL"), Visibility::Visible, DeckTitle))
+      .id();
 
     app.update();
 
@@ -2763,37 +2631,19 @@ mod tests {
       Visibility::Hidden,
       *app.world().get::<Visibility>(annotation).unwrap()
     );
-    assert_eq!(px(104), app.world().get::<Node>(deck).unwrap().width);
+    assert_eq!(
+      px(COLLAPSED_CONTROL_DECK_WIDTH),
+      app.world().get::<Node>(deck).unwrap().width
+    );
     assert_eq!(
       Display::None,
       app.world().get::<Node>(content).unwrap().display
     );
     assert_eq!("SHOW UI", app.world().get::<Text>(label).unwrap().as_str());
-  }
-
-  #[test]
-  fn recent_activity_is_bounded_and_survives_world_resets() {
-    let mut host = SimHost::new();
-    for _ in 0..32 {
-      host.step_once();
-    }
-
-    assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
-    let latest_before_change = host
-      .recent_events
-      .back()
-      .expect("activity history has an event")
-      .clone();
-
-    host.select_world(0, "test selected");
-
-    assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
-    assert!(host.recent_events.contains(&latest_before_change));
-    assert!(host
-      .recent_events
-      .back()
-      .expect("scenario event is recorded")
-      .contains("test selected"));
+    assert_eq!(
+      Visibility::Hidden,
+      *app.world().get::<Visibility>(title).unwrap()
+    );
   }
 
   #[test]
@@ -3342,77 +3192,6 @@ mod tests {
   }
 
   #[test]
-  fn focused_alert_uses_the_latest_authoritative_object_history() {
-    let mut game = scenario_game(IRON_BARS_SCENARIO);
-    game.world.factories[0]
-      .alerts
-      .record(7, "product output full");
-    let snapshot = game.snapshot(Vec::new());
-    let position = snapshot
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Factory(0))
-      .unwrap()
-      .position;
-
-    assert_eq!(
-      "ALERT t007  factory-0: product output full",
-      focused_alert(&snapshot, position)
-    );
-  }
-
-  #[test]
-  fn focus_alert_overlay_is_contextual_and_honors_hidden_ui() {
-    let mut host = SimHost::new();
-    host.game.world.factories[0]
-      .alerts
-      .record(7, "product output full");
-    host.snapshot = host.game.snapshot(Vec::new());
-    let position = host
-      .snapshot
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Factory(0))
-      .unwrap()
-      .position;
-    let view = PlayerView {
-      position,
-      zoom_level: 1,
-      scene_revision: 0,
-    };
-    let mut app = App::new();
-    app.insert_resource(host);
-    app.insert_resource(view);
-    app.add_systems(Update, update_focus_alert);
-    let overlay = app
-      .world_mut()
-      .spawn((Text::new(""), Visibility::Hidden, FocusAlertText))
-      .id();
-
-    app.update();
-    assert_eq!(
-      "ALERT t007  factory-0: product output full",
-      app.world().get::<Text>(overlay).unwrap().as_str()
-    );
-    assert_eq!(
-      Visibility::Visible,
-      *app.world().get::<Visibility>(overlay).unwrap()
-    );
-
-    app
-      .world_mut()
-      .resource_mut::<SimHost>()
-      .annotations_visible = false;
-    app.update();
-    assert_eq!(
-      Visibility::Hidden,
-      *app.world().get::<Visibility>(overlay).unwrap()
-    );
-  }
-
-  #[test]
   fn crafted_output_delta_detects_growth_without_false_reset_output() {
     let previous = BTreeMap::from([("IronBars".to_string(), 2)]);
     let current = BTreeMap::from([
@@ -3444,7 +3223,7 @@ mod tests {
 
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
     assert_eq!([V2_WORLD_SCENARIO], WORLD_SCENARIOS);
-    host.select_world(1, "test");
+    host.select_world(1);
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
     assert_eq!(1, host.scene_revision);
     assert_eq!(0, host.snapshot.tick);
