@@ -14,7 +14,6 @@ use std::collections::BTreeMap;
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
-const HUD_VALUE_MAX_CHARS: usize = 32;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -549,9 +548,27 @@ fn spawn_status_bar(commands: &mut Commands) {
             HudTitleText,
           ));
         });
-      for (label, field, accent) in status_metrics() {
-        spawn_status_metric(panel, label, field, accent);
-      }
+      panel
+        .spawn((
+          Node {
+            height: percent(100),
+            min_width: px(0),
+            flex_grow: 1.0,
+            flex_direction: FlexDirection::Column,
+            border: UiRect {
+              left: px(1),
+              ..default()
+            },
+            overflow: Overflow::clip(),
+            ..default()
+          },
+          BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
+        ))
+        .with_children(|stack| {
+          for (index, (label, field, accent)) in status_metrics().into_iter().enumerate() {
+            spawn_status_metric(stack, label, field, accent, index > 0);
+          }
+        });
     });
 }
 
@@ -568,25 +585,11 @@ fn spawn_status_metric(
   label: &'static str,
   field: HudField,
   accent: Color,
+  divided: bool,
 ) {
   parent
     .spawn((
-      Node {
-        width: percent(24),
-        height: percent(100),
-        min_width: px(0),
-        flex_grow: 1.0,
-        flex_direction: FlexDirection::Column,
-        justify_content: JustifyContent::Center,
-        row_gap: px(4),
-        padding: UiRect::axes(px(10), px(0)),
-        border: UiRect {
-          left: px(1),
-          ..default()
-        },
-        overflow: Overflow::clip(),
-        ..default()
-      },
+      status_metric_node(divided),
       BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
     ))
     .with_children(|metric| {
@@ -597,6 +600,11 @@ fn spawn_status_metric(
           ..default()
         },
         TextColor(accent),
+        Node {
+          width: px(64),
+          flex_shrink: 0.0,
+          ..default()
+        },
       ));
       metric.spawn((
         Text::new(""),
@@ -607,6 +615,7 @@ fn spawn_status_metric(
         TextLayout::no_wrap(),
         TextColor(Color::srgb(0.91, 0.92, 0.94)),
         Node {
+          flex_grow: 1.0,
           min_width: px(0),
           overflow: Overflow::clip_x(),
           ..default()
@@ -615,6 +624,26 @@ fn spawn_status_metric(
         HudValueText(field),
       ));
     });
+}
+
+fn status_metric_node(divided: bool) -> Node {
+  Node {
+    width: percent(100),
+    min_width: px(0),
+    min_height: px(0),
+    flex_grow: 1.0,
+    flex_direction: FlexDirection::Row,
+    justify_content: JustifyContent::Center,
+    align_items: AlignItems::Center,
+    column_gap: px(12),
+    padding: UiRect::axes(px(12), px(0)),
+    border: UiRect {
+      top: px(if divided { 1 } else { 0 }),
+      ..default()
+    },
+    overflow: Overflow::clip(),
+    ..default()
+  }
 }
 
 fn spawn_control_deck(commands: &mut Commands) {
@@ -1762,23 +1791,8 @@ fn update_text(
         metrics.power_starvations
       ),
     };
-    *text = Text::new(truncate_for_display(&value, HUD_VALUE_MAX_CHARS));
+    *text = Text::new(value);
   }
-}
-
-fn truncate_for_display(value: &str, max_chars: usize) -> String {
-  if value.chars().count() <= max_chars {
-    return value.into();
-  }
-  if max_chars <= 3 {
-    return ".".repeat(max_chars);
-  }
-
-  let visible_chars = max_chars - 3;
-  format!(
-    "{}...",
-    value.chars().take(visible_chars).collect::<String>()
-  )
 }
 
 fn claim_snapshot_revision(current: u64, previous: &mut u64) -> bool {
@@ -2634,14 +2648,11 @@ mod tests {
       [HudField::Flow, HudField::Stock, HudField::Power],
       status_metrics().map(|(_, field, _)| field)
     );
-  }
 
-  #[test]
-  fn display_truncation_uses_three_dots_and_stays_within_the_limit() {
-    assert_eq!("short", truncate_for_display("short", 8));
-    assert_eq!("abcde...", truncate_for_display("abcdefghijk", 8));
-    assert_eq!("..", truncate_for_display("long", 2));
-    assert_eq!(8, truncate_for_display("abcdefghijk", 8).chars().count());
+    let row = status_metric_node(false);
+    assert_eq!(percent(100), row.width);
+    assert_eq!(FlexDirection::Row, row.flex_direction);
+    assert_eq!(1.0, row.flex_grow);
   }
 
   #[test]

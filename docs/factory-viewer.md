@@ -36,10 +36,11 @@ test suite, but do not appear in the player-facing UI. Each world displays:
 - material-flow, stored-resource, and power metrics
 
 The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. One full-width top bar groups Flow, Stock, and Power,
-and one compact control panel sits at bottom right. Recent activity and focused
-alert overlays are intentionally absent. A presentation offset keeps labels
-between the two screen-edge surfaces. See [factory-art.md](factory-art.md).
+authoritative snapshots. One full-width top bar stacks Flow, Stock, and Power
+as three full-width information rows beside the title. One compact control
+panel sits at bottom right. Recent activity and focused alert overlays are
+intentionally absent. A presentation offset keeps labels between the two
+screen-edge surfaces. See [factory-art.md](factory-art.md).
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active
