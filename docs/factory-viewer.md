@@ -22,9 +22,8 @@ restore them, while geometry, focus, and screen status remain visible throughout
 
 ## World roster
 
-The viewer opens directly into the 50x50 v2 world. Focused freight, power,
-building, pathfinding, and production fixtures remain available to the CLI and
-test suite, but do not appear in the player-facing UI. Each world displays:
+The viewer opens in the V3 50x50 factory world. Its picker lists the four full
+worlds, while focused fixtures remain CLI and test-only. Each world displays:
 
 - source, road, factory, radar, build-site, structure, generator, and blocked cells
 - hauler position, cargo, and dispatch phase
@@ -53,10 +52,10 @@ into simulation state.
 ## Controls
 
 The bottom-right control panel works with mouse or touch in native and web
-builds. It provides play or pause, single-step, reset, and speed controls.
-`HIDE UI` hides the top bar, labels, focus cursor, badges, and gauges, then
-collapses the panel to a `SHOW UI` restore button. Active toggles stay
-highlighted.
+builds. It provides play or pause, single-step, reset, speed, and a scenario
+picker that shows the active world and closes after selection. `HIDE UI` hides
+the top bar, labels, focus cursor, badges, and gauges, then collapses the panel
+to a `SHOW UI` restore button. Active toggles stay highlighted.
 
 The keyboard mirrors the same typed actions:
 

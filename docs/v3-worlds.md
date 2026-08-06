@@ -1,8 +1,9 @@
 # V3 world roster
 
-The player-facing viewer exposes four deterministic 50x50 worlds. The world
-button advances through the roster and wraps back to the first setup. Reset
-restarts the selected world without changing the selection.
+The player-facing viewer exposes four deterministic 50x50 worlds. The scenario
+picker displays the active world and opens the complete roster for direct
+selection. Keyboard cycling wraps back to the first setup. Reset restarts the
+selected world without changing the selection.
 
 ## V3 50x50 factory world
 

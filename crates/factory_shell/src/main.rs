@@ -138,6 +138,7 @@ fn main() {
         animate_haulers,
         update_text,
         sync_annotation_visibility,
+        sync_scenario_picker,
         sync_world_detail_visibility,
         style_control_buttons,
       )
@@ -236,6 +237,7 @@ struct SimHost {
   ticks_per_second: f32,
   accumulated_seconds: f32,
   world_index: usize,
+  scenario_picker_open: bool,
   annotations_visible: bool,
   scene_revision: u64,
   snapshot_revision: u64,
@@ -256,6 +258,7 @@ impl SimHost {
       ticks_per_second: NORMAL_TICKS_PER_SECOND,
       accumulated_seconds: 0.0,
       world_index: 0,
+      scenario_picker_open: false,
       annotations_visible: true,
       scene_revision: 0,
       snapshot_revision: 1,
@@ -296,9 +299,18 @@ impl SimHost {
       }
       ControlAction::Reset => self.reset(),
       ControlAction::ToggleSpeed => self.toggle_speed(),
-      ControlAction::ToggleAnnotations => self.annotations_visible = !self.annotations_visible,
+      ControlAction::ToggleAnnotations => {
+        self.annotations_visible = !self.annotations_visible;
+        if !self.annotations_visible {
+          self.scenario_picker_open = false;
+        }
+      }
+      ControlAction::ToggleScenarioPicker => {
+        self.scenario_picker_open = !self.scenario_picker_open;
+      }
       ControlAction::SelectWorld(index) => {
         self.select_world(index);
+        self.scenario_picker_open = false;
       }
     }
   }
@@ -465,6 +477,12 @@ struct DeckToggleLabel;
 #[derive(Component)]
 struct DeckTitle;
 
+#[derive(Component)]
+struct ScenarioPickerLabel;
+
+#[derive(Component)]
+struct ScenarioPickerOptions;
+
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
 enum ControlAction {
   TogglePause,
@@ -472,6 +490,7 @@ enum ControlAction {
   Reset,
   ToggleSpeed,
   ToggleAnnotations,
+  ToggleScenarioPicker,
   SelectWorld(usize),
 }
 
@@ -481,6 +500,7 @@ impl ControlAction {
       Self::TogglePause => host.paused,
       Self::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
       Self::ToggleAnnotations => !host.annotations_visible,
+      Self::ToggleScenarioPicker => host.scenario_picker_open,
       Self::SelectWorld(index) => host.world_index == index,
       Self::Step | Self::Reset => false,
     }
@@ -880,6 +900,7 @@ fn spawn_control_deck(commands: &mut Commands) {
           ControlDeckContent,
         ))
         .with_children(|content| {
+          spawn_scenario_picker(content);
           spawn_control_row(
             content,
             &[
@@ -890,6 +911,76 @@ fn spawn_control_deck(commands: &mut Commands) {
             ],
           );
         });
+    });
+}
+
+fn spawn_scenario_picker(parent: &mut ChildSpawnerCommands) {
+  parent.spawn((
+    Button,
+    ControlButton(ControlAction::ToggleScenarioPicker),
+    Node {
+      width: percent(100),
+      height: px(32),
+      flex_shrink: 0.0,
+      border: UiRect::all(px(1)),
+      justify_content: JustifyContent::FlexStart,
+      align_items: AlignItems::Center,
+      padding: UiRect::axes(px(9), px(2)),
+      ..default()
+    },
+    BackgroundColor(BUTTON_NORMAL),
+    BorderColor::all(BUTTON_BORDER),
+    children![(
+      Text::new("SCENARIO // V3 50X50 FACTORY WORLD  V"),
+      TextFont {
+        font_size: FontSize::Px(11.0),
+        ..default()
+      },
+      TextColor(Color::srgb(0.92, 0.94, 0.97)),
+      ScenarioPickerLabel,
+    )],
+  ));
+
+  let content = ContentDatabase::starter();
+  parent
+    .spawn((
+      Node {
+        width: percent(100),
+        display: Display::None,
+        flex_direction: FlexDirection::Column,
+        row_gap: px(3),
+        ..default()
+      },
+      ScenarioPickerOptions,
+    ))
+    .with_children(|options| {
+      for (index, scenario) in WORLD_SCENARIOS.iter().enumerate() {
+        let name = content.scenario(*scenario).name.to_uppercase();
+        options.spawn((
+          Button,
+          ControlButton(ControlAction::SelectWorld(index)),
+          Node {
+            width: percent(100),
+            height: px(28),
+            flex_shrink: 0.0,
+            border: UiRect::all(px(1)),
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::Center,
+            padding: UiRect::axes(px(9), px(2)),
+            ..default()
+          },
+          BackgroundColor(BUTTON_NORMAL),
+          BorderColor::all(BUTTON_BORDER),
+          children![(
+            Text::new(name),
+            TextFont {
+              font_size: FontSize::Px(10.0),
+              ..default()
+            },
+            TextColor(Color::srgb(0.92, 0.94, 0.97)),
+          )],
+        ));
+      }
     });
 }
 
@@ -1859,6 +1950,23 @@ fn sync_annotation_visibility(
   }
 }
 
+fn sync_scenario_picker(
+  host: Res<SimHost>,
+  mut label: Single<&mut Text, With<ScenarioPickerLabel>>,
+  mut options: Single<&mut Node, With<ScenarioPickerOptions>>,
+) {
+  let marker = if host.scenario_picker_open { "^" } else { "V" };
+  **label = Text::new(format!(
+    "SCENARIO // {}  {marker}",
+    host.snapshot.scenario.name.to_uppercase()
+  ));
+  options.display = if host.scenario_picker_open {
+    Display::Flex
+  } else {
+    Display::None
+  };
+}
+
 fn sync_world_detail_visibility(
   host: Res<SimHost>,
   view: Res<PlayerView>,
@@ -2800,14 +2908,69 @@ mod tests {
     assert!(!host.annotations_visible);
     assert!(ControlAction::ToggleAnnotations.is_selected(&host));
 
+    host.apply_control(ControlAction::ToggleAnnotations);
+    host.apply_control(ControlAction::ToggleScenarioPicker);
+    assert!(host.scenario_picker_open);
+    assert!(ControlAction::ToggleScenarioPicker.is_selected(&host));
+
     host.apply_control(ControlAction::SelectWorld(0));
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
+    assert!(!host.scenario_picker_open);
     assert!(ControlAction::SelectWorld(0).is_selected(&host));
     assert_eq!(1, host.scene_revision);
 
     host.apply_control(ControlAction::Reset);
     assert_eq!(0, host.snapshot.tick);
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
+  }
+
+  #[test]
+  fn scenario_picker_shows_the_roster_and_closes_after_selection() {
+    let mut app = App::new();
+    app.insert_resource(SimHost::new());
+    app.add_systems(Update, sync_scenario_picker);
+    let label = app
+      .world_mut()
+      .spawn((Text::new(""), ScenarioPickerLabel))
+      .id();
+    let options = app
+      .world_mut()
+      .spawn((Node::default(), ScenarioPickerOptions))
+      .id();
+
+    app.update();
+    assert_eq!(
+      "SCENARIO // V3 50X50 FACTORY WORLD  V",
+      app.world().get::<Text>(label).unwrap().as_str()
+    );
+    assert_eq!(
+      Display::None,
+      app.world().get::<Node>(options).unwrap().display
+    );
+
+    app
+      .world_mut()
+      .resource_mut::<SimHost>()
+      .apply_control(ControlAction::ToggleScenarioPicker);
+    app.update();
+    assert_eq!(
+      Display::Flex,
+      app.world().get::<Node>(options).unwrap().display
+    );
+
+    app
+      .world_mut()
+      .resource_mut::<SimHost>()
+      .apply_control(ControlAction::SelectWorld(2));
+    app.update();
+    assert_eq!(
+      "SCENARIO // TWIN PLANT BASIN  V",
+      app.world().get::<Text>(label).unwrap().as_str()
+    );
+    assert_eq!(
+      Display::None,
+      app.world().get::<Node>(options).unwrap().display
+    );
   }
 
   #[test]
