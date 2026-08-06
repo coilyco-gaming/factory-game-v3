@@ -67,3 +67,12 @@ cache instead of the immutable policy the hashed Trunk bundles use, and with
 SPA fallback would answer an image request with `index.html`, masking the miss.
 On a failed request the viewer keeps the same colored fallback it uses
 natively for unsprited identities.
+
+Bevy's default `AssetMetaCheck::Always` asks for a `<path>.png.meta` sidecar
+before each image. The shell ships none, so every browser session logged ten
+404s. The shell sets `AssetMetaCheck::Never` in `AssetPlugin`, which skips the
+request rather than answering it with fifteen empty sidecar files. Loader
+settings stay at their defaults either way, so native and browser behavior
+match. The point is signal: a console that always carries asset 404s cannot
+show the one that means delivery actually broke, which is the failure the
+`/assets/` 404 contract above exists to surface.

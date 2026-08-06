@@ -1,3 +1,4 @@
+use bevy::asset::AssetMetaCheck;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
@@ -45,15 +46,24 @@ const ACCENT_GREEN: Color = Color::srgb(0.48, 0.88, 0.62);
 
 fn main() {
   App::new()
-    .add_plugins(DefaultPlugins.set(WindowPlugin {
-      primary_window: Some(Window {
-        title: "factory game".into(),
-        resolution: (1180, 720).into(),
-        fit_canvas_to_parent: true,
-        ..default()
-      }),
-      ..default()
-    }))
+    .add_plugins(
+      DefaultPlugins
+        .set(WindowPlugin {
+          primary_window: Some(Window {
+            title: "factory game".into(),
+            resolution: (1180, 720).into(),
+            fit_canvas_to_parent: true,
+            ..default()
+          }),
+          ..default()
+        })
+        // The shell ships no .meta sidecars. See docs/factory-art.md for why
+        // the probe is skipped rather than answered.
+        .set(AssetPlugin {
+          meta_check: AssetMetaCheck::Never,
+          ..default()
+        }),
+    )
     .insert_resource(ClearColor(Color::srgb(0.055, 0.063, 0.075)))
     .insert_resource(SimHost::new())
     .init_resource::<PlayerView>()
