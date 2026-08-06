@@ -15,6 +15,12 @@ const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
 const RESOURCE_ICON_SIZE: f32 = 18.0;
+const STATUS_TITLE_FONT_SIZE: f32 = 24.0;
+const STATUS_SUBTITLE_FONT_SIZE: f32 = 15.0;
+const STATUS_LABEL_FONT_SIZE: f32 = 15.0;
+const STATUS_VALUE_FONT_SIZE: f32 = 15.75;
+const STATUS_SEPARATOR_FONT_SIZE: f32 = 13.5;
+const STATUS_LABEL_WIDTH: f32 = 96.0;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -540,7 +546,7 @@ fn spawn_status_bar(commands: &mut Commands, art: &FactoryArt) {
           title.spawn((
             Text::new("FACTORY GAME"),
             TextFont {
-              font_size: FontSize::Px(16.0),
+              font_size: FontSize::Px(STATUS_TITLE_FONT_SIZE),
               ..default()
             },
             TextColor(Color::srgb(0.94, 0.96, 0.98)),
@@ -548,7 +554,7 @@ fn spawn_status_bar(commands: &mut Commands, art: &FactoryArt) {
           title.spawn((
             Text::new(""),
             TextFont {
-              font_size: FontSize::Px(10.0),
+              font_size: FontSize::Px(STATUS_SUBTITLE_FONT_SIZE),
               ..default()
             },
             TextLayout::no_wrap(),
@@ -623,12 +629,12 @@ fn spawn_status_metric(
       metric.spawn((
         Text::new(label),
         TextFont {
-          font_size: FontSize::Px(10.0),
+          font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
           ..default()
         },
         TextColor(accent),
         Node {
-          width: px(64),
+          width: px(STATUS_LABEL_WIDTH),
           flex_shrink: 0.0,
           ..default()
         },
@@ -639,7 +645,7 @@ fn spawn_status_metric(
         metric.spawn((
           Text::new(""),
           TextFont {
-            font_size: FontSize::Px(10.5),
+            font_size: FontSize::Px(STATUS_VALUE_FONT_SIZE),
             ..default()
           },
           TextLayout::no_wrap(),
@@ -674,7 +680,7 @@ fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
           strip.spawn((
             Text::new("//"),
             TextFont {
-              font_size: FontSize::Px(9.0),
+              font_size: FontSize::Px(STATUS_SEPARATOR_FONT_SIZE),
               ..default()
             },
             TextColor(Color::srgb(0.42, 0.47, 0.55)),
@@ -705,7 +711,7 @@ fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
             entry.spawn((
               Text::new("0"),
               TextFont {
-                font_size: FontSize::Px(10.5),
+                font_size: FontSize::Px(STATUS_VALUE_FONT_SIZE),
                 ..default()
               },
               TextColor(Color::srgb(0.91, 0.92, 0.94)),
@@ -2777,6 +2783,12 @@ mod tests {
     assert_eq!(FlexDirection::Row, row.flex_direction);
     assert_eq!(1.0, row.flex_grow);
     assert_eq!([IRON_ORE, COPPER_ORE, COAL, STONE], status_resource_items());
+    assert_eq!(24.0, STATUS_TITLE_FONT_SIZE);
+    assert_eq!(15.0, STATUS_SUBTITLE_FONT_SIZE);
+    assert_eq!(15.0, STATUS_LABEL_FONT_SIZE);
+    assert_eq!(15.75, STATUS_VALUE_FONT_SIZE);
+    assert_eq!(13.5, STATUS_SEPARATOR_FONT_SIZE);
+    assert_eq!(96.0, STATUS_LABEL_WIDTH);
   }
 
   #[test]
