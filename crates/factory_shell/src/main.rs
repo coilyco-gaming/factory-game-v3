@@ -8,8 +8,8 @@ use factory_content::{
   POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
-  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GeneratorPowerLine,
-  GridPosition, HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
+  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
+  HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -2193,6 +2193,7 @@ fn dispatch_text(state: &DispatchReceiverState) -> String {
 mod tests {
   use super::*;
   use factory_content::COAL_PLANT;
+  use factory_sim::GeneratorPowerLine;
 
   #[test]
   fn sim_host_steps_match_direct_simulation_bytes() {
