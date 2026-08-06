@@ -15,11 +15,15 @@ root.
 - `factory/resources/coal-deposit.png`
 - `factory/resources/stone-deposit.png`
 - `factory/machines/foundry.png`
+- `factory/machines/factory.png`
+- `factory/machines/coal-plant.png`
+- `factory/machines/radar.png`
 - `factory/machines/mining-drill.png`
+- `factory/structures/warehouse.png`
 - `factory/items/iron-ore.png`
 - `factory/items/iron-bars.png`
 
-All eleven files are 100x100 RGBA images under
+All fifteen files are 100x100 RGBA images under
 `crates/factory_shell/assets/factory/`. The narrow `.gitattributes` exception
 keeps only that subtree in ordinary Git. The retained Unity image library
 remains LFS-managed and inert.
@@ -29,8 +33,10 @@ remains LFS-managed and inert.
 The ground image stretches across the complete world in one sprite. Iron,
 copper, coal, and stone sources receive matching deposit overlays. A source
 activated by a mining-drill radar receives the drill overlay while deployed.
-Iron-bar factories receive the foundry, and every hauler receives the truck.
-Iron ore and iron bars in authoritative cargo select the matching item icon.
+Iron-bar factories receive the foundry, while other factories use the general
+factory. Coal-plant generators, radars, and completed storage warehouses use
+their matching sprites. Every hauler receives the truck. Iron ore and iron
+bars in authoritative cargo select the matching item icon.
 
 The north-south road sprite is rotated 90 degrees only for a road with east
 and west neighbors and no north or south neighbors. North-south straights use

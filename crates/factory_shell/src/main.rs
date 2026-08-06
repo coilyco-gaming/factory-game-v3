@@ -2,8 +2,8 @@ use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use factory_content::{
-  ContentDatabase, ItemId, ScenarioId, COAL, COPPER_ORE, IRON_BARS, IRON_ORE, MINING_DRILL, STONE,
-  V2_WORLD_SCENARIO,
+  ContentDatabase, ItemId, ScenarioId, COAL, COAL_PLANT, COPPER_ORE, IRON_BARS, IRON_ORE,
+  MINING_DRILL, STONE, STORAGE_WAREHOUSE, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
@@ -82,7 +82,11 @@ const COPPER_DEPOSIT_ART: &str = "factory/resources/copper-ore-deposit.png";
 const COAL_DEPOSIT_ART: &str = "factory/resources/coal-deposit.png";
 const STONE_DEPOSIT_ART: &str = "factory/resources/stone-deposit.png";
 const FOUNDRY_ART: &str = "factory/machines/foundry.png";
+const FACTORY_ART: &str = "factory/machines/factory.png";
+const COAL_PLANT_ART: &str = "factory/machines/coal-plant.png";
+const RADAR_ART: &str = "factory/machines/radar.png";
 const MINING_DRILL_ART: &str = "factory/machines/mining-drill.png";
+const WAREHOUSE_ART: &str = "factory/structures/warehouse.png";
 const IRON_ORE_ART: &str = "factory/items/iron-ore.png";
 const IRON_BARS_ART: &str = "factory/items/iron-bars.png";
 
@@ -142,7 +146,11 @@ struct FactoryArt {
   coal_deposit: Handle<Image>,
   stone_deposit: Handle<Image>,
   foundry: Handle<Image>,
+  factory: Handle<Image>,
+  coal_plant: Handle<Image>,
+  radar: Handle<Image>,
   mining_drill: Handle<Image>,
+  warehouse: Handle<Image>,
   iron_ore: Handle<Image>,
   iron_bars: Handle<Image>,
 }
@@ -159,7 +167,11 @@ impl FromWorld for FactoryArt {
       coal_deposit: assets.load(COAL_DEPOSIT_ART),
       stone_deposit: assets.load(STONE_DEPOSIT_ART),
       foundry: assets.load(FOUNDRY_ART),
+      factory: assets.load(FACTORY_ART),
+      coal_plant: assets.load(COAL_PLANT_ART),
+      radar: assets.load(RADAR_ART),
       mining_drill: assets.load(MINING_DRILL_ART),
+      warehouse: assets.load(WAREHOUSE_ART),
       iron_ore: assets.load(IRON_ORE_ART),
       iron_bars: assets.load(IRON_BARS_ART),
     }
@@ -183,6 +195,10 @@ impl FactoryArt {
       NodeArtKind::Deposit(STONE) => (&self.stone_deposit, Quat::IDENTITY),
       NodeArtKind::Deposit(_) => unreachable!("node art selects only accepted deposit items"),
       NodeArtKind::Foundry => (&self.foundry, Quat::IDENTITY),
+      NodeArtKind::Factory => (&self.factory, Quat::IDENTITY),
+      NodeArtKind::CoalPlant => (&self.coal_plant, Quat::IDENTITY),
+      NodeArtKind::Radar => (&self.radar, Quat::IDENTITY),
+      NodeArtKind::Warehouse => (&self.warehouse, Quat::IDENTITY),
       NodeArtKind::Road(RoadOrientation::NorthSouth) => (&self.road_straight_ns, Quat::IDENTITY),
       NodeArtKind::Road(RoadOrientation::EastWest) => (
         &self.road_straight_ns,
@@ -2183,6 +2199,10 @@ enum RoadOrientation {
 enum NodeArtKind {
   Deposit(ItemId),
   Foundry,
+  Factory,
+  CoalPlant,
+  Radar,
+  Warehouse,
   Road(RoadOrientation),
 }
 
@@ -2408,8 +2428,31 @@ fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArt
     NodeId::Factory(_) => snapshot
       .factories
       .iter()
-      .find(|factory| factory.node == node.id && factory.craft.output_item == IRON_BARS)
-      .map(|_| NodeArtKind::Foundry),
+      .find(|factory| factory.node == node.id)
+      .map(|factory| {
+        if factory.craft.output_item == IRON_BARS {
+          NodeArtKind::Foundry
+        } else {
+          NodeArtKind::Factory
+        }
+      }),
+    NodeId::Generator(_) => snapshot.power.as_ref().and_then(|power| {
+      power
+        .generators
+        .iter()
+        .find(|generator| generator.node == node.id && generator.item == Some(COAL_PLANT))
+        .map(|_| NodeArtKind::CoalPlant)
+    }),
+    NodeId::Radar(_) => snapshot
+      .radars
+      .iter()
+      .any(|radar| radar.node == node.id)
+      .then_some(NodeArtKind::Radar),
+    NodeId::Structure(_) => snapshot
+      .structures
+      .iter()
+      .find(|structure| structure.node == node.id && structure.item == STORAGE_WAREHOUSE)
+      .map(|_| NodeArtKind::Warehouse),
     NodeId::Road => straight_road_orientation(snapshot, node.position).map(NodeArtKind::Road),
     _ => None,
   }
@@ -2681,8 +2724,8 @@ fn dispatch_text(state: &DispatchReceiverState) -> String {
 mod tests {
   use super::*;
   use factory_content::{
-    BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, COAL_PLANT,
-    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
+    BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
+    IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
   };
   use factory_sim::GeneratorPowerLine;
 
@@ -3104,6 +3147,47 @@ mod tests {
       .unwrap();
     assert_eq!(None, node_art_kind(&v2, junction));
 
+    let generic_factory = v2
+      .factories
+      .iter()
+      .find(|factory| factory.craft.output_item != IRON_BARS)
+      .unwrap();
+    let generic_factory_node = v2
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == generic_factory.node)
+      .unwrap();
+    assert_eq!(
+      Some(NodeArtKind::Factory),
+      node_art_kind(&v2, generic_factory_node)
+    );
+    let coal_plant = v2
+      .power
+      .as_ref()
+      .unwrap()
+      .generators
+      .iter()
+      .find(|generator| generator.item == Some(COAL_PLANT))
+      .unwrap();
+    let coal_plant_node = v2
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == coal_plant.node)
+      .unwrap();
+    assert_eq!(
+      Some(NodeArtKind::CoalPlant),
+      node_art_kind(&v2, coal_plant_node)
+    );
+    let radar_node = v2
+      .topology
+      .nodes
+      .iter()
+      .find(|node| matches!(node.id, NodeId::Radar(_)))
+      .unwrap();
+    assert_eq!(Some(NodeArtKind::Radar), node_art_kind(&v2, radar_node));
+
     let materials = scenario_game(BUILDING_MATERIALS_SCENARIO).snapshot(Vec::new());
     let stone = materials
       .topology
@@ -3115,6 +3199,32 @@ mod tests {
     assert_eq!(
       Some(NodeArtKind::Deposit(STONE)),
       node_art_kind(&materials, stone)
+    );
+
+    let mut construction = scenario_game(BUILDING_DEPLOYMENT_SCENARIO);
+    let initial_construction = construction.snapshot(Vec::new());
+    let build_site = initial_construction
+      .topology
+      .nodes
+      .iter()
+      .find(|node| matches!(node.id, NodeId::BuildSite(_)))
+      .unwrap();
+    assert_eq!(None, node_art_kind(&initial_construction, build_site));
+    let built = (0..16)
+      .find_map(|_| {
+        let snapshot = construction.step();
+        (!snapshot.structures.is_empty()).then_some(snapshot)
+      })
+      .expect("warehouse construction completes");
+    let warehouse = built
+      .topology
+      .nodes
+      .iter()
+      .find(|node| matches!(node.id, NodeId::Structure(_)))
+      .unwrap();
+    assert_eq!(
+      Some(NodeArtKind::Warehouse),
+      node_art_kind(&built, warehouse)
     );
 
     let mut deployment = scenario_game(DEPLOYMENT_DEMO_SCENARIO);
@@ -3185,7 +3295,11 @@ mod tests {
     assert_eq!("factory/resources/coal-deposit.png", COAL_DEPOSIT_ART);
     assert_eq!("factory/resources/stone-deposit.png", STONE_DEPOSIT_ART);
     assert_eq!("factory/machines/foundry.png", FOUNDRY_ART);
+    assert_eq!("factory/machines/factory.png", FACTORY_ART);
+    assert_eq!("factory/machines/coal-plant.png", COAL_PLANT_ART);
+    assert_eq!("factory/machines/radar.png", RADAR_ART);
     assert_eq!("factory/machines/mining-drill.png", MINING_DRILL_ART);
+    assert_eq!("factory/structures/warehouse.png", WAREHOUSE_ART);
     assert_eq!("factory/items/iron-ore.png", IRON_ORE_ART);
     assert_eq!("factory/items/iron-bars.png", IRON_BARS_ART);
   }
