@@ -36,7 +36,7 @@ typed site into an occupied warehouse. Each scene displays:
 - focused-cell status plus global object and stored-resource totals
 
 The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. Bounded screen-space panels keep compact status and the
+authoritative snapshots. Screen-space panels align status into columns and keep
 latest four events outside the world projection while the host retains eight
 events across scenarios. A presentation offset keeps labels between those top
 panels and the compact control deck. No presentation depends on retained Unity

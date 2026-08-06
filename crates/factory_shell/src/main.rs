@@ -337,6 +337,24 @@ struct OutputChip {
 struct HudText;
 
 #[derive(Component)]
+struct HudTitleText;
+
+#[derive(Copy, Clone)]
+enum HudField {
+  Status,
+  Showcase,
+  Focus,
+  Flow,
+  Stock,
+  Logistics,
+  World,
+  Power,
+}
+
+#[derive(Component)]
+struct HudValueText(HudField);
+
+#[derive(Component)]
 struct EventText;
 
 #[derive(Component)]
@@ -412,6 +430,8 @@ fn spawn_status_panels(commands: &mut Commands) {
         left: px(18),
         top: px(18),
         width: px(540),
+        flex_direction: FlexDirection::Column,
+        row_gap: px(2),
         padding: UiRect::all(px(12)),
         border: UiRect::all(px(1)),
         ..default()
@@ -423,9 +443,9 @@ fn spawn_status_panels(commands: &mut Commands) {
     ))
     .with_children(|panel| {
       panel.spawn((
-        Text::new(""),
+        Text::new("FACTORY GAME"),
         TextFont {
-          font_size: FontSize::Px(13.0),
+          font_size: FontSize::Px(14.0),
           ..default()
         },
         TextColor(Color::srgb(0.91, 0.92, 0.94)),
@@ -434,6 +454,35 @@ fn spawn_status_panels(commands: &mut Commands) {
           ..default()
         },
         HudText,
+        HudTitleText,
+      ));
+      for (label, field) in [
+        ("STATUS", HudField::Status),
+        ("SHOWCASE", HudField::Showcase),
+        ("FOCUS", HudField::Focus),
+        ("FLOW", HudField::Flow),
+        ("STOCK", HudField::Stock),
+        ("LOGISTICS", HudField::Logistics),
+        ("WORLD", HudField::World),
+        ("POWER", HudField::Power),
+      ] {
+        spawn_status_row(panel, label, field);
+      }
+      panel.spawn((
+        Text::new("WASD/arrows move  |  Q/E zoom  |  Space pause  |  N step"),
+        TextFont {
+          font_size: FontSize::Px(11.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.72, 0.76, 0.82)),
+        Node {
+          width: percent(100),
+          margin: UiRect {
+            top: px(5),
+            ..default()
+          },
+          ..default()
+        },
       ));
     });
 
@@ -466,6 +515,46 @@ fn spawn_status_panels(commands: &mut Commands) {
           ..default()
         },
         EventText,
+      ));
+    });
+}
+
+fn spawn_status_row(parent: &mut ChildSpawnerCommands, label: &'static str, field: HudField) {
+  parent
+    .spawn(Node {
+      width: percent(100),
+      flex_direction: FlexDirection::Row,
+      column_gap: px(10),
+      align_items: AlignItems::FlexStart,
+      ..default()
+    })
+    .with_children(|row| {
+      row.spawn((
+        Text::new(label),
+        TextFont {
+          font_size: FontSize::Px(12.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.62, 0.68, 0.76)),
+        Node {
+          width: px(84),
+          flex_shrink: 0.0,
+          ..default()
+        },
+      ));
+      row.spawn((
+        Text::new(""),
+        TextFont {
+          font_size: FontSize::Px(12.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.91, 0.92, 0.94)),
+        Node {
+          flex_grow: 1.0,
+          ..default()
+        },
+        HudText,
+        HudValueText(field),
       ));
     });
 }
@@ -1322,7 +1411,14 @@ fn update_text(
     (&HaulerLabel, &mut Text2d),
     (Without<NodeLabel>, Without<HudText>, Without<EventText>),
   >,
-  mut hud: Query<&mut Text, (With<HudText>, Without<EventText>)>,
+  mut hud_title: Query<
+    &mut Text,
+    (With<HudTitleText>, Without<HudValueText>, Without<EventText>),
+  >,
+  mut hud_values: Query<
+    (&HudValueText, &mut Text),
+    (Without<HudTitleText>, Without<EventText>),
+  >,
   mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
 ) {
   if !host.is_changed() && !view.is_changed() {
@@ -1355,44 +1451,47 @@ fn update_text(
     .as_ref()
     .map(|power| format!("{}/{}", power.energy, power.capacity))
     .unwrap_or_else(|| "off-grid".into());
-  let hud_value = format!(
-    "FACTORY GAME  /  {}\n\
-     {}  |  tick {}  |  {:.0} TPS  |  {} {}/{}  |  {} complete\n\
-     FOCUS {},{}  |  zoom {}  |  {}\n\n\
-     FLOW  mined {}  |  crafted {}\n\
-     STOCK  {}\n\
-     LOGISTICS  {} dispatched  |  {} idle  |  {} haulers\n\
-     WORLD  {} sources  |  {} factories  |  {} built\n\
-     POWER  {}  |  {} used  |  {} starved\n\
-     \n\
-     WASD/arrows move  |  Q/E zoom  |  Space pause  |  N step",
-    host.snapshot.scenario.name,
-    status,
-    host.snapshot.tick,
-    host.ticks_per_second,
-    cycle_status,
-    host.idle_streak,
-    AUTO_ADVANCE_IDLE_TICKS,
-    host.completed_scenarios,
-    view.position.x,
-    view.position.y,
-    view.zoom_level,
-    focused,
-    format_items(&metrics.mined),
-    format_items(&metrics.crafted),
-    format_items(&totals),
-    metrics.dispatches_assigned,
-    metrics.idle_ticks,
-    host.snapshot.haulers.len(),
-    host.snapshot.sources.len(),
-    host.snapshot.factories.len(),
-    host.snapshot.structures.len(),
-    power,
-    metrics.energy_consumed,
-    metrics.power_starvations,
-  );
-  for mut text in &mut hud {
-    *text = Text::new(hud_value.clone());
+  for mut text in &mut hud_title {
+    *text = Text::new(format!("FACTORY GAME  /  {}", host.snapshot.scenario.name));
+  }
+  for (field, mut text) in &mut hud_values {
+    let value = match field.0 {
+      HudField::Status => format!(
+        "{}  |  tick {}  |  {:.0} TPS",
+        status, host.snapshot.tick, host.ticks_per_second
+      ),
+      HudField::Showcase => format!(
+        "{}  |  quiet {}/{}  |  {} complete",
+        cycle_status, host.idle_streak, AUTO_ADVANCE_IDLE_TICKS, host.completed_scenarios
+      ),
+      HudField::Focus => format!(
+        "{},{}  |  zoom {}  |  {}",
+        view.position.x, view.position.y, view.zoom_level, focused
+      ),
+      HudField::Flow => format!(
+        "mined {}  |  crafted {}",
+        format_items(&metrics.mined),
+        format_items(&metrics.crafted)
+      ),
+      HudField::Stock => format_items(&totals),
+      HudField::Logistics => format!(
+        "{} dispatched  |  {} idle  |  {} haulers",
+        metrics.dispatches_assigned,
+        metrics.idle_ticks,
+        host.snapshot.haulers.len()
+      ),
+      HudField::World => format!(
+        "{} sources  |  {} factories  |  {} built",
+        host.snapshot.sources.len(),
+        host.snapshot.factories.len(),
+        host.snapshot.structures.len()
+      ),
+      HudField::Power => format!(
+        "{}  |  {} used  |  {} starved",
+        power, metrics.energy_consumed, metrics.power_starvations
+      ),
+    };
+    *text = Text::new(value);
   }
 
   let event_value = if host.recent_events.is_empty() {
