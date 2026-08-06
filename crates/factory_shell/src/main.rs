@@ -2,7 +2,8 @@ use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use factory_content::{
-  ContentDatabase, ItemId, ScenarioId, IRON_BARS, IRON_ORE, V2_WORLD_SCENARIO,
+  ContentDatabase, ItemId, ScenarioId, COAL, COPPER_ORE, IRON_BARS, IRON_ORE, MINING_DRILL, STONE,
+  V2_WORLD_SCENARIO,
 };
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
@@ -28,7 +29,11 @@ const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
 const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
 const MIN_VISIBLE_CELLS: f32 = 10.0;
+const PAN_REPEAT_DELAY_SECONDS: f32 = 0.25;
+const PAN_REPEAT_INTERVAL_SECONDS: f32 = 0.08;
+const MAX_PAN_REPEATS_PER_FRAME: u8 = 4;
 const NODE_ART_SIZE: f32 = 100.0;
+const DRILL_ART_SIZE: f32 = 76.0;
 const TRUCK_ART_SIZE: f32 = 72.0;
 const CARGO_ART_SIZE: f32 = 28.0;
 const GRID_X: f32 = 180.0;
@@ -73,7 +78,11 @@ const GROUND_ART: &str = "factory/terrain/ground.png";
 const ROAD_ART: &str = "factory/logistics/road-straight-ns.png";
 const TRUCK_ART: &str = "factory/vehicles/truck.png";
 const IRON_DEPOSIT_ART: &str = "factory/resources/iron-ore-deposit.png";
+const COPPER_DEPOSIT_ART: &str = "factory/resources/copper-ore-deposit.png";
+const COAL_DEPOSIT_ART: &str = "factory/resources/coal-deposit.png";
+const STONE_DEPOSIT_ART: &str = "factory/resources/stone-deposit.png";
 const FOUNDRY_ART: &str = "factory/machines/foundry.png";
+const MINING_DRILL_ART: &str = "factory/machines/mining-drill.png";
 const IRON_ORE_ART: &str = "factory/items/iron-ore.png";
 const IRON_BARS_ART: &str = "factory/items/iron-bars.png";
 
@@ -105,6 +114,7 @@ fn main() {
         rebuild_projection,
         project_snapshot,
         project_activity,
+        project_deployed_art,
         project_craft_gauge,
         project_power_gauge,
         emit_output_chips,
@@ -128,7 +138,11 @@ struct FactoryArt {
   road_straight_ns: Handle<Image>,
   truck: Handle<Image>,
   iron_ore_deposit: Handle<Image>,
+  copper_ore_deposit: Handle<Image>,
+  coal_deposit: Handle<Image>,
+  stone_deposit: Handle<Image>,
   foundry: Handle<Image>,
+  mining_drill: Handle<Image>,
   iron_ore: Handle<Image>,
   iron_bars: Handle<Image>,
 }
@@ -141,7 +155,11 @@ impl FromWorld for FactoryArt {
       road_straight_ns: assets.load(ROAD_ART),
       truck: assets.load(TRUCK_ART),
       iron_ore_deposit: assets.load(IRON_DEPOSIT_ART),
+      copper_ore_deposit: assets.load(COPPER_DEPOSIT_ART),
+      coal_deposit: assets.load(COAL_DEPOSIT_ART),
+      stone_deposit: assets.load(STONE_DEPOSIT_ART),
       foundry: assets.load(FOUNDRY_ART),
+      mining_drill: assets.load(MINING_DRILL_ART),
       iron_ore: assets.load(IRON_ORE_ART),
       iron_bars: assets.load(IRON_BARS_ART),
     }
@@ -159,7 +177,11 @@ impl FactoryArt {
 
   fn node(&self, kind: NodeArtKind) -> (&Handle<Image>, Quat) {
     match kind {
-      NodeArtKind::IronOreDeposit => (&self.iron_ore_deposit, Quat::IDENTITY),
+      NodeArtKind::Deposit(IRON_ORE) => (&self.iron_ore_deposit, Quat::IDENTITY),
+      NodeArtKind::Deposit(COPPER_ORE) => (&self.copper_ore_deposit, Quat::IDENTITY),
+      NodeArtKind::Deposit(COAL) => (&self.coal_deposit, Quat::IDENTITY),
+      NodeArtKind::Deposit(STONE) => (&self.stone_deposit, Quat::IDENTITY),
+      NodeArtKind::Deposit(_) => unreachable!("node art selects only accepted deposit items"),
       NodeArtKind::Foundry => (&self.foundry, Quat::IDENTITY),
       NodeArtKind::Road(RoadOrientation::NorthSouth) => (&self.road_straight_ns, Quat::IDENTITY),
       NodeArtKind::Road(RoadOrientation::EastWest) => (
@@ -317,6 +339,13 @@ impl Default for PlayerView {
   }
 }
 
+#[derive(Default)]
+struct PanRepeatState {
+  direction: IVec2,
+  held_seconds: f32,
+  next_repeat_seconds: f32,
+}
+
 #[derive(Component)]
 struct ProjectionEntity;
 
@@ -328,6 +357,9 @@ struct NodeActivityVisual(NodeActivity);
 
 #[derive(Component)]
 struct NodeLabel(NodeId);
+
+#[derive(Component)]
+struct DrillArt(NodeId);
 
 #[derive(Component)]
 struct HaulerVisual(HaulerId);
@@ -797,14 +829,10 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
       ProjectionEntity,
     ));
     if let Some(kind) = node_art_kind(snapshot, node) {
-      let (image, rotation) = art.node(kind);
-      let mut sprite = Sprite::from_image(image.clone());
-      sprite.custom_size = Some(Vec2::splat(NODE_ART_SIZE));
-      commands.spawn((
-        sprite,
-        Transform::from_xyz(position.x, position.y, 1.2).with_rotation(rotation),
-        ProjectionEntity,
-      ));
+      spawn_node_art(commands, art, kind, position, NODE_ART_SIZE, 1.2);
+    }
+    if drill_art_candidate(snapshot, node) {
+      spawn_drill_art(commands, art, snapshot, node, position);
     }
     let label_anchor = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
       Anchor::BOTTOM_CENTER
@@ -891,6 +919,41 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
       ProjectionEntity,
     ));
   }
+}
+
+fn spawn_node_art(
+  commands: &mut Commands,
+  art: &FactoryArt,
+  kind: NodeArtKind,
+  position: Vec2,
+  size: f32,
+  z: f32,
+) {
+  let (image, rotation) = art.node(kind);
+  let mut sprite = Sprite::from_image(image.clone());
+  sprite.custom_size = Some(Vec2::splat(size));
+  commands.spawn((
+    sprite,
+    Transform::from_xyz(position.x, position.y, z).with_rotation(rotation),
+    ProjectionEntity,
+  ));
+}
+
+fn spawn_drill_art(
+  commands: &mut Commands,
+  art: &FactoryArt,
+  snapshot: &TickSnapshot,
+  node: &TopologyNode,
+  position: Vec2,
+) {
+  let mut sprite = Sprite::from_image(art.mining_drill.clone());
+  configure_drill_art(&mut sprite, snapshot, node.id);
+  commands.spawn((
+    sprite,
+    Transform::from_xyz(position.x, position.y, 1.3),
+    DrillArt(node.id),
+    ProjectionEntity,
+  ));
 }
 
 fn spawn_ground(commands: &mut Commands, snapshot: &TickSnapshot, art: &FactoryArt) {
@@ -1072,9 +1135,11 @@ fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
 
 fn handle_player_view(
   keys: Res<ButtonInput<KeyCode>>,
+  time: Res<Time>,
   mut mouse_wheel: MessageReader<MouseWheel>,
   host: Res<SimHost>,
   mut view: ResMut<PlayerView>,
+  mut pan_repeat: Local<PanRepeatState>,
   window: Single<&Window>,
   mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
   mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
@@ -1083,6 +1148,7 @@ fn handle_player_view(
     view.position = initial_player_position(&host.snapshot);
     view.zoom_level = MAX_ZOOM_LEVEL;
     view.scene_revision = host.scene_revision;
+    *pan_repeat = PanRepeatState::default();
   }
 
   let pan_distance = if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
@@ -1090,12 +1156,17 @@ fn handle_player_view(
   } else {
     1
   };
-  let move_right = keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight);
-  let move_left = keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft);
-  let move_up = keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp);
-  let move_down = keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown);
-  let horizontal = pan_distance * (i32::from(move_right) - i32::from(move_left));
-  let vertical = pan_distance * (i32::from(move_up) - i32::from(move_down));
+  let move_right = keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight);
+  let move_left = keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft);
+  let move_up = keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp);
+  let move_down = keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown);
+  let direction = IVec2::new(
+    i32::from(move_right) - i32::from(move_left),
+    i32::from(move_up) - i32::from(move_down),
+  );
+  let repeat_steps = repeated_pan_steps(&mut pan_repeat, direction, time.delta_secs());
+  let horizontal = pan_distance * direction.x * i32::from(repeat_steps);
+  let vertical = pan_distance * direction.y * i32::from(repeat_steps);
   let next_position = move_player_focus(
     view.position,
     horizontal,
@@ -1396,6 +1467,20 @@ fn project_activity(
     {
       configure_cargo_art(&mut sprite, &art, hauler);
     }
+  }
+}
+
+fn project_deployed_art(
+  host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
+  mut drills: Query<(&DrillArt, &mut Sprite)>,
+) {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
+    return;
+  }
+
+  for (drill, mut sprite) in &mut drills {
+    configure_drill_art(&mut sprite, &host.snapshot, drill.0);
   }
 }
 
@@ -1842,6 +1927,30 @@ fn world_detail_visible(annotations_visible: bool, zoom_level: u8) -> bool {
   annotations_visible && zoom_level <= MAX_DETAIL_ZOOM_LEVEL
 }
 
+fn repeated_pan_steps(state: &mut PanRepeatState, direction: IVec2, delta_seconds: f32) -> u8 {
+  if direction == IVec2::ZERO {
+    *state = PanRepeatState::default();
+    return 0;
+  }
+  if direction != state.direction {
+    state.direction = direction;
+    state.held_seconds = 0.0;
+    state.next_repeat_seconds = PAN_REPEAT_DELAY_SECONDS;
+    return 1;
+  }
+
+  state.held_seconds += delta_seconds.max(0.0);
+  let mut repeats = 0;
+  while state.held_seconds >= state.next_repeat_seconds && repeats < MAX_PAN_REPEATS_PER_FRAME {
+    repeats += 1;
+    state.next_repeat_seconds += PAN_REPEAT_INTERVAL_SECONDS;
+  }
+  if repeats == MAX_PAN_REPEATS_PER_FRAME && state.held_seconds >= state.next_repeat_seconds {
+    state.next_repeat_seconds = state.held_seconds + PAN_REPEAT_INTERVAL_SECONDS;
+  }
+  repeats
+}
+
 fn move_player_focus(
   position: GridPosition,
   x: i32,
@@ -2058,7 +2167,7 @@ enum RoadOrientation {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum NodeArtKind {
-  IronOreDeposit,
+  Deposit(ItemId),
   Foundry,
   Road(RoadOrientation),
 }
@@ -2279,8 +2388,9 @@ fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArt
     NodeId::Source(_) => snapshot
       .sources
       .iter()
-      .find(|source| source.node == node.id && source.item == IRON_ORE)
-      .map(|_| NodeArtKind::IronOreDeposit),
+      .find(|source| source.node == node.id)
+      .filter(|source| matches!(source.item, IRON_ORE | COPPER_ORE | COAL | STONE))
+      .map(|source| NodeArtKind::Deposit(source.item)),
     NodeId::Factory(_) => snapshot
       .factories
       .iter()
@@ -2289,6 +2399,40 @@ fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArt
     NodeId::Road => straight_road_orientation(snapshot, node.position).map(NodeArtKind::Road),
     _ => None,
   }
+}
+
+fn drill_art_candidate(snapshot: &TickSnapshot, node: &TopologyNode) -> bool {
+  let Some(source) = snapshot
+    .sources
+    .iter()
+    .find(|source| source.node == node.id)
+  else {
+    return false;
+  };
+  snapshot
+    .radars
+    .iter()
+    .any(|radar| radar.deployment_item == MINING_DRILL && radar.target_item == source.item)
+}
+
+fn drill_art_visible(snapshot: &TickSnapshot, node: NodeId) -> bool {
+  let Some(source) = snapshot.sources.iter().find(|source| source.node == node) else {
+    return false;
+  };
+  source.deployed
+    && source.occupied_by.is_none()
+    && snapshot
+      .radars
+      .iter()
+      .any(|radar| radar.deployment_item == MINING_DRILL && radar.target_item == source.item)
+}
+
+fn configure_drill_art(sprite: &mut Sprite, snapshot: &TickSnapshot, node: NodeId) {
+  sprite.custom_size = Some(if drill_art_visible(snapshot, node) {
+    Vec2::splat(DRILL_ART_SIZE)
+  } else {
+    Vec2::ZERO
+  });
 }
 
 fn straight_road_orientation(
@@ -2524,7 +2668,7 @@ mod tests {
   use super::*;
   use factory_content::{
     BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, COAL_PLANT,
-    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO, STONE,
+    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
   };
   use factory_sim::GeneratorPowerLine;
 
@@ -2914,7 +3058,7 @@ mod tests {
       .unwrap();
 
     assert_eq!(
-      Some(NodeArtKind::IronOreDeposit),
+      Some(NodeArtKind::Deposit(IRON_ORE)),
       node_art_kind(&starter, source)
     );
     assert_eq!(
@@ -2924,6 +3068,20 @@ mod tests {
     assert_eq!(Some(NodeArtKind::Foundry), node_art_kind(&starter, factory));
 
     let v2 = scenario_game(V2_WORLD_SCENARIO).snapshot(Vec::new());
+    for item in [IRON_ORE, COPPER_ORE, COAL, STONE] {
+      let source = v2
+        .sources
+        .iter()
+        .find(|source| source.item == item)
+        .unwrap();
+      let node = v2
+        .topology
+        .nodes
+        .iter()
+        .find(|node| node.id == source.node)
+        .unwrap();
+      assert_eq!(Some(NodeArtKind::Deposit(item)), node_art_kind(&v2, node));
+    }
     let junction = v2
       .topology
       .nodes
@@ -2940,7 +3098,44 @@ mod tests {
       .find(|node| node.id == NodeId::Source(1))
       .unwrap();
     assert_eq!(STONE, materials.sources[1].item);
-    assert_eq!(None, node_art_kind(&materials, stone));
+    assert_eq!(
+      Some(NodeArtKind::Deposit(STONE)),
+      node_art_kind(&materials, stone)
+    );
+
+    let mut deployment = scenario_game(DEPLOYMENT_DEMO_SCENARIO);
+    let initial = deployment.snapshot(Vec::new());
+    let initial_node = initial
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == initial.sources[0].node)
+      .unwrap();
+    assert!(drill_art_candidate(&initial, initial_node));
+    assert!(!drill_art_visible(&initial, initial_node.id));
+    let mut drill_sprite = Sprite::default();
+    configure_drill_art(&mut drill_sprite, &initial, initial_node.id);
+    assert_eq!(Some(Vec2::ZERO), drill_sprite.custom_size);
+    let deployed = (0..64)
+      .find_map(|_| {
+        let snapshot = deployment.step();
+        snapshot.sources[0].deployed.then_some(snapshot)
+      })
+      .expect("mining drill deploys");
+    let deployed_node = deployed
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == deployed.sources[0].node)
+      .unwrap();
+    assert!(drill_art_visible(&deployed, deployed_node.id));
+    configure_drill_art(&mut drill_sprite, &deployed, deployed_node.id);
+    assert_eq!(Some(Vec2::splat(DRILL_ART_SIZE)), drill_sprite.custom_size);
+
+    let mut occupied = deployed.clone();
+    occupied.sources[0].occupied_by = Some(NodeId::Generator(0));
+    configure_drill_art(&mut drill_sprite, &occupied, deployed_node.id);
+    assert_eq!(Some(Vec2::ZERO), drill_sprite.custom_size);
   }
 
   #[test]
@@ -2969,7 +3164,14 @@ mod tests {
     assert_eq!("factory/logistics/road-straight-ns.png", ROAD_ART);
     assert_eq!("factory/vehicles/truck.png", TRUCK_ART);
     assert_eq!("factory/resources/iron-ore-deposit.png", IRON_DEPOSIT_ART);
+    assert_eq!(
+      "factory/resources/copper-ore-deposit.png",
+      COPPER_DEPOSIT_ART
+    );
+    assert_eq!("factory/resources/coal-deposit.png", COAL_DEPOSIT_ART);
+    assert_eq!("factory/resources/stone-deposit.png", STONE_DEPOSIT_ART);
     assert_eq!("factory/machines/foundry.png", FOUNDRY_ART);
+    assert_eq!("factory/machines/mining-drill.png", MINING_DRILL_ART);
     assert_eq!("factory/items/iron-ore.png", IRON_ORE_ART);
     assert_eq!("factory/items/iron-bars.png", IRON_BARS_ART);
   }
@@ -2993,6 +3195,25 @@ mod tests {
       GridPosition { x: 0, y: 1 },
       move_player_focus(GridPosition { x: 0, y: 1 }, -1, 1, 3, 2)
     );
+  }
+
+  #[test]
+  fn held_navigation_repeats_after_delay_independent_of_frame_slicing() {
+    let direction = IVec2::new(1, -1);
+    let mut one_frame = PanRepeatState::default();
+    assert_eq!(1, repeated_pan_steps(&mut one_frame, direction, 0.0));
+    let one_frame_repeats = repeated_pan_steps(&mut one_frame, direction, 0.4);
+
+    let mut split_frames = PanRepeatState::default();
+    assert_eq!(1, repeated_pan_steps(&mut split_frames, direction, 0.0));
+    let split_repeats = (0..5)
+      .map(|_| repeated_pan_steps(&mut split_frames, direction, 0.08))
+      .sum::<u8>();
+
+    assert_eq!(2, one_frame_repeats);
+    assert_eq!(one_frame_repeats, split_repeats);
+    assert_eq!(0, repeated_pan_steps(&mut split_frames, IVec2::ZERO, 0.08));
+    assert_eq!(1, repeated_pan_steps(&mut split_frames, -direction, 0.0));
   }
 
   #[test]

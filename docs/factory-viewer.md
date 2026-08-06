@@ -65,7 +65,7 @@ The keyboard mirrors the same typed actions:
 - `R` resets the scenario.
 - `F` toggles between 2 and 8 ticks per second.
 - `C` advances to the next world when the roster contains more than one.
-- `WASD` or arrow keys move focus. Hold `Shift` to move ten cells.
+- `WASD` or arrows move focus and repeat while held. `Shift` moves ten cells.
 - `Q`/`E` or the wheel zoom. `O` toggles the approximately 10x10-cell detail
   view and the full-world extent. Startup uses the full-world extent, and the
   camera cannot zoom farther out than that fit.
@@ -76,4 +76,4 @@ The keyboard mirrors the same typed actions:
   that optimizes Bevy and its graphics dependencies.
 - `ward exec shell-serve` starts the browser viewer with Trunk hot reload.
 - `ward exec shell-build-web` builds the static Wasm bundle.
-- `ward exec cargo-test` proves hosted ticks match direct simulation.
+- `ward exec cargo-test` proves hosted ticks match direct ticks.
