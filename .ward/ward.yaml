@@ -17,8 +17,8 @@ commands:
     run: cargo test --release -p factory_sim v2_world_sustains_remote_power_after_starter_charge
     description: "Run the deterministic 650-tick v2 sustained-operation proof."
   shell-run:
-    run: cargo run -p factory_shell
-    description: "Run the native Bevy simulation viewer."
+    run: cargo run --profile viewer -p factory_shell
+    description: "Run the native Bevy simulation viewer with optimized graphics dependencies."
   shell-build-web:
     run: bash scripts/shell-web.sh build
     description: "Build the Wasm/static viewer bundle via trunk."

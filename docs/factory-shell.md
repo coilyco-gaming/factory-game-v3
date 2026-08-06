@@ -12,7 +12,8 @@ immutable `TickSnapshot` values and never mutates `WorldState` directly.
 
 ## Run
 
-- `ward exec shell-run` - native simulation viewer.
+- `ward exec shell-run` - native simulation viewer with optimized graphics
+  dependencies.
 - `ward exec shell-serve` - browser viewer with trunk hot reload.
 - `ward exec shell-build-web` - Wasm viewer bundle in
   `crates/factory_shell/dist/`.

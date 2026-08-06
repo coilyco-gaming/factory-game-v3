@@ -24,6 +24,7 @@ const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
 const WORLD_SCENARIOS: [ScenarioId; 1] = [V2_WORLD_SCENARIO];
 const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
+const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
 const MIN_VISIBLE_CELLS: f32 = 10.0;
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -99,6 +100,7 @@ fn main() {
         animate_haulers,
         update_text,
         sync_annotation_visibility,
+        sync_world_detail_visibility,
         update_focus_alert,
         style_control_buttons,
       )
@@ -117,6 +119,7 @@ struct SimHost {
   world_index: usize,
   annotations_visible: bool,
   scene_revision: u64,
+  snapshot_revision: u64,
   recent_events: VecDeque<String>,
 }
 
@@ -138,18 +141,21 @@ impl SimHost {
       world_index: 0,
       annotations_visible: true,
       scene_revision: 0,
+      snapshot_revision: 1,
       recent_events: VecDeque::from([format!("t000 world started: {scenario_name}")]),
     }
   }
 
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
+    self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
     self.record_snapshot_events();
   }
 
   fn reset(&mut self) {
     self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
+    self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
     self
       .snapshot
       .events
@@ -191,6 +197,7 @@ impl SimHost {
     self.world_index = index % WORLD_SCENARIOS.len();
     self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
+    self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
     let scenario_name = self.snapshot.scenario.name.clone();
     self
       .snapshot
@@ -215,7 +222,6 @@ impl SimHost {
       }
     }
   }
-
 }
 
 fn scenario_game(scenario: ScenarioId) -> GameState {
@@ -255,6 +261,9 @@ struct ProjectionEntity;
 
 #[derive(Component)]
 struct NodeVisual(NodeId);
+
+#[derive(Component)]
+struct NodeActivityVisual(NodeActivity);
 
 #[derive(Component)]
 struct NodeLabel(NodeId);
@@ -334,6 +343,9 @@ struct FocusAlertText;
 
 #[derive(Component)]
 struct Annotation;
+
+#[derive(Component)]
+struct WorldDetail;
 
 #[derive(Component)]
 struct ControlDeckContent;
@@ -671,6 +683,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       TextColor(Color::srgb(0.82, 0.97, 1.0)),
       Transform::from_xyz(position.x, position.y, 1.0),
       Annotation,
+      WorldDetail,
       ProjectionEntity,
     ));
   }
@@ -691,6 +704,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       TextColor(Color::srgb(1.0, 0.76, 0.52)),
       Transform::from_xyz(position.x, position.y, 1.0),
       Annotation,
+      WorldDetail,
       ProjectionEntity,
     ));
   }
@@ -710,6 +724,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       Sprite::from_color(node_color(snapshot, node.id), size),
       Transform::from_xyz(position.x, position.y, 1.0),
       NodeVisual(node.id),
+      NodeActivityVisual(node_activity(snapshot, node.id)),
       ProjectionEntity,
     ));
     let label_anchor = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
@@ -733,6 +748,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       label_anchor,
       NodeLabel(node.id),
       Annotation,
+      WorldDetail,
       ProjectionEntity,
     ));
     if matches!(node.id, NodeId::Factory(_)) {
@@ -759,6 +775,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       Transform::from_xyz(position.x, position.y, 2.5),
       CargoBadge(hauler.id),
       Annotation,
+      WorldDetail,
       HaulerTarget(position),
       ProjectionEntity,
     ));
@@ -772,6 +789,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       Transform::from_xyz(position.x, position.y - 28.0, 3.0),
       HaulerLabel(hauler.id),
       Annotation,
+      WorldDetail,
       HaulerTarget(Vec2::new(position.x, position.y - 28.0)),
       ProjectionEntity,
     ));
@@ -805,6 +823,7 @@ fn spawn_craft_gauge(
     ),
     Transform::from_xyz(factory.x, y, 1.5),
     Annotation,
+    WorldDetail,
     ProjectionEntity,
   ));
   commands.spawn((
@@ -821,6 +840,7 @@ fn spawn_craft_gauge(
       max_width: CRAFT_GAUGE_WIDTH,
     },
     Annotation,
+    WorldDetail,
     ProjectionEntity,
   ));
 }
@@ -849,6 +869,7 @@ fn spawn_power_gauge(
     ),
     Transform::from_xyz(generator_position.x, y, 1.5),
     Annotation,
+    WorldDetail,
     ProjectionEntity,
   ));
   commands.spawn((
@@ -865,6 +886,7 @@ fn spawn_power_gauge(
       max_width: POWER_GAUGE_WIDTH,
     },
     Annotation,
+    WorldDetail,
     ProjectionEntity,
   ));
 }
@@ -963,27 +985,34 @@ fn handle_player_view(
   let move_down = keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown);
   let horizontal = pan_distance * (i32::from(move_right) - i32::from(move_left));
   let vertical = pan_distance * (i32::from(move_up) - i32::from(move_down));
-  view.position = move_player_focus(
+  let next_position = move_player_focus(
     view.position,
     horizontal,
     vertical,
     host.snapshot.topology.width,
     host.snapshot.topology.height,
   );
+  if next_position != view.position {
+    view.position = next_position;
+  }
 
   let wheel_delta = mouse_wheel.read().map(|event| event.y).sum::<f32>();
+  let mut next_zoom = view.zoom_level;
   if keys.just_pressed(KeyCode::KeyE) || wheel_delta > 0.0 {
-    view.zoom_level = view.zoom_level.saturating_sub(1).max(MIN_ZOOM_LEVEL);
+    next_zoom = next_zoom.saturating_sub(1).max(MIN_ZOOM_LEVEL);
   }
   if keys.just_pressed(KeyCode::KeyQ) || wheel_delta < 0.0 {
-    view.zoom_level = view.zoom_level.saturating_add(1).min(MAX_ZOOM_LEVEL);
+    next_zoom = next_zoom.saturating_add(1).min(MAX_ZOOM_LEVEL);
   }
   if keys.just_pressed(KeyCode::KeyO) {
-    view.zoom_level = if view.zoom_level == MAX_ZOOM_LEVEL {
+    next_zoom = if next_zoom == MAX_ZOOM_LEVEL {
       MIN_ZOOM_LEVEL
     } else {
       MAX_ZOOM_LEVEL
     };
+  }
+  if next_zoom != view.zoom_level {
+    view.zoom_level = next_zoom;
   }
 
   let focused_world = grid_to_world(view.position);
@@ -1052,6 +1081,7 @@ fn rebuild_projection(
 
 fn project_snapshot(
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut hauler_visuals: Query<
     (&HaulerVisual, &mut HaulerTarget),
     (Without<HaulerLabel>, Without<CargoBadge>),
@@ -1065,7 +1095,7 @@ fn project_snapshot(
     (Without<HaulerVisual>, Without<HaulerLabel>),
   >,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
 
@@ -1106,8 +1136,9 @@ fn project_snapshot(
 
 fn project_activity(
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut nodes: Query<
-    (&NodeVisual, &mut Sprite),
+    (&NodeVisual, &mut NodeActivityVisual, &mut Sprite),
     (
       Without<HaulerVisual>,
       Without<RouteVisual>,
@@ -1139,12 +1170,16 @@ fn project_activity(
     ),
   >,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
 
-  for (visual, mut sprite) in &mut nodes {
-    sprite.color = node_color(&host.snapshot, visual.0);
+  for (visual, mut activity, mut sprite) in &mut nodes {
+    activity.0 = node_activity(&host.snapshot, visual.0);
+    let color = node_color_for_activity(visual.0, activity.0);
+    if sprite.color != color {
+      sprite.color = color;
+    }
   }
   for (visual, mut sprite) in &mut routes {
     sprite.color = route_color(&host.snapshot, visual.0);
@@ -1175,6 +1210,7 @@ fn project_activity(
 
 fn project_craft_gauge(
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut gauges: Query<(
     &CraftGaugeFill,
     &mut Sprite,
@@ -1182,7 +1218,7 @@ fn project_craft_gauge(
     &mut Visibility,
   )>,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
 
@@ -1209,6 +1245,7 @@ fn project_craft_gauge(
 
 fn project_power_gauge(
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut gauges: Query<(
     &PowerGaugeFill,
     &mut Sprite,
@@ -1216,7 +1253,7 @@ fn project_power_gauge(
     &mut Visibility,
   )>,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
   let Some(power) = &host.snapshot.power else {
@@ -1245,10 +1282,11 @@ fn project_power_gauge(
 fn emit_output_chips(
   mut commands: Commands,
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut feedback: ResMut<ProductionFeedback>,
   chips: Query<(), With<OutputChip>>,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
 
@@ -1298,17 +1336,20 @@ fn emit_output_chips(
 fn animate_activity(
   time: Res<Time>,
   host: Res<SimHost>,
-  mut nodes: Query<(&NodeVisual, &mut Transform), Without<RouteDash>>,
+  mut nodes: Query<(&NodeActivityVisual, &mut Transform), Without<RouteDash>>,
   mut route_dashes: Query<(&RouteDash, &mut Transform, &mut Visibility), Without<NodeVisual>>,
 ) {
   let elapsed = time.elapsed_secs();
   let pulse = 1.0 + 0.045 * (elapsed * 5.0).sin().max(0.0);
-  for (visual, mut transform) in &mut nodes {
-    transform.scale = if node_activity(&host.snapshot, visual.0) == NodeActivity::Idle {
+  for (activity, mut transform) in &mut nodes {
+    let scale = if activity.0 == NodeActivity::Idle {
       Vec3::ONE
     } else {
       Vec3::splat(pulse)
     };
+    if transform.scale != scale {
+      transform.scale = scale;
+    }
   }
 
   for (dash, mut transform, mut visibility) in &mut route_dashes {
@@ -1381,11 +1422,17 @@ fn style_control_buttons(
 
 fn sync_annotation_visibility(
   host: Res<SimHost>,
-  mut annotations: Query<&mut Visibility, With<Annotation>>,
+  mut last_visibility: Local<Option<bool>>,
+  mut annotations: Query<&mut Visibility, (With<Annotation>, Without<WorldDetail>)>,
   mut deck: Single<&mut Node, (With<ControlDeck>, Without<ControlDeckContent>)>,
   mut content: Single<&mut Node, (With<ControlDeckContent>, Without<ControlDeck>)>,
   mut toggle_labels: Query<&mut Text, With<DeckToggleLabel>>,
 ) {
+  if *last_visibility == Some(host.annotations_visible) {
+    return;
+  }
+  *last_visibility = Some(host.annotations_visible);
+
   let visibility = if host.annotations_visible {
     Visibility::Visible
   } else {
@@ -1414,11 +1461,48 @@ fn sync_annotation_visibility(
   }
 }
 
+fn sync_world_detail_visibility(
+  host: Res<SimHost>,
+  view: Res<PlayerView>,
+  mut last_state: Local<Option<(bool, u8, u64)>>,
+  mut details: Query<&mut Visibility, With<WorldDetail>>,
+) {
+  let state = (
+    host.annotations_visible,
+    view.zoom_level,
+    host.scene_revision,
+  );
+  if *last_state == Some(state) {
+    return;
+  }
+  *last_state = Some(state);
+
+  let visibility = if world_detail_visible(host.annotations_visible, view.zoom_level) {
+    Visibility::Visible
+  } else {
+    Visibility::Hidden
+  };
+  for mut detail in &mut details {
+    *detail = visibility;
+  }
+}
+
 fn update_focus_alert(
   host: Res<SimHost>,
   view: Res<PlayerView>,
+  mut last_state: Local<Option<(u64, GridPosition, bool)>>,
   mut alert: Single<(&mut Text, &mut Visibility), With<FocusAlertText>>,
 ) {
+  let state = (
+    host.snapshot_revision,
+    view.position,
+    host.annotations_visible,
+  );
+  if *last_state == Some(state) {
+    return;
+  }
+  *last_state = Some(state);
+
   let value = focused_alert(&host.snapshot, view.position);
   let visible = host.annotations_visible && !value.is_empty();
   *alert.0 = Text::new(value);
@@ -1431,6 +1515,7 @@ fn update_focus_alert(
 
 fn update_text(
   host: Res<SimHost>,
+  mut last_snapshot_revision: Local<u64>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
   mut hauler_labels: Query<
     (&HaulerLabel, &mut Text2d),
@@ -1447,12 +1532,15 @@ fn update_text(
   mut hud_values: Query<(&HudValueText, &mut Text), (Without<HudTitleText>, Without<EventText>)>,
   mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
 ) {
-  if !host.is_changed() {
+  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
   }
 
   for (label, mut text) in &mut node_labels {
-    *text = Text2d::new(node_label_value(&host.snapshot, label.0));
+    let value = node_label_value(&host.snapshot, label.0);
+    if text.as_str() != value {
+      *text = Text2d::new(value);
+    }
   }
 
   for (label, mut text) in &mut hauler_labels {
@@ -1462,7 +1550,10 @@ fn update_text(
       .iter()
       .find(|hauler| hauler.id == label.0)
     {
-      *text = Text2d::new(hauler_label_value(hauler));
+      let value = hauler_label_value(hauler);
+      if text.as_str() != value {
+        *text = Text2d::new(value);
+      }
     }
   }
 
@@ -1546,6 +1637,18 @@ fn truncate_for_display(value: &str, max_chars: usize) -> String {
     "{}...",
     value.chars().take(visible_chars).collect::<String>()
   )
+}
+
+fn claim_snapshot_revision(current: u64, previous: &mut u64) -> bool {
+  if *previous == current {
+    return false;
+  }
+  *previous = current;
+  true
+}
+
+fn world_detail_visible(annotations_visible: bool, zoom_level: u8) -> bool {
+  annotations_visible && zoom_level <= MAX_DETAIL_ZOOM_LEVEL
 }
 
 fn move_player_focus(
@@ -1875,7 +1978,11 @@ fn hauler_activity(hauler: &HaulerSnapshot) -> HaulerActivity {
 }
 
 fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
-  match (node, node_activity(snapshot, node)) {
+  node_color_for_activity(node, node_activity(snapshot, node))
+}
+
+fn node_color_for_activity(node: NodeId, activity: NodeActivity) -> Color {
+  match (node, activity) {
     (NodeId::Source(_), NodeActivity::Ready) => NODE_SOURCE_READY,
     (NodeId::Source(_), _) => NODE_SOURCE_IDLE,
     (NodeId::Road, _) => NODE_ROAD,
@@ -2162,6 +2269,31 @@ mod tests {
     assert_eq!(0, host.snapshot.tick);
     assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
     assert_eq!(0.0, host.accumulated_seconds);
+  }
+
+  #[test]
+  fn snapshot_revision_gate_projects_each_authoritative_snapshot_once() {
+    let mut host = SimHost::new();
+    let mut projected = 0;
+
+    assert!(claim_snapshot_revision(
+      host.snapshot_revision,
+      &mut projected
+    ));
+    assert!(!claim_snapshot_revision(
+      host.snapshot_revision,
+      &mut projected
+    ));
+
+    host.step_once();
+    assert!(claim_snapshot_revision(
+      host.snapshot_revision,
+      &mut projected
+    ));
+    assert!(!claim_snapshot_revision(
+      host.snapshot_revision,
+      &mut projected
+    ));
   }
 
   #[test]
@@ -2506,6 +2638,14 @@ mod tests {
     assert_eq!(detail, player_zoom_scale(0, 50, 50, 1180.0, 720.0));
     assert_eq!(overview, player_zoom_scale(11, 50, 50, 1180.0, 720.0));
     assert_eq!(Vec2::new(4_000.0, 2_940.0), world_center(50, 50));
+  }
+
+  #[test]
+  fn world_detail_is_limited_to_close_zoom() {
+    assert!(world_detail_visible(true, MIN_ZOOM_LEVEL));
+    assert!(world_detail_visible(true, MAX_DETAIL_ZOOM_LEVEL));
+    assert!(!world_detail_visible(true, MAX_DETAIL_ZOOM_LEVEL + 1));
+    assert!(!world_detail_visible(false, MIN_ZOOM_LEVEL));
   }
 
   #[test]

@@ -14,10 +14,11 @@ production, metrics, and tick ordering. The viewer owns only:
 - node, route, hauler, and text presentation
 - native-window and Wasm runtime behavior
 
-Bevy frames and simulation ticks use separate clocks. The viewer advances the simulation in whole ticks at a bounded cadence and projects the latest
-snapshot after each update. Bevy smoothly interpolates only the visual hauler
-projection between snapshots. That animation never mutates simulation state
-through Bevy entities.
+Bevy frames and simulation ticks use separate clocks. Snapshot revisions gate
+world and HUD projection, while hauler interpolation and cached node activity
+animate between ticks without rescanning simulation collections. Overview hides
+unreadable object text, badges, and gauges. The three closest zoom levels
+restore them, while geometry, focus, and screen status remain visible throughout.
 
 ## World roster
 
@@ -70,7 +71,8 @@ The keyboard mirrors the same typed actions:
 
 ## Development
 
-- `ward exec shell-run` starts the native viewer.
+- `ward exec shell-run` starts the native viewer with an interactive profile
+  that optimizes Bevy and its graphics dependencies.
 - `ward exec shell-serve` starts the browser viewer with Trunk hot reload.
 - `ward exec shell-build-web` builds the static Wasm bundle.
 - `ward exec cargo-test` proves hosted ticks match direct simulation.

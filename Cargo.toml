@@ -7,6 +7,15 @@ members = [
 ]
 resolver = "2"
 
+# Keep the interactive Bevy viewer responsive without making ordinary test
+# builds pay for optimized graphics dependencies.
+[profile.viewer]
+inherits = "dev"
+opt-level = 1
+
+[profile.viewer.package."*"]
+opt-level = 3
+
 # Keep wasm bundles lean without slowing the dev loop.
 [profile.release]
 opt-level = "s"
