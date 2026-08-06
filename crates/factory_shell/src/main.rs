@@ -21,7 +21,8 @@ const STATUS_LABEL_FONT_SIZE: f32 = 15.0;
 const STATUS_VALUE_FONT_SIZE: f32 = 15.75;
 const STATUS_SEPARATOR_FONT_SIZE: f32 = 13.5;
 const STATUS_LABEL_WIDTH: f32 = 96.0;
-const STATUS_POWER_LABEL_WIDTH: f32 = 24.0;
+const STATUS_POWER_LABEL_WIDTH: f32 = 28.0;
+const INLINE_SEPARATOR: &str = " // ";
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -429,6 +430,9 @@ struct HudValueText(HudField);
 struct ResourceCountText(ItemId);
 
 #[derive(Component)]
+struct StatusBatteryFill;
+
+#[derive(Component)]
 struct StatusBar;
 
 #[derive(Component)]
@@ -586,27 +590,27 @@ fn spawn_status_bar(commands: &mut Commands, art: &FactoryArt) {
           BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
         ))
         .with_children(|stack| {
-          for (index, (label, field, accent)) in status_metrics().into_iter().enumerate() {
-            spawn_status_metric(stack, label, field, accent, index > 0, art);
+          for (index, (field, accent)) in status_metrics().into_iter().enumerate() {
+            spawn_status_metric(stack, field, accent, index > 0, art);
           }
         });
     });
 }
 
-fn status_metrics() -> [(&'static str, HudField, Color); 3] {
+fn status_metrics() -> [(HudField, Color); 3] {
   [
-    (
-      "RESOURCES",
-      HudField::Resources,
-      Color::srgb(0.96, 0.58, 0.28),
-    ),
-    (
-      "MATERIALS",
-      HudField::Materials,
-      Color::srgb(0.95, 0.78, 0.36),
-    ),
-    ("🔋", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
+    (HudField::Resources, Color::srgb(0.96, 0.58, 0.28)),
+    (HudField::Materials, Color::srgb(0.95, 0.78, 0.36)),
+    (HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
   ]
+}
+
+fn status_label(field: HudField) -> Option<&'static str> {
+  match field {
+    HudField::Resources => Some("RESOURCES"),
+    HudField::Materials => Some("MATERIALS"),
+    HudField::Power => None,
+  }
 }
 
 fn status_resource_items() -> [ItemId; 4] {
@@ -615,7 +619,6 @@ fn status_resource_items() -> [ItemId; 4] {
 
 fn spawn_status_metric(
   parent: &mut ChildSpawnerCommands,
-  label: &'static str,
   field: HudField,
   accent: Color,
   divided: bool,
@@ -627,23 +630,23 @@ fn spawn_status_metric(
       BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
     ))
     .with_children(|metric| {
-      metric.spawn((
-        Text::new(label),
-        TextFont {
-          font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
-          ..default()
-        },
-        TextColor(accent),
-        Node {
-          width: px(if field == HudField::Power {
-            STATUS_POWER_LABEL_WIDTH
-          } else {
-            STATUS_LABEL_WIDTH
-          }),
-          flex_shrink: 0.0,
-          ..default()
-        },
-      ));
+      if let Some(label) = status_label(field) {
+        metric.spawn((
+          Text::new(label),
+          TextFont {
+            font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
+            ..default()
+          },
+          TextColor(accent),
+          Node {
+            width: px(STATUS_LABEL_WIDTH),
+            flex_shrink: 0.0,
+            ..default()
+          },
+        ));
+      } else {
+        spawn_status_battery_icon(metric, accent);
+      }
       if field == HudField::Resources {
         spawn_resource_counts(metric, art);
       } else {
@@ -668,6 +671,52 @@ fn spawn_status_metric(
     });
 }
 
+fn spawn_status_battery_icon(parent: &mut ChildSpawnerCommands, accent: Color) {
+  parent
+    .spawn(Node {
+      width: px(STATUS_POWER_LABEL_WIDTH),
+      height: px(14),
+      flex_shrink: 0.0,
+      flex_direction: FlexDirection::Row,
+      align_items: AlignItems::Center,
+      column_gap: px(2),
+      ..default()
+    })
+    .with_children(|icon| {
+      icon
+        .spawn((
+          Node {
+            width: px(20),
+            height: px(14),
+            padding: UiRect::all(px(2)),
+            border: UiRect::all(px(1.5)),
+            overflow: Overflow::clip(),
+            ..default()
+          },
+          BorderColor::all(accent),
+        ))
+        .with_children(|body| {
+          body.spawn((
+            Node {
+              width: percent(0),
+              height: percent(100),
+              ..default()
+            },
+            BackgroundColor(accent),
+            StatusBatteryFill,
+          ));
+        });
+      icon.spawn((
+        Node {
+          width: px(3),
+          height: px(8),
+          ..default()
+        },
+        BackgroundColor(accent),
+      ));
+    });
+}
+
 fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
   parent
     .spawn(Node {
@@ -683,7 +732,7 @@ fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
       for (index, item) in status_resource_items().into_iter().enumerate() {
         if index > 0 {
           strip.spawn((
-            Text::new("//"),
+            Text::new(INLINE_SEPARATOR.trim()),
             TextFont {
               font_size: FontSize::Px(STATUS_SEPARATOR_FONT_SIZE),
               ..default()
@@ -1852,6 +1901,7 @@ fn update_text(
     (&ResourceCountText, &mut Text),
     (Without<HudTitleText>, Without<HudValueText>),
   >,
+  mut status_battery_fills: Query<&mut Node, With<StatusBatteryFill>>,
 ) {
   if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
@@ -1880,10 +1930,14 @@ fn update_text(
 
   let totals = snapshot_inventory_totals(&host.snapshot);
   let (resources, materials) = split_stockpile_totals(host.game.content(), totals);
-  let power = host
-    .snapshot
-    .power
-    .as_ref()
+  let power_snapshot = host.snapshot.power.as_ref();
+  let charge_percent = power_snapshot
+    .map(|power| power_charge_percent(power.energy, power.capacity))
+    .unwrap_or(0);
+  for mut fill in &mut status_battery_fills {
+    fill.width = percent(charge_percent as f32);
+  }
+  let power = power_snapshot
     .map(|power| format_power_status(power.energy, power.capacity))
     .unwrap_or_else(|| "off-grid".into());
   for mut text in &mut hud_title {
@@ -2008,7 +2062,7 @@ fn focused_status(snapshot: &TickSnapshot, position: GridPosition) -> String {
     .nodes
     .iter()
     .filter(|node| node.position == position)
-    .map(|node| node_label_value(snapshot, node.id).replace('\n', " | "))
+    .map(|node| node_label_value(snapshot, node.id).replace('\n', INLINE_SEPARATOR))
     .collect::<Vec<_>>();
   details.extend(
     snapshot
@@ -2024,7 +2078,7 @@ fn focused_status(snapshot: &TickSnapshot, position: GridPosition) -> String {
       "inspect: empty".into()
     }
   } else {
-    format!("inspect: {}", details.join(" || "))
+    format!("inspect: {}", details.join(INLINE_SEPARATOR))
   }
 }
 
@@ -2152,12 +2206,19 @@ fn power_fraction(energy: u32, capacity: u32) -> f32 {
 }
 
 fn format_power_status(energy: u32, capacity: u32) -> String {
-  let percent = if capacity == 0 {
+  let percent = power_charge_percent(energy, capacity);
+  format!(
+    "{percent}%{INLINE_SEPARATOR}{}",
+    format_compact_energy(energy)
+  )
+}
+
+fn power_charge_percent(energy: u32, capacity: u32) -> u32 {
+  if capacity == 0 {
     0
   } else {
-    ((u64::from(energy) * 100 + u64::from(capacity) / 2) / u64::from(capacity)).min(100)
-  };
-  format!("{percent}%  ·  {}", format_compact_energy(energy))
+    ((u64::from(energy) * 100 + u64::from(capacity) / 2) / u64::from(capacity)).min(100) as u32
+  }
 }
 
 fn format_compact_energy(value: u32) -> String {
@@ -2620,7 +2681,7 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
 
 fn hauler_label_value(hauler: &HaulerSnapshot) -> String {
   format!(
-    "hauler-{} | {} | {}",
+    "hauler-{}{INLINE_SEPARATOR}{}{INLINE_SEPARATOR}{}",
     hauler.id,
     dispatch_text(&hauler.dispatch),
     format_items(&hauler.cargo.items)
@@ -2635,7 +2696,7 @@ fn format_items(items: &BTreeMap<String, u32>) -> String {
     .iter()
     .map(|(item, quantity)| format!("{item}={quantity}"))
     .collect::<Vec<_>>()
-    .join(", ")
+    .join(INLINE_SEPARATOR)
 }
 
 fn dispatch_text(state: &DispatchReceiverState) -> String {
@@ -2811,12 +2872,12 @@ mod tests {
   #[test]
   fn status_bar_contains_only_resources_materials_and_power() {
     assert_eq!(
-      ["RESOURCES", "MATERIALS", "🔋"],
-      status_metrics().map(|(label, _, _)| label)
+      [HudField::Resources, HudField::Materials, HudField::Power],
+      status_metrics().map(|(field, _)| field)
     );
     assert_eq!(
-      [HudField::Resources, HudField::Materials, HudField::Power],
-      status_metrics().map(|(_, field, _)| field)
+      [Some("RESOURCES"), Some("MATERIALS"), None],
+      status_metrics().map(|(field, _)| status_label(field))
     );
 
     let row = status_metric_node(false);
@@ -2830,7 +2891,7 @@ mod tests {
     assert_eq!(15.75, STATUS_VALUE_FONT_SIZE);
     assert_eq!(13.5, STATUS_SEPARATOR_FONT_SIZE);
     assert_eq!(96.0, STATUS_LABEL_WIDTH);
-    assert_eq!(24.0, STATUS_POWER_LABEL_WIDTH);
+    assert_eq!(28.0, STATUS_POWER_LABEL_WIDTH);
   }
 
   #[test]
@@ -2843,8 +2904,10 @@ mod tests {
     assert_eq!("1.0M", format_compact_energy(999_999));
     assert_eq!("4.3B", format_compact_energy(u32::MAX));
 
-    assert_eq!("76%  ·  1.5K", format_power_status(1_512, 2_000));
-    assert_eq!("0%  ·  0", format_power_status(0, 0));
+    assert_eq!(76, power_charge_percent(1_512, 2_000));
+    assert_eq!(100, power_charge_percent(3_000, 2_000));
+    assert_eq!("76% // 1.5K", format_power_status(1_512, 2_000));
+    assert_eq!("0% // 0", format_power_status(0, 0));
   }
 
   #[test]
@@ -2872,6 +2935,10 @@ mod tests {
     );
     assert_eq!(12, resource_stockpile_count(&resources, IRON_ORE));
     assert_eq!(0, resource_stockpile_count(&resources, COPPER_ORE));
+    assert_eq!(
+      "iron_bars=5 // storage_warehouse=1",
+      format_items(&materials)
+    );
   }
 
   #[test]
