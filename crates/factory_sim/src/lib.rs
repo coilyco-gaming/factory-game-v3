@@ -17,7 +17,9 @@ pub use dispatch::{
 };
 pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
-pub use power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
+pub use power::{
+  Battery, BatteryOwner, GeneratorSnapshot, PowerGenerator, PowerGrid, PowerSnapshot,
+};
 pub use production::{
   CraftSnapshot, FactoryProduction, ProductionBlockReason, RecipeRuntime,
 };
@@ -84,7 +86,11 @@ impl GameState {
     }
     if scenario.sources.len() != scenario.layout.source_positions.len()
       || scenario.factories.len() != scenario.layout.factory_positions.len()
-      || scenario.power.is_some() != scenario.layout.power_plant_position.is_some()
+      || scenario
+        .power
+        .as_ref()
+        .map_or(0, |power| power.generators.len())
+        != scenario.layout.generator_positions.len()
     {
       return Err(SimulationError::ScenarioLayoutMismatch(scenario_id));
     }
@@ -153,7 +159,7 @@ impl GameState {
     let power = scenario
       .power
       .clone()
-      .map(|spec| PowerPlant::new(&content, spec, Inventory::new(64, 64)));
+      .map(|spec| PowerGrid::new(&content, spec));
     let topology = Topology::from_scenario(&scenario);
     let mut batteries = std::collections::BTreeMap::new();
     if power.is_some() {
@@ -169,13 +175,14 @@ impl GameState {
         let owner = BatteryOwner::Hauler(hauler.id);
         batteries.insert(owner, Battery::new(owner, 0, 250));
       }
-      let owner = BatteryOwner::Node(NodeId::PowerPlant);
-      let capacity = power
+      for generator in &power
         .as_ref()
-        .expect("powered scenario has a power plant")
-        .spec
-        .grid_capacity;
-      batteries.insert(owner, Battery::new(owner, 0, capacity));
+        .expect("powered scenario has a grid")
+        .generators
+      {
+        let owner = BatteryOwner::Node(generator.node);
+        batteries.insert(owner, Battery::new(owner, 0, generator.spec.grid_capacity));
+      }
     }
 
     Ok(Self {
@@ -188,7 +195,7 @@ impl GameState {
         power,
         batteries,
         power_lines: std::collections::BTreeSet::new(),
-        power_lines_built: false,
+        linked_generators: std::collections::BTreeSet::new(),
         topology,
         queued_mutations: Vec::new(),
         scenario,
@@ -262,18 +269,22 @@ impl GameState {
   }
 
   fn refresh_dispatch_intents(&mut self) {
-    let power_fuel = self.world.power.as_ref().map(|power| power.spec.fuel_item);
     for source in &mut self.world.sources {
-      let destination = if Some(source.item) == power_fuel {
-        NodeId::PowerPlant
-      } else {
+      let generator = self.world.power.as_ref().and_then(|power| {
+        power
+          .generators
+          .iter()
+          .find(|generator| generator.spec.fuel_item == Some(source.item))
+          .map(|generator| generator.node)
+      });
+      let destination = generator.unwrap_or_else(|| {
         self
           .world
           .factories
           .iter()
           .find(|factory| factory.production.recipe.inputs.contains_key(&source.item))
           .map_or(NodeId::Factory(0), |factory| factory.node)
-      };
+      });
       source.refresh_dispatch(destination);
     }
     for factory in &mut self.world.factories {
@@ -342,8 +353,10 @@ impl GameState {
     }
     if let Some(power) = &mut self.world.power {
       power.refresh_dispatch();
-      for intent in &mut power.dispatch.intents {
-        intent.priority = self.dispatch_policy.priority(intent.to, intent.item);
+      for generator in &mut power.generators {
+        for intent in &mut generator.dispatch.intents {
+          intent.priority = self.dispatch_policy.priority(intent.to, intent.item);
+        }
       }
     }
   }
@@ -374,14 +387,16 @@ impl GameState {
       .collect();
     let mut demands = demands;
     if let Some(power) = &self.world.power {
-      demands.extend(power.dispatch.intents.iter().map(|intent| {
-        (
-          intent.priority,
-          intent.item,
-          NodeId::PowerPlant,
-          power.spec.fuel_buffer,
-          power.fuel.count(intent.item),
-        )
+      demands.extend(power.generators.iter().flat_map(|generator| {
+        generator.dispatch.intents.iter().map(|intent| {
+          (
+            intent.priority,
+            intent.item,
+            generator.node,
+            generator.spec.fuel_buffer,
+            generator.fuel.count(intent.item),
+          )
+        })
       }));
     }
     demands.sort_by_key(|(priority, item, destination, _, _)| {
@@ -624,7 +639,7 @@ impl GameState {
           )
         }
         NodeId::Road
-        | NodeId::PowerPlant
+        | NodeId::Generator(_)
         | NodeId::BuildSite(_)
         | NodeId::Structure(_)
         | NodeId::Transit(_) => 0,
@@ -669,13 +684,16 @@ impl GameState {
             carried,
           )
         }
-        NodeId::PowerPlant => {
+        NodeId::Generator(generator_index) => {
           let Some(power) = &mut self.world.power else {
+            continue;
+          };
+          let Some(generator) = power.generators.get_mut(usize::from(generator_index)) else {
             continue;
           };
           self.world.haulers[hauler_index].cargo.transfer_up_to(
             &self.content,
-            &mut power.fuel,
+            &mut generator.fuel,
             assignment.item,
             carried,
           )
@@ -1004,13 +1022,7 @@ impl GameState {
     let Some(power) = &mut self.world.power else {
       return;
     };
-    let owner = BatteryOwner::Node(NodeId::PowerPlant);
-    let battery = self
-      .world
-      .batteries
-      .get_mut(&owner)
-      .expect("powered scenario has a plant battery");
-    let (burned, generated) = power.generate(battery, events);
+    let (burned, generated) = power.generate(&mut self.world.batteries, events);
     self.metrics.fuel_burned += burned;
     self.metrics.energy_generated += generated;
     self.construct_power_lines(events);
@@ -1018,68 +1030,78 @@ impl GameState {
   }
 
   fn construct_power_lines(&mut self, events: &mut Vec<String>) {
-    if self.world.power_lines_built {
-      return;
-    }
-    let plant = self.world.topology.position(NodeId::PowerPlant);
-    let target = self
+    let generators = self
       .world
-      .batteries
-      .keys()
-      .filter_map(|owner| match owner {
-        BatteryOwner::Node(node) if *node != NodeId::PowerPlant => {
-          Some((*owner, self.world.topology.position(*node)))
-        }
-        BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
-      })
-      .min_by_key(|(owner, position)| {
-        (
-          plant.x.abs_diff(position.x).pow(2) + plant.y.abs_diff(position.y).pow(2),
-          *owner,
-        )
-      });
-    let Some((_, target)) = target else {
-      events.push("power line no battery target found".into());
-      if let Some(power) = &mut self.world.power {
+      .power
+      .as_ref()
+      .map(|power| {
         power
-          .alerts
-          .record(self.world.tick, "no power source found");
+          .generators
+          .iter()
+          .map(|generator| generator.node)
+          .collect::<Vec<_>>()
+      })
+      .unwrap_or_default();
+    for generator in generators {
+      if self.world.linked_generators.contains(&generator) {
+        continue;
       }
-      return;
-    };
-
-    let mut current = plant;
-    let mut built = Vec::new();
-    while !adjacent(current, target) {
-      current = GridPosition {
-        x: current.x + (target.x - current.x).signum(),
-        y: current.y + (target.y - current.y).signum(),
+      let origin = self.world.topology.position(generator);
+      let target = self
+        .world
+        .batteries
+        .keys()
+        .filter_map(|owner| match owner {
+          BatteryOwner::Node(node) if *node != generator => {
+            Some((*owner, self.world.topology.position(*node)))
+          }
+          BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
+        })
+        .min_by_key(|(owner, position)| {
+          (
+            origin.x.abs_diff(position.x).pow(2) + origin.y.abs_diff(position.y).pow(2),
+            *owner,
+          )
+        });
+      let Some((_, target)) = target else {
+        events.push(format!("power line {generator} no battery target found"));
+        self.record_node_alert(generator, "no power source found");
+        continue;
       };
-      if current == target
-        || current.x < 0
-        || current.y < 0
-        || current.x >= self.world.topology.width
-        || current.y >= self.world.topology.height
-      {
-        break;
+
+      let mut current = origin;
+      let mut built = Vec::new();
+      while !adjacent(current, target) {
+        current = GridPosition {
+          x: current.x + (target.x - current.x).signum(),
+          y: current.y + (target.y - current.y).signum(),
+        };
+        if current == target
+          || current.x < 0
+          || current.y < 0
+          || current.x >= self.world.topology.width
+          || current.y >= self.world.topology.height
+        {
+          break;
+        }
+        if self.world.power_lines.insert(current) {
+          let owner = BatteryOwner::PowerLine(current);
+          self
+            .world
+            .batteries
+            .insert(owner, Battery::new(owner, 0, 1_000));
+          built.push(current);
+        }
       }
-      if self.world.power_lines.insert(current) {
-        let owner = BatteryOwner::PowerLine(current);
-        self
-          .world
-          .batteries
-          .insert(owner, Battery::new(owner, 0, 1_000));
-        built.push(current);
-      }
+      self.world.linked_generators.insert(generator);
+      events.push(format!(
+        "power line {generator} built {} cells {:?} toward {},{}",
+        built.len(),
+        built,
+        target.x,
+        target.y
+      ));
     }
-    self.world.power_lines_built = true;
-    events.push(format!(
-      "power line built {} cells {:?} toward {},{}",
-      built.len(),
-      built,
-      target.x,
-      target.y
-    ));
   }
 
   fn balance_batteries(&mut self, events: &mut Vec<String>) {
@@ -1234,9 +1256,11 @@ impl GameState {
           factory.alerts.record(self.world.tick, message);
         }
       }
-      NodeId::PowerPlant => {
+      NodeId::Generator(index) => {
         if let Some(power) = &mut self.world.power {
-          power.alerts.record(self.world.tick, message);
+          if let Some(generator) = power.generators.get_mut(usize::from(index)) {
+            generator.alerts.record(self.world.tick, message);
+          }
         }
       }
       NodeId::Structure(index) => {
@@ -1436,11 +1460,11 @@ pub fn sample_game_state() -> GameState {
 mod tests {
   use super::*;
   use factory_content::{
-    ContentDatabase, GridPoint, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO, COAL,
-    COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, FRAMES,
-    IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS,
-    PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO,
-    PRODUCTION_CHAIN_SCENARIO, STONE,
+    ContentDatabase, GeneratorSpec, GridPoint, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO,
+    COAL, COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO,
+    FRAMES, HYBRID_GRID_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO,
+    IRON_ORE, MINING_DRILL, MOTORS, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
+    POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
   };
 
   #[test]
@@ -2165,7 +2189,7 @@ mod tests {
       snapshot
         .events
         .iter()
-        .any(|event| event.contains("dispatch deliver") && event.contains("power-plant"))
+        .any(|event| event.contains("dispatch deliver") && event.contains("generator-0"))
     }));
     assert!(snapshots.iter().all(|snapshot| {
       snapshot
@@ -2173,6 +2197,142 @@ mod tests {
         .as_ref()
         .is_some_and(|power| power.energy <= power.capacity)
     }));
+  }
+
+  #[test]
+  fn fuel_free_generation_requires_no_inventory_or_dispatch() {
+    let content = ContentDatabase::starter();
+    let spec = GeneratorSpec {
+      fuel_item: None,
+      initial_fuel: 0,
+      fuel_buffer: 0,
+      burn_rate: 0,
+      gain_rate: 10,
+      grid_capacity: 100,
+    };
+    let node = NodeId::Generator(0);
+    let mut generator =
+      PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
+    let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
+    let mut events = Vec::new();
+
+    generator.refresh_dispatch();
+    assert_eq!((0, 10), generator.generate(&mut battery, &mut events));
+    assert_eq!(10, battery.energy);
+    assert!(generator.fuel.is_empty());
+    assert!(generator.dispatch.intents.is_empty());
+  }
+
+  #[test]
+  fn zero_output_generation_does_not_consume_or_request_fuel() {
+    let content = ContentDatabase::starter();
+    let spec = GeneratorSpec {
+      fuel_item: Some(COAL),
+      initial_fuel: 4,
+      fuel_buffer: 8,
+      burn_rate: 2,
+      gain_rate: 0,
+      grid_capacity: 100,
+    };
+    let node = NodeId::Generator(0);
+    let mut generator =
+      PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
+    let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
+
+    generator.refresh_dispatch();
+    assert_eq!((0, 0), generator.generate(&mut battery, &mut Vec::new()));
+    assert_eq!(4, generator.fuel.count(COAL));
+    assert!(generator.dispatch.intents.is_empty());
+  }
+
+  #[test]
+  fn a_full_generator_battery_does_not_consume_fuel() {
+    let content = ContentDatabase::starter();
+    let spec = GeneratorSpec {
+      fuel_item: Some(COAL),
+      initial_fuel: 4,
+      fuel_buffer: 4,
+      burn_rate: 2,
+      gain_rate: 200,
+      grid_capacity: 100,
+    };
+    let node = NodeId::Generator(0);
+    let mut generator =
+      PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
+    let mut battery = Battery::new(BatteryOwner::Node(node), 100, 100);
+
+    assert_eq!((0, 0), generator.generate(&mut battery, &mut Vec::new()));
+    assert_eq!(4, generator.fuel.count(COAL));
+    assert_eq!(100, battery.energy);
+  }
+
+  #[test]
+  fn generator_output_clamps_to_remaining_battery_capacity() {
+    let content = ContentDatabase::starter();
+    let spec = GeneratorSpec {
+      fuel_item: None,
+      initial_fuel: 0,
+      fuel_buffer: 0,
+      burn_rate: 0,
+      gain_rate: 200,
+      grid_capacity: 100,
+    };
+    let node = NodeId::Generator(0);
+    let mut generator =
+      PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
+    let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
+
+    assert_eq!((0, 100), generator.generate(&mut battery, &mut Vec::new()));
+    assert_eq!(100, battery.energy);
+  }
+
+  #[test]
+  fn hybrid_grid_sums_fueled_and_fuel_free_output() {
+    let mut state = GameState::new(ContentDatabase::starter(), HYBRID_GRID_SCENARIO).unwrap();
+    let snapshot = state.step();
+
+    assert_eq!(120, state.metrics().energy_generated);
+    assert_eq!(2, snapshot.power.as_ref().unwrap().generators.len());
+    assert_eq!(Some(COAL), snapshot.power.as_ref().unwrap().generators[0].fuel_item);
+    assert_eq!(None, snapshot.power.as_ref().unwrap().generators[1].fuel_item);
+    assert!(snapshot.events.iter().any(|event| {
+      event.starts_with("power generate generator-0 burned 2 generated 80")
+    }));
+    assert!(snapshot.events.iter().any(|event| {
+      event.starts_with("power generate generator-1 burned 0 generated 40")
+    }));
+  }
+
+  #[test]
+  fn two_generators_balance_combined_output_across_four_equal_batteries() {
+    let mut state = GameState::new(ContentDatabase::starter(), HYBRID_GRID_SCENARIO).unwrap();
+    let power = state.world.power.as_mut().unwrap();
+    for generator in &mut power.generators {
+      generator.spec.fuel_item = None;
+      generator.spec.burn_rate = 0;
+      generator.spec.gain_rate = 10;
+    }
+    state.world.batteries.clear();
+    for owner in [
+      BatteryOwner::Node(NodeId::Generator(0)),
+      BatteryOwner::Node(NodeId::Generator(1)),
+      BatteryOwner::Node(NodeId::Source(0)),
+      BatteryOwner::Node(NodeId::Source(1)),
+    ] {
+      state
+        .world
+        .batteries
+        .insert(owner, Battery::new(owner, 0, 100));
+    }
+
+    state.advance_power(&mut Vec::new());
+
+    assert_eq!(20, state.metrics().energy_generated);
+    assert!(state
+      .world
+      .batteries
+      .values()
+      .all(|battery| battery.energy == 5));
   }
 
   #[test]
@@ -2184,7 +2344,7 @@ mod tests {
       .power
       .as_mut()
       .expect("scenario has a power plant");
-    power.fuel.remove_up_to(COAL, u32::MAX);
+    power.generators[0].fuel.remove_up_to(COAL, u32::MAX);
 
     let snapshot = state.step();
     let metrics = state.metrics();
@@ -2284,9 +2444,10 @@ mod tests {
         .map(|battery| battery.energy)
         .sum::<u32>()
     );
-    assert!(power.batteries.iter().any(
-      |battery| battery.owner == BatteryOwner::Node(NodeId::PowerPlant)
-    ));
+    assert!(power
+      .batteries
+      .iter()
+      .any(|battery| battery.owner == BatteryOwner::Node(NodeId::Generator(0))));
     assert!(power
       .batteries
       .iter()
@@ -2309,7 +2470,7 @@ mod tests {
     assert!(first
       .events
       .iter()
-      .any(|event| event.starts_with("power line built 3 cells")));
+      .any(|event| event.starts_with("power line generator-0 built 3 cells")));
     for position in &first.topology.power_lines {
       assert!(first.power.as_ref().unwrap().batteries.iter().any(
         |battery| battery.owner == BatteryOwner::PowerLine(*position)
@@ -2333,7 +2494,7 @@ mod tests {
     assert!(second
       .events
       .iter()
-      .all(|event| !event.starts_with("power line built")));
+      .all(|event| !event.starts_with("power line generator")));
   }
 
   #[test]

@@ -67,6 +67,7 @@ pub const PRODUCTION_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("production-ch
 pub const DISTRIBUTED_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("distributed-chain");
 pub const POWER_LINE_SCENARIO: ScenarioId = ScenarioId::new("power-line-demo");
 pub const BUILDING_DEPLOYMENT_SCENARIO: ScenarioId = ScenarioId::new("building-deployment");
+pub const HYBRID_GRID_SCENARIO: ScenarioId = ScenarioId::new("hybrid-grid");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -145,12 +146,12 @@ pub struct LayoutSpec {
   pub source_positions: Vec<GridPoint>,
   pub road_position: GridPoint,
   pub factory_positions: Vec<GridPoint>,
-  pub power_plant_position: Option<GridPoint>,
+  pub generator_positions: Vec<GridPoint>,
   pub obstacles: Vec<GridPoint>,
 }
 
 impl LayoutSpec {
-  pub fn linear(source_count: u8, include_power_plant: bool) -> Self {
+  pub fn linear(source_count: u8, include_generator: bool) -> Self {
     Self {
       width: 3,
       height: i32::from(source_count).max(2),
@@ -162,7 +163,10 @@ impl LayoutSpec {
         .collect(),
       road_position: GridPoint { x: 1, y: 0 },
       factory_positions: vec![GridPoint { x: 2, y: 0 }],
-      power_plant_position: include_power_plant.then_some(GridPoint { x: 2, y: 1 }),
+      generator_positions: include_generator
+        .then_some(GridPoint { x: 2, y: 1 })
+        .into_iter()
+        .collect(),
       obstacles: Vec::new(),
     }
   }
@@ -194,15 +198,20 @@ impl FactorySpec {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PowerSpec {
-  pub fuel_item: ItemId,
+  pub generators: Vec<GeneratorSpec>,
+  pub mining_cost: u32,
+  pub dispatch_cost: u32,
+  pub production_cost: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct GeneratorSpec {
+  pub fuel_item: Option<ItemId>,
   pub initial_fuel: u32,
   pub fuel_buffer: u32,
   pub burn_rate: u32,
   pub gain_rate: u32,
   pub grid_capacity: u32,
-  pub mining_cost: u32,
-  pub dispatch_cost: u32,
-  pub production_cost: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -503,12 +512,14 @@ impl ContentDatabase {
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
         power: Some(PowerSpec {
-          fuel_item: COAL,
-          initial_fuel: 8,
-          fuel_buffer: 20,
-          burn_rate: 4,
-          gain_rate: 160,
-          grid_capacity: 10_000,
+          generators: vec![GeneratorSpec {
+            fuel_item: Some(COAL),
+            initial_fuel: 8,
+            fuel_buffer: 20,
+            burn_rate: 4,
+            gain_rate: 160,
+            grid_capacity: 10_000,
+          }],
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
@@ -564,7 +575,7 @@ impl ContentDatabase {
           source_positions: vec![GridPoint { x: 0, y: 1 }],
           road_position: GridPoint { x: 1, y: 0 },
           factory_positions: vec![GridPoint { x: 3, y: 1 }],
-          power_plant_position: None,
+          generator_positions: Vec::new(),
           obstacles: vec![GridPoint { x: 1, y: 1 }],
         },
       },
@@ -613,7 +624,7 @@ impl ContentDatabase {
             GridPoint { x: 2, y: 2 },
             GridPoint { x: 3, y: 1 },
           ],
-          power_plant_position: None,
+          generator_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -645,7 +656,7 @@ impl ContentDatabase {
           source_positions: vec![GridPoint { x: 0, y: 1 }],
           road_position: GridPoint { x: 1, y: 1 },
           factory_positions: vec![GridPoint { x: 2, y: 0 }, GridPoint { x: 4, y: 1 }],
-          power_plant_position: None,
+          generator_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -668,12 +679,14 @@ impl ContentDatabase {
         hauler_weight_capacity: 32,
         hauler_volume_capacity: 32,
         power: Some(PowerSpec {
-          fuel_item: COAL,
-          initial_fuel: 40,
-          fuel_buffer: 40,
-          burn_rate: 4,
-          gain_rate: 160,
-          grid_capacity: 10_000,
+          generators: vec![GeneratorSpec {
+            fuel_item: Some(COAL),
+            initial_fuel: 40,
+            fuel_buffer: 40,
+            burn_rate: 4,
+            gain_rate: 160,
+            grid_capacity: 10_000,
+          }],
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
@@ -684,7 +697,7 @@ impl ContentDatabase {
           source_positions: vec![GridPoint { x: 4, y: 2 }],
           road_position: GridPoint { x: 4, y: 0 },
           factory_positions: vec![GridPoint { x: 4, y: 1 }],
-          power_plant_position: Some(GridPoint { x: 0, y: 1 }),
+          generator_positions: vec![GridPoint { x: 0, y: 1 }],
           obstacles: Vec::new(),
         },
       },
@@ -714,7 +727,66 @@ impl ContentDatabase {
           source_positions: Vec::new(),
           road_position: GridPoint { x: 1, y: 1 },
           factory_positions: vec![GridPoint { x: 0, y: 1 }],
-          power_plant_position: None,
+          generator_positions: Vec::new(),
+          obstacles: Vec::new(),
+        },
+      },
+    );
+    scenarios.insert(
+      HYBRID_GRID_SCENARIO,
+      ScenarioDefinition {
+        id: HYBRID_GRID_SCENARIO,
+        name: "Hybrid Generator Grid".into(),
+        sources: vec![
+          SourceSpec {
+            item: IRON_ORE,
+            deposit: 30,
+            mining_speed: 3,
+            requires_deployment: false,
+          },
+          SourceSpec {
+            item: COAL,
+            deposit: 18,
+            mining_speed: 2,
+            requires_deployment: false,
+          },
+        ],
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
+        build_sites: Vec::new(),
+        hauler_count: 2,
+        hauler_capacity: 3,
+        hauler_weight_capacity: 32,
+        hauler_volume_capacity: 32,
+        power: Some(PowerSpec {
+          generators: vec![
+            GeneratorSpec {
+              fuel_item: Some(COAL),
+              initial_fuel: 4,
+              fuel_buffer: 20,
+              burn_rate: 2,
+              gain_rate: 80,
+              grid_capacity: 1_000,
+            },
+            GeneratorSpec {
+              fuel_item: None,
+              initial_fuel: 0,
+              fuel_buffer: 0,
+              burn_rate: 0,
+              gain_rate: 40,
+              grid_capacity: 1_000,
+            },
+          ],
+          mining_cost: 1,
+          dispatch_cost: 1,
+          production_cost: 2,
+        }),
+        layout: LayoutSpec {
+          width: 4,
+          height: 3,
+          source_positions: vec![GridPoint { x: 0, y: 0 }, GridPoint { x: 0, y: 2 }],
+          road_position: GridPoint { x: 1, y: 0 },
+          factory_positions: vec![GridPoint { x: 3, y: 0 }],
+          generator_positions: vec![GridPoint { x: 1, y: 1 }, GridPoint { x: 2, y: 1 }],
           obstacles: Vec::new(),
         },
       },
@@ -864,5 +936,22 @@ mod tests {
         mining_drill.craft_time
       )
     );
+  }
+
+  #[test]
+  fn hybrid_grid_pairs_fueled_and_fuel_free_generators() {
+    let content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get(&HYBRID_GRID_SCENARIO)
+      .expect("hybrid scenario exists");
+    let power = scenario.power.as_ref().expect("hybrid scenario is powered");
+
+    assert_eq!(2, power.generators.len());
+    assert_eq!(2, scenario.layout.generator_positions.len());
+    assert_eq!(Some(COAL), power.generators[0].fuel_item);
+    assert_eq!(None, power.generators[1].fuel_item);
+    assert_eq!(0, power.generators[1].burn_rate);
+    assert!(power.generators[1].gain_rate > 0);
   }
 }

@@ -5,12 +5,12 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 ## Crates
 
 - `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, build sites, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining, adjacent insertion and retrieval, indexed factories, typed multi-hauler dispatch, queued deployment, construction and movement, occupied-grid A-star pathfinding, transit arbitration, per-object batteries and alerts, automatic power lines, fuel-burning power, and tick stepping.
+- `factory_sim` - deterministic inventory, mining, insertion and retrieval, indexed factories, typed multi-hauler dispatch, queued deployment, construction and movement, occupied-grid A-star pathfinding, transit arbitration, per-object batteries and alerts, automatic power lines, multi-generator power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
 
-The world generalizes to N sources, N factories, and N haulers:
+The world generalizes to N sources, factories, haulers, and generators:
 
 - each source node has its own extractor: a finite deposit mined into its stockpile at a fixed per-tick speed until it runs dry, or a manifest item (`create_from_nothing`) created each tick, capacity-bounded
 - haulers have fixed quantity, weight, and volume limits plus explicit collect, deliver, retrieve, or deploy assignment state, and can be assigned from any position
@@ -33,7 +33,8 @@ The world generalizes to N sources, N factories, and N haulers:
   [dispatch-policy.md](dispatch-policy.md)
 - deterministic mine, intent-refresh, assign, collect, deliver, craft-progress, and move steps
 - powered scenarios use the node-owned battery and automatic-line model in
-  [factory-power.md](factory-power.md)
+  [factory-power.md](factory-power.md), including fueled, fuel-free, and mixed
+  generation
 - deployment scenarios start with a spawnable drill in factory inventory,
   retrieve it into a capable hauler, carry it to a dormant source, and queue
   source activation for the deterministic world-mutation boundary
@@ -43,7 +44,7 @@ The world generalizes to N sources, N factories, and N haulers:
 - finite ore and its empty drill queue ordered deletion after the last stockpile
   is hauled, then release the source's occupied grid cell
 
-The ten layouts and their proof goals are listed in
+The eleven layouts and their proof goals are listed in
 [factory-scenarios.md](factory-scenarios.md).
 
 ## Run

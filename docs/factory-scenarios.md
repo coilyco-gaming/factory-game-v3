@@ -1,6 +1,6 @@
 # Factory simulation scenarios
 
-The deterministic showcase covers ten layouts:
+The deterministic showcase covers eleven layouts:
 
 - **Iron bars** - one hauler supplies one foundry from a finite iron deposit.
 - **Iron bars fleet** - three haulers arbitrate the same bounded demand.
@@ -20,6 +20,8 @@ The deterministic showcase covers ten layouts:
 - **Warehouse construction** - a factory advertises spawnable warehouse
   inventory, a hauler retrieves and deploys it, and the build site becomes an
   occupied structure.
+- **Hybrid generator grid** - fueled and fuel-free generators produce together,
+  build independent links, and balance their combined output across the grid.
 
 Every scenario is available through the headless CLI and the Bevy/Wasm control
 deck. The viewer cycles through them automatically after quiet completion.

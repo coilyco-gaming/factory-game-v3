@@ -27,8 +27,10 @@ reopened when the final Unity tests exposed narrower component contracts.
 * **Battery** - working - Rust owns node and hauler batteries, minimum capacity,
   clamped charge, overdraw rejection, capacity-weighted adjacent balancing,
   owner-specific system costs, and starvation.
-* **Generation** - parity gap - Rust proves one fuel-burning plant. The final
-  Unity tests also prove multiple generators and fuel-free generation.
+* **Generation** - working - Rust owns fueled and fuel-free generators,
+  per-generator inventory, dispatch, batteries, links, and alerts, generation
+  before balancing, overcharge clamping without wasted fuel, and combined
+  output from multiple generators.
 * **Automatic power lines** - working - Rust owns one-time nearest-target
   selection, greedy eight-neighbor construction, pass-through line cells,
   1,000-capacity line batteries, snapshots, and viewer projection.
@@ -48,6 +50,7 @@ reopened when the final Unity tests exposed narrower component contracts.
   and generator histories retain ten messages per object, refresh repeats by
   exact message, serialize in snapshots, and stay separate from tick events.
 
-Issues #45 and #46 restore the overlooked production and alert contracts.
-Generalized generation is the remaining audited implementation queue. The
-repository retains the exact Unity source evidence in Git history.
+Issues #45, #46, and #47 restore the overlooked production, alert, and
+generation contracts. A final comparison against every retained Unity
+component test found no remaining gameplay contract gap. The exact Unity
+source evidence remains in Git history.

@@ -1,16 +1,16 @@
 # Factory power model
 
-Powered scenarios route fuel to a generator as ordinary logistics demand.
-Generation charges the plant battery before connected batteries rebalance by
-capacity. Sources, factories, haulers, the plant, and power-line cells own
-separate clamped batteries. Mining, dispatch, insertion, and production drain
-only the battery owned by that system.
+Powered scenarios define any number of generators. Fueled generators advertise
+ordinary logistics demand, while fuel-free generators need no inventory or
+dispatch. Every generator charges its own clamped battery before connected
+batteries rebalance by capacity. A full battery consumes no fuel, and an
+inactive zero-output generator neither burns nor requests it.
 
-A generator performs one deterministic greedy eight-neighbor route toward the
-nearest disconnected static battery. Each missing route cell becomes a
-pass-through power line with a 1,000-unit battery. The new cells participate in
-the same adjacent capacity-weighted balance before powered work advances.
+Each generator performs one deterministic greedy eight-neighbor route toward
+the nearest disconnected static battery. Missing route cells become
+pass-through power lines with 1,000-unit batteries. Sources, factories,
+haulers, generators, and line cells then share the same adjacent
+capacity-weighted balance before powered work advances.
 
-Snapshots expose every battery and generated line cell. The viewer keeps a
-derived total-energy gauge and prints local node charge without taking
-simulation authority.
+Snapshots expose each generator, battery, and generated line cell. The viewer
+derives total and local charge without taking simulation authority.

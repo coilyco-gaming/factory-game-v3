@@ -21,17 +21,17 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through ten scenarios, including powered ironworks, drill
+The viewer rotates through eleven scenarios, including powered ironworks, drill
 deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
 production chain. A separated freight line makes haulers carry foundry output
-to a downstream frame factory. Grid-link draws power cells, while build turns a
-typed site into an occupied warehouse. Each scene displays:
+to a frame factory. The hybrid grid pairs fueled and fuel-free generation.
+Grid-link draws power cells, while build occupies a typed site. Each scene displays:
 
-- source, road, factory, build-site, structure, power-plant, and blocked cells
+- source, road, factory, build-site, structure, generator, and blocked cells
 - hauler position, cargo, and dispatch phase
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
 - independent craft progress and output item for every factory
-- coal-plant fuel, total energy, per-node batteries, consumption, and starvation
+- generator mode and fuel, total energy, node batteries, use, and starvation
 - material-flow metrics, per-object alerts, and a bounded rolling activity feed
 - global object and stored-resource totals
 
@@ -40,12 +40,12 @@ authoritative snapshots. Screen-space panels align persistent metrics into
 columns and keep ten one-line events outside the world projection. The host
 retains the same ten events across scenarios. A presentation offset keeps
 labels between those top panels and the compact control deck. No presentation
-depends on retained Unity assets or Git LFS objects. Cursor focus shows the selected object's latest alert in a compact bottom-left overlay.
+depends on Unity assets or Git LFS objects. Cursor focus shows the selected object's latest alert in a compact bottom-left overlay.
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active
 nodes pulse, route dashes show direction, and loaded cargo badges brighten. The
-coal plant reflects fuel and charge state. Frame-time effects never write back
+generators reflect fuel and charge state. Frame-time effects never write back
 into simulation state.
 
 Automatic cycling advances to the next scenario after eight consecutive quiet

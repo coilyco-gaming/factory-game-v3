@@ -1,9 +1,8 @@
 # Unity parity audit
 
-Git history retains the Unity reference. The original migration covered the
-major systems, and a source-level pass against the final Unity tests now tracks
-the remaining narrow contracts in
-[unity-feature-audit.md](unity-feature-audit.md).
+Git history retains the Unity reference. The Rust migration now covers every
+retained gameplay contract found by the final source-level component test audit
+in [unity-feature-audit.md](unity-feature-audit.md).
 
 ## Current parity
 
@@ -40,9 +39,9 @@ the remaining narrow contracts in
 * **Battery and power** - substantial - Rust owns a finite power grid,
   node and hauler batteries, minimum capacity, capacity clamping,
   capacity-weighted adjacent balancing, owner-specific energy consumption,
-  fuel-burning generation, starvation, coal demand, and energy metrics.
-  Generators greedily construct battery-backed lines toward the nearest
-  disconnected battery, and the viewer projects each line cell.
+  fueled and fuel-free generation, multiple generators, starvation, fuel
+  demand, and energy metrics. Generators build battery-backed lines toward the
+  nearest disconnected battery, and the viewer projects each line cell.
 * **World mutation and deployment** - substantial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, deployment at a target, queued movement,
   source activation, general spawnable-item construction at build sites,
@@ -59,5 +58,5 @@ the remaining narrow contracts in
   bounded message-deduplicated per-object alerts, the activity feed, and the
   Bevy projection cover the active Rust systems.
 
-The completed deletion record lives in
-[csharp-decommission.md](csharp-decommission.md).
+The C# component test inventory has no remaining contract gap.
+The deletion record lives in [csharp-decommission.md](csharp-decommission.md).

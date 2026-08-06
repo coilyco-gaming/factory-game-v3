@@ -3,9 +3,9 @@ use bevy::input::mouse::MouseWheel;
 use bevy::sprite::Anchor;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
-  DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO,
-  IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
-  POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
+  DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, HYBRID_GRID_SCENARIO,
+  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
+  POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
@@ -27,7 +27,7 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 10] = [
+const DEMO_SCENARIOS: [ScenarioId; 11] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
@@ -38,6 +38,7 @@ const DEMO_SCENARIOS: [ScenarioId; 10] = [
   DISTRIBUTED_CHAIN_SCENARIO,
   POWER_LINE_SCENARIO,
   BUILDING_DEPLOYMENT_SCENARIO,
+  HYBRID_GRID_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -325,6 +326,7 @@ struct CraftGaugeFill {
 
 #[derive(Component)]
 struct PowerGaugeFill {
+  node: NodeId,
   left: f32,
   max_width: f32,
 }
@@ -651,6 +653,7 @@ fn spawn_control_deck(commands: &mut Commands) {
               (ControlAction::SelectScenario(7), "FREIGHT LINE"),
               (ControlAction::SelectScenario(8), "GRID LINK"),
               (ControlAction::SelectScenario(9), "BUILD"),
+              (ControlAction::SelectScenario(10), "HYBRID"),
             ],
           );
           spawn_control_row(
@@ -752,7 +755,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeId::Source(_) => Vec2::new(124.0, 74.0),
       NodeId::Road => Vec2::new(100.0, 34.0),
       NodeId::Factory(_) => Vec2::new(132.0, 82.0),
-      NodeId::PowerPlant => Vec2::new(132.0, 82.0),
+      NodeId::Generator(_) => Vec2::new(132.0, 82.0),
       NodeId::BuildSite(_) => Vec2::new(124.0, 74.0),
       NodeId::Structure(_) => Vec2::new(132.0, 82.0),
       NodeId::Transit(_) => Vec2::new(28.0, 28.0),
@@ -788,8 +791,8 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
     ));
     if matches!(node.id, NodeId::Factory(_)) {
       spawn_craft_gauge(commands, snapshot, node.id, position);
-    } else if node.id == NodeId::PowerPlant {
-      spawn_power_gauge(commands, snapshot, position);
+    } else if matches!(node.id, NodeId::Generator(_)) {
+      spawn_power_gauge(commands, snapshot, node.id, position);
     }
   }
 
@@ -872,19 +875,28 @@ fn spawn_craft_gauge(
   ));
 }
 
-fn spawn_power_gauge(commands: &mut Commands, snapshot: &TickSnapshot, plant: Vec2) {
-  let Some(power) = &snapshot.power else {
+fn spawn_power_gauge(
+  commands: &mut Commands,
+  snapshot: &TickSnapshot,
+  node: NodeId,
+  generator_position: Vec2,
+) {
+  let Some(generator) = snapshot
+    .power
+    .as_ref()
+    .and_then(|power| power.generators.iter().find(|generator| generator.node == node))
+  else {
     return;
   };
-  let y = plant.y - 28.0;
-  let left = plant.x - POWER_GAUGE_WIDTH / 2.0;
-  let width = POWER_GAUGE_WIDTH * power_fraction(power.energy, power.capacity);
+  let y = generator_position.y - 28.0;
+  let left = generator_position.x - POWER_GAUGE_WIDTH / 2.0;
+  let width = POWER_GAUGE_WIDTH * power_fraction(generator.energy, generator.capacity);
   commands.spawn((
     Sprite::from_color(
       POWER_GAUGE_BACKGROUND,
       Vec2::new(POWER_GAUGE_WIDTH + 4.0, 10.0),
     ),
-    Transform::from_xyz(plant.x, y, 1.5),
+    Transform::from_xyz(generator_position.x, y, 1.5),
     Annotation,
     ProjectionEntity,
   ));
@@ -897,6 +909,7 @@ fn spawn_power_gauge(commands: &mut Commands, snapshot: &TickSnapshot, plant: Ve
       Visibility::Hidden
     },
     PowerGaugeFill {
+      node,
       left,
       max_width: POWER_GAUGE_WIDTH,
     },
@@ -1236,8 +1249,15 @@ fn project_power_gauge(
   let Some(power) = &host.snapshot.power else {
     return;
   };
-  let progress = power_fraction(power.energy, power.capacity);
   for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
+    let Some(generator) = power
+      .generators
+      .iter()
+      .find(|generator| generator.node == gauge.node)
+    else {
+      continue;
+    };
+    let progress = power_fraction(generator.energy, generator.capacity);
     let width = gauge.max_width * progress;
     sprite.custom_size = Some(Vec2::new(width, 6.0));
     transform.translation.x = gauge.left + width / 2.0;
@@ -1566,7 +1586,13 @@ fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
       .iter()
       .find(|factory| factory.node == node)
       .map(|factory| &factory.alerts),
-    NodeId::PowerPlant => snapshot.power.as_ref().map(|power| &power.alerts),
+    NodeId::Generator(_) => snapshot.power.as_ref().and_then(|power| {
+      power
+        .generators
+        .iter()
+        .find(|generator| generator.node == node)
+        .map(|generator| &generator.alerts)
+    }),
     NodeId::Structure(_) => snapshot
       .structures
       .iter()
@@ -1641,7 +1667,12 @@ fn snapshot_inventory_totals(snapshot: &TickSnapshot) -> BTreeMap<String, u32> {
     .map(|source| &source.stockpile.items)
     .chain(snapshot.haulers.iter().map(|hauler| &hauler.cargo.items))
     .chain(snapshot.factories.iter().map(|factory| &factory.inventory.items))
-    .chain(snapshot.power.iter().map(|power| &power.fuel.items))
+    .chain(
+      snapshot
+        .power
+        .iter()
+        .flat_map(|power| power.generators.iter().map(|generator| &generator.fuel.items)),
+    )
   {
     for (item, quantity) in items {
       *totals.entry(item.clone()).or_default() += quantity;
@@ -1748,19 +1779,26 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
           NodeActivity::Idle
         }
       }),
-    NodeId::PowerPlant => snapshot.power.as_ref().map_or(NodeActivity::Idle, |power| {
-      if snapshot
-        .events
-        .iter()
-        .any(|event| event.starts_with("power burn"))
-      {
-        NodeActivity::Powering
-      } else if power.energy > 0 {
-        NodeActivity::Ready
-      } else {
-        NodeActivity::Demanding
-      }
-    }),
+    NodeId::Generator(_) => snapshot
+      .power
+      .as_ref()
+      .and_then(|power| {
+        power
+          .generators
+          .iter()
+          .find(|generator| generator.node == node)
+      })
+      .map_or(NodeActivity::Idle, |generator| {
+        if snapshot.events.iter().any(|event| {
+          event.starts_with(&format!("power generate {} ", generator.node))
+        }) {
+          NodeActivity::Powering
+        } else if generator.energy > 0 {
+          NodeActivity::Ready
+        } else {
+          NodeActivity::Demanding
+        }
+      }),
     NodeId::BuildSite(_) => NodeActivity::Demanding,
     NodeId::Structure(_) => NodeActivity::Ready,
     NodeId::Transit(_) => NodeActivity::Idle,
@@ -1793,9 +1831,9 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::Factory(_), NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
     (NodeId::Factory(_), NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
     (NodeId::Factory(_), _) => NODE_FACTORY_IDLE,
-    (NodeId::PowerPlant, NodeActivity::Powering) => NODE_POWER_ACTIVE,
-    (NodeId::PowerPlant, NodeActivity::Ready) => NODE_POWER_CHARGED,
-    (NodeId::PowerPlant, _) => NODE_POWER_IDLE,
+    (NodeId::Generator(_), NodeActivity::Powering) => NODE_POWER_ACTIVE,
+    (NodeId::Generator(_), NodeActivity::Ready) => NODE_POWER_CHARGED,
+    (NodeId::Generator(_), _) => NODE_POWER_IDLE,
     (NodeId::BuildSite(_), _) => NODE_BUILD_SITE,
     (NodeId::Structure(_), _) => NODE_STRUCTURE,
     (NodeId::Transit(_), _) => NODE_ROAD,
@@ -1925,18 +1963,28 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
         )
       })
       .unwrap_or_else(|| node.to_string()),
-    NodeId::PowerPlant => snapshot
+    NodeId::Generator(_) => snapshot
       .power
       .as_ref()
-      .map(|power| {
+      .and_then(|power| {
+        power
+          .generators
+          .iter()
+          .find(|generator| generator.node == node)
+      })
+      .map(|generator| {
         format!(
-          "coal plant\nfuel: {}\ngrid: {}/{}",
-          format_items(&power.fuel.items),
-          power.energy,
-          power.capacity
+          "{}\nmode: {}\nfuel: {}",
+          generator.node,
+          if generator.fuel_item.is_some() {
+            "fuel"
+          } else {
+            "fuel-free"
+          },
+          format_items(&generator.fuel.items)
         )
       })
-      .unwrap_or_else(|| "coal plant".into()),
+      .unwrap_or_else(|| node.to_string()),
     NodeId::BuildSite(index) => format!("build-site-{index}\nawaiting structure"),
     NodeId::Structure(_) => snapshot
       .structures
@@ -2228,7 +2276,7 @@ mod tests {
       .snapshot
       .events
       .iter()
-      .any(|event| event.starts_with("power line built")));
+      .any(|event| event.starts_with("power line generator-0 built")));
   }
 
   #[test]
@@ -2406,8 +2454,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(BUILDING_DEPLOYMENT_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(HYBRID_GRID_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(10, host.scene_revision);
+    assert_eq!(11, host.scene_revision);
   }
 
   #[test]

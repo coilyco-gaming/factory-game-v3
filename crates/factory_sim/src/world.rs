@@ -1,7 +1,7 @@
 use crate::alerts::AlertHistory;
 use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, DispatchReceiverState};
 use crate::mining::MiningExtractor;
-use crate::power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
+use crate::power::{Battery, BatteryOwner, PowerGrid, PowerSnapshot};
 use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
@@ -14,7 +14,7 @@ pub enum NodeId {
   Source(u8),
   Road,
   Factory(u8),
-  PowerPlant,
+  Generator(u8),
   BuildSite(u8),
   Structure(u8),
   Transit(GridPosition),
@@ -26,7 +26,7 @@ impl fmt::Display for NodeId {
       Self::Source(index) => write!(f, "source-{index}"),
       Self::Road => f.write_str("road"),
       Self::Factory(index) => write!(f, "factory-{index}"),
-      Self::PowerPlant => f.write_str("power-plant"),
+      Self::Generator(index) => write!(f, "generator-{index}"),
       Self::BuildSite(index) => write!(f, "build-site-{index}"),
       Self::Structure(index) => write!(f, "structure-{index}"),
       Self::Transit(position) => write!(f, "transit-{}-{}", position.x, position.y),
@@ -62,8 +62,8 @@ pub struct Topology {
 }
 
 impl Topology {
-  pub fn for_sources(source_count: u8, include_power_plant: bool) -> Self {
-    Self::from_layout(&LayoutSpec::linear(source_count, include_power_plant))
+  pub fn for_sources(source_count: u8, include_generator: bool) -> Self {
+    Self::from_layout(&LayoutSpec::linear(source_count, include_generator))
   }
 
   pub fn from_layout(layout: &LayoutSpec) -> Self {
@@ -94,9 +94,9 @@ impl Topology {
         },
       });
     }
-    if let Some(position) = layout.power_plant_position {
+    for (index, position) in layout.generator_positions.iter().enumerate() {
       nodes.push(TopologyNode {
-        id: NodeId::PowerPlant,
+        id: NodeId::Generator(index as u8),
         position: GridPosition {
           x: position.x,
           y: position.y,
@@ -517,10 +517,10 @@ pub struct WorldState {
   pub haulers: Vec<Hauler>,
   pub factories: Vec<FactoryNode>,
   pub structures: Vec<StructureSnapshot>,
-  pub power: Option<PowerPlant>,
+  pub power: Option<PowerGrid>,
   pub batteries: BTreeMap<BatteryOwner, Battery>,
   pub power_lines: BTreeSet<GridPosition>,
-  pub power_lines_built: bool,
+  pub linked_generators: BTreeSet<NodeId>,
   pub topology: Topology,
   pub queued_mutations: Vec<WorldMutation>,
 }
@@ -547,7 +547,7 @@ mod tests {
       source_positions: vec![GridPoint { x: 0, y: 1 }],
       road_position: GridPoint { x: 1, y: 0 },
       factory_positions: vec![GridPoint { x: 3, y: 1 }],
-      power_plant_position: None,
+      generator_positions: Vec::new(),
       obstacles: vec![GridPoint { x: 1, y: 1 }],
     });
     assert_eq!(
