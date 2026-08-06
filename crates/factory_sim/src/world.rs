@@ -10,9 +10,11 @@ use serde::{Serialize, Serializer};
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, VecDeque};
 use std::fmt;
+use std::sync::RwLock;
 
 pub type NodeIndex = u16;
 pub type HaulerId = u16;
+const ROUTE_CACHE_CAPACITY: usize = 4_096;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodeId {
@@ -59,7 +61,7 @@ pub struct TopologyNode {
   pub position: GridPosition,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Topology {
   pub width: i32,
   pub height: i32,
@@ -68,7 +70,36 @@ pub struct Topology {
   pub obstacles: BTreeSet<GridPosition>,
   #[serde(skip)]
   positions: BTreeMap<NodeId, GridPosition>,
+  #[serde(skip)]
+  route_cache: RwLock<BTreeMap<(NodeId, NodeId), Option<Vec<NodeId>>>>,
 }
+
+impl Clone for Topology {
+  fn clone(&self) -> Self {
+    Self {
+      width: self.width,
+      height: self.height,
+      nodes: self.nodes.clone(),
+      blocked: self.blocked.clone(),
+      obstacles: self.obstacles.clone(),
+      positions: self.positions.clone(),
+      route_cache: RwLock::new(BTreeMap::new()),
+    }
+  }
+}
+
+impl PartialEq for Topology {
+  fn eq(&self, other: &Self) -> bool {
+    self.width == other.width
+      && self.height == other.height
+      && self.nodes == other.nodes
+      && self.blocked == other.blocked
+      && self.obstacles == other.obstacles
+      && self.positions == other.positions
+  }
+}
+
+impl Eq for Topology {}
 
 impl Topology {
   pub fn for_sources(source_count: NodeIndex, include_generator: bool) -> Self {
@@ -136,6 +167,7 @@ impl Topology {
       blocked,
       obstacles,
       positions,
+      route_cache: RwLock::new(BTreeMap::new()),
     }
   }
 
@@ -178,6 +210,11 @@ impl Topology {
     self.blocked.extend(obstacles.iter().copied());
     self.obstacles.extend(obstacles);
     self
+      .route_cache
+      .get_mut()
+      .expect("route cache is not poisoned")
+      .clear();
+    self
   }
 
   pub fn position(&self, node: NodeId) -> GridPosition {
@@ -201,6 +238,11 @@ impl Topology {
     node.id = replacement;
     self.positions.remove(&current);
     self.positions.insert(replacement, position);
+    self
+      .route_cache
+      .get_mut()
+      .expect("route cache is not poisoned")
+      .clear();
     Some(position)
   }
 
@@ -210,7 +252,48 @@ impl Topology {
     }
     self.positions.insert(id, position);
     self.nodes.push(TopologyNode { id, position });
+    self
+      .route_cache
+      .get_mut()
+      .expect("route cache is not poisoned")
+      .clear();
     true
+  }
+
+  pub(crate) fn block(&mut self, position: GridPosition) {
+    if self.blocked.insert(position) {
+      self
+        .route_cache
+        .get_mut()
+        .expect("route cache is not poisoned")
+        .clear();
+    }
+  }
+
+  pub(crate) fn unblock(&mut self, position: GridPosition) {
+    if self.blocked.remove(&position) {
+      self
+        .route_cache
+        .get_mut()
+        .expect("route cache is not poisoned")
+        .clear();
+    }
+  }
+
+  pub fn has_transfer_access(&self, node: NodeId) -> bool {
+    let target = self.position(node);
+    (-1..=1).any(|y| {
+      (-1..=1).any(|x| {
+        if x == 0 && y == 0 {
+          return false;
+        }
+        let position = GridPosition {
+          x: target.x + x,
+          y: target.y + y,
+        };
+        self.in_bounds(position) && !self.blocked.contains(&position)
+      })
+    })
   }
 
   fn in_bounds(&self, position: GridPosition) -> bool {
@@ -269,6 +352,33 @@ impl Topology {
   }
 
   pub fn path(&self, from: NodeId, target: NodeId) -> Option<Vec<NodeId>> {
+    if let Some(path) = self
+      .route_cache
+      .read()
+      .expect("route cache is not poisoned")
+      .get(&(from, target))
+    {
+      return path.clone();
+    }
+    let path = self.compute_path(from, target);
+    let key = (from, target);
+    let mut cache = self
+      .route_cache
+      .write()
+      .expect("route cache is not poisoned");
+    if cache.len() >= ROUTE_CACHE_CAPACITY && !cache.contains_key(&key) {
+      let evicted_key = cache
+        .keys()
+        .next()
+        .copied()
+        .expect("a full route cache contains an entry");
+      cache.remove(&evicted_key);
+    }
+    cache.insert(key, path.clone());
+    path
+  }
+
+  fn compute_path(&self, from: NodeId, target: NodeId) -> Option<Vec<NodeId>> {
     let start = self.position(from);
     let end = self.position(target);
     let start_heuristic = Self::heuristic(start, end);
@@ -554,6 +664,22 @@ pub struct TickSnapshot {
   pub events: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct LivenessSummary {
+  pub tick: u64,
+  pub deployed_sources: usize,
+  pub occupied_sources: usize,
+  pub exhausted_sources: usize,
+  pub generators: usize,
+  pub claimed_radars: usize,
+  pub dispatch_intents: usize,
+  pub assigned_haulers: usize,
+  pub routed_haulers: usize,
+  pub max_route_len: usize,
+  pub queued_mutations: usize,
+  pub power_line_cells: usize,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorldMutation {
   DeploySource(NodeIndex),
@@ -644,5 +770,52 @@ mod tests {
       GridPosition { x: 1, y: 1 },
     ]);
     assert_eq!(None, topology.path(NodeId::Source(0), NodeId::Factory(0)));
+    assert!(!topology.has_transfer_access(NodeId::Source(0)));
+  }
+
+  #[test]
+  fn topology_mutations_invalidate_cached_routes() {
+    let mut topology = Topology::for_sources(1, false);
+    let route = topology.path(NodeId::Source(0), NodeId::Factory(0));
+
+    assert!(route.is_some());
+    assert_eq!(1, topology.route_cache.read().unwrap().len());
+
+    let road = topology.position(NodeId::Road);
+    topology.block(road);
+    assert!(topology.route_cache.read().unwrap().is_empty());
+
+    topology.path(NodeId::Source(0), NodeId::Factory(0));
+    assert_eq!(1, topology.route_cache.read().unwrap().len());
+
+    topology.unblock(road);
+    assert!(topology.route_cache.read().unwrap().is_empty());
+  }
+
+  #[test]
+  fn route_cache_evicts_deterministically_at_its_owning_capacity() {
+    let topology = Topology::for_sources(1, false);
+    {
+      let mut cache = topology.route_cache.write().unwrap();
+      for x in 0..ROUTE_CACHE_CAPACITY {
+        cache.insert(
+          (
+            NodeId::Transit(GridPosition {
+              x: i32::try_from(x).unwrap(),
+              y: 0,
+            }),
+            NodeId::Road,
+          ),
+          None,
+        );
+      }
+    }
+
+    let requested = (NodeId::Source(0), NodeId::Factory(0));
+    assert!(topology.path(requested.0, requested.1).is_some());
+
+    let cache = topology.route_cache.read().unwrap();
+    assert_eq!(ROUTE_CACHE_CAPACITY, cache.len());
+    assert!(cache.contains_key(&requested));
   }
 }

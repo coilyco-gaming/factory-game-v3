@@ -26,7 +26,7 @@ historical random-number stream.
 
 The workspace gate advances the full world for 50 deterministic ticks. That
 run keeps source IDs unique through `source-423`, deploys six drills, mines
-iron, copper, coal, and manifest stone, collects 2,147 units, delivers 1,552
+iron, copper, coal, and manifest stone, collects 2,131 units, delivers 1,301
 units, and crafts iron bars, frames, and building materials. These fixed
 assertions exercise deployment, long-distance pathfinding, freight arbitration,
 power, inserters, production, snapshots, and metrics in one populated world.
@@ -39,6 +39,17 @@ metrics, events, and viewer state. The browser viewer exposes the same scenario
 in its control deck. `O` switches between local detail and a whole-map overview,
 while shifted grid movement crosses ten cells per keypress.
 
+## Sustained operation
+
+The release gate also advances two independent full worlds for 650 ticks
+without constructing full object snapshots between checkpoints. It observes a
+deployed source battery at zero after tick 500, then proves that extraction,
+collection, delivery, iron bars, frames, motors, and remote generator output
+all continue. The two replays must retain identical metrics and liveness state.
+Queue and route bounds are derived from the scenario's world, fleet, and grid
+sizes. See [v2-liveness.md](v2-liveness.md) for the exact contract and measured
+performance.
+
 ## Parity boundary
 
 The source audit remains the proof for individual retained Unity contracts.
@@ -46,8 +57,8 @@ This scenario is the separate integration and scale proof. Neither kind of test
 is presented as a substitute for the other.
 
 The current game-scale gate does not prove bit-for-bit .NET random coordinates
-or an indefinitely powered full-map steady state. Radar authority owns drill
-and coal-plant targeting, while the bounded run starts from the v2 battery
-capacities and central fueled generator. See
+or an indefinite full-map steady state. It proves bounded continued operation
+past the first depleted starter battery and sustained remote fuel-backed power
+through tick 650. Radar authority owns drill and coal-plant targeting. See
 [deployment-radar.md](deployment-radar.md) and
 [remote-coal-plants.md](remote-coal-plants.md).

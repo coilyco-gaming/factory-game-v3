@@ -1,9 +1,8 @@
 # Unity parity audit
 
-Git history retains the Unity reference. Rust covers the retained contracts in
-the component audit and now exercises them together at the
-Unity scene's 100x100 scale. See [unity-feature-audit.md](unity-feature-audit.md)
-and [v2-world.md](v2-world.md).
+Git history retains the Unity reference. Rust covers retained contracts in the
+component audit and exercises them together at 100x100 scale. See
+[unity-feature-audit.md](unity-feature-audit.md) and [v2-world.md](v2-world.md).
 
 ## Current parity
 
@@ -28,8 +27,8 @@ and [v2-world.md](v2-world.md).
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
   in-flight demand accounting, receiver assignment, coal delivery,
   factory-output supply, adjacent transfers, nearest providers, radar-owned
-  deployment claims and release, duplicate exclusion, and occupied-target
-  avoidance.
+  deployment claims, duplicate and occupied-target exclusion, reachability
+  filtering, and stale-assignment cancellation.
 * **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
   bounds and layouts, occupied static cells, deterministic A-star search,
   cardinal and diagonal movement with corner rules, blocked-target arrival,
@@ -41,8 +40,8 @@ and [v2-world.md](v2-world.md).
   capacity-weighted adjacent balancing, owner-specific energy consumption,
   fueled and fuel-free generation, deployed coal plants, multiple generators,
   starvation, fuel demand, and energy metrics. Generators build battery-backed
-  lines toward the nearest disconnected battery, and the viewer projects each
-  line cell.
+  lines toward the nearest disconnected battery. Per-generator metrics
+  distinguish plants, and the viewer projects each line cell.
 * **World mutation and deployment** - substantial - Rust owns scenario-starting
   objects, retrieval into hauler cargo, queued movement, distinct drill,
   structure, and generator deployment, topology and source occupancy,
@@ -52,11 +51,11 @@ and [v2-world.md](v2-world.md).
 * **Player and UI interaction** - substantial - Bevy owns playback, reset,
   scenario selection, bounded and accelerated grid navigation, camera following,
   detail-through-overview zoom, focused-cell inspection, object and inventory
-  totals, and activity projection. Unity has no player placement, object
-  editing, or programmable logistics interaction, so those speculative gaps
-  are obsolete rather than migration requirements.
-* **Observability** - substantial - snapshots, JSONL, metrics, events, bounded
-  per-object alerts, activity, and Bevy cover the active Rust systems.
+  totals, and activity projection. Unity had no player placement, editing, or
+  programmable logistics, so those are not migration gaps.
+* **Observability** - substantial - snapshots, snapshot-free stepping, JSONL,
+  per-generator metrics, liveness summaries, events, bounded alerts, activity,
+  and Bevy cover the active Rust systems.
 
 The component inventory has no retained gap. The large-world gate separately
 proves wide identities, startup population, and integrated material flow.

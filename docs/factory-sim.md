@@ -9,7 +9,8 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 - `factory_sim` - deterministic gameplay, exclusive radar claims, typed fleet
   dispatch, queued drill, structure, and generator mutations, indexed topology,
   cached A-star routes, power, alerts, metrics, and tick stepping.
-- `factory_cli` - a headless runner that emits one JSON snapshot per tick.
+- `factory_cli` - a headless runner that emits JSON tick snapshots or advances
+  through a summary-only path for long-running proofs.
 
 ## Scenarios
 
@@ -25,9 +26,13 @@ The world generalizes to N sources, factories, haulers, and generators:
 - collect and retrieve receivers pull from adjacent source or factory
   containers, advance exactly one phase per tick, and never enter occupied
   building cells
+- dispatch skips sealed transfer endpoints and unreachable source-destination
+  pairs, reserves a hauler's full carrying capacity for in-flight demand, and
+  cancels stale empty-source or no-path assignments
 - scenario layouts define grid bounds, object positions, and static obstacles,
   deterministic A-star routing supports cardinal and diagonal movement, allows
-  arrival at an occupied target, and reports a sealed route
+  arrival at an occupied target, reports a sealed route, caches a bounded set
+  of stable endpoint pairs, and invalidates the cache after topology mutations
 - haulers queue movement for the world-mutation boundary, competing moves into
   one transit cell resolve in hauler order while building endpoints remain
   shareable
@@ -52,16 +57,11 @@ The world generalizes to N sources, factories, haulers, and generators:
 The twelve layouts and their proof goals are listed in
 [factory-scenarios.md](factory-scenarios.md).
 
-## Run
+## Headless runner
 
-```bash
-ward exec cargo-run -- run --scenario iron-bars --ticks 6
-```
-
-The CLI prints JSON lines. Each tick contains topology, object snapshots,
-typed dispatch, per-object alert histories, and that tick's global events.
-
-After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, material flow, dispatch, energy, deployments, deployed generators, world deletions, and idle ticks. The `summary` key keeps tick lines and the summary mechanically separable.
+The CLI's snapshot and summary-only output contracts are documented in
+[headless-runner.md](headless-runner.md). The sustained 100x100 release gate is
+documented in [v2-liveness.md](v2-liveness.md).
 
 The migration and C# deletion gates are tracked in
 [unity-parity.md](unity-parity.md).

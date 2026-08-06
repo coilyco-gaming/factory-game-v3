@@ -34,10 +34,12 @@ balancing. It does not attach to a merely closer source or factory battery.
 Snapshots expose the typed generator, inventory, battery, topology position,
 occupied source, intended link target, and complete ordered line path. Metrics
 count both the general deployment and the typed generator deployment, then
-separate generated, balanced, consumed, and starved energy. Events cover
-assignment, retrieval, queued placement, world creation, claim release, power
-linking, and generation. The viewer labels the generator type, link target,
-path length, and occupied coal site in detail and overview modes.
+separate generated, balanced, consumed, and starved energy. Fuel burn and
+generation are also attributed to each generator, so a sustained run can prove
+the remote plant itself remains active. Events cover assignment, retrieval,
+queued placement, world creation, claim release, power linking, and generation.
+The viewer labels the generator type, link target, path length, and occupied
+coal site in detail and overview modes.
 
 ## 100x100 proof and performance
 
@@ -52,6 +54,8 @@ The focused simulation proof now continues through remote coal delivery, fuel
 burn, generation, battery charge, and grid balancing while retaining the full
 100x100 world. It and the viewer proof each finish in about 0.4 to 0.5 seconds
 in a warm debug build on the implementation host, while the focused simulation
-proof takes about 0.05 seconds in release mode. The full unseeded 50-tick v2
-release test remains at 0.52 seconds after this slice. These are point-in-time
-checks rather than portable wall-clock budgets.
+proof takes about 0.05 seconds in release mode. After deterministic route
+caching and sealed-endpoint dispatch filtering, the full unseeded 50-tick v2
+release test finishes in 0.15 seconds. The 650-tick post-starter-power proof is
+covered in [v2-liveness.md](v2-liveness.md). These are point-in-time checks
+rather than portable wall-clock budgets.

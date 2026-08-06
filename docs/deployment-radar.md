@@ -52,11 +52,10 @@ Target discovery performs one bounded source pass per radar. Topology position
 queries use an ordered index while the existing ordered node vector remains the
 snapshot source, avoiding repeated full-node scans in the 100x100 tick path.
 
-On the implementation host, five warm release-mode executions of the 50-tick
-v2 test reported 0.51 to 0.52 seconds inside the test harness. The pre-change
-warm baseline was 1.17 seconds. The later workload is larger because it deploys
-six drills instead of three, so this point-in-time comparison demonstrates that
-radar ownership did not trade scale behavior for feature coverage. It is not a
+On the implementation host, the 50-tick release test now finishes in 0.15
+seconds inside the test harness. The earlier post-radar baseline was 0.51 to
+0.52 seconds. Deterministic route caching and sealed-endpoint filtering account
+for the later reduction. This is a point-in-time comparison rather than a
 portable wall-clock budget.
 
 The focused tests cover nearest-target ownership, competing-radar exclusion,

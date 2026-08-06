@@ -45,7 +45,8 @@ See [docs/unity-parity.md](docs/unity-parity.md) for the source-level gameplay
 audit, [docs/v2-world.md](docs/v2-world.md) for the game-scale proof, and
 [docs/deployment-radar.md](docs/deployment-radar.md) for autonomous target
 claims. Remote power expansion is covered in
-[docs/remote-coal-plants.md](docs/remote-coal-plants.md).
+[docs/remote-coal-plants.md](docs/remote-coal-plants.md), and the post-starter
+power proof is in [docs/v2-liveness.md](docs/v2-liveness.md).
 
 ## See also
 

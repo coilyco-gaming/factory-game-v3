@@ -29,8 +29,9 @@ pub use radar::{DeploymentRadar, RadarSnapshot};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
   FactoryNode, FactorySnapshot, GeneratorPowerLine, GridPosition, Hauler, HaulerId, HaulerSnapshot,
-  NodeId, NodeIndex, ScenarioSnapshot, SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot,
-  Topology, TopologyNode, TopologySnapshot, WorldMutation, WorldState,
+  LivenessSummary, NodeId, NodeIndex, ScenarioSnapshot, SourceNode, SourceSnapshot,
+  StructureSnapshot, TickSnapshot, Topology, TopologyNode, TopologySnapshot, WorldMutation,
+  WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -559,10 +560,22 @@ impl GameState {
       }) {
         continue;
       }
+      if !self.world.topology.has_transfer_access(intent.from)
+        || !self.world.topology.has_transfer_access(intent.to)
+        || self.world.topology.path(intent.from, intent.to).is_none()
+      {
+        continue;
+      }
       let Some(hauler_index) = self.world.haulers.iter().position(|hauler| {
-        matches!(hauler.dispatch, DispatchReceiverState::Unassigned) && hauler.cargo.is_empty()
+        matches!(hauler.dispatch, DispatchReceiverState::Unassigned)
+          && hauler.cargo.is_empty()
+          && self
+            .world
+            .topology
+            .path(hauler.position, intent.from)
+            .is_some()
       }) else {
-        break;
+        continue;
       };
       let dispatch_cost = self
         .world
@@ -595,13 +608,15 @@ impl GameState {
     stocked: u32,
     events: &mut Vec<String>,
   ) {
+    if !self.world.topology.has_transfer_access(destination) {
+      return;
+    }
     let mut need = buffer.saturating_sub(stocked);
     for hauler in &self.world.haulers {
       if let DispatchReceiverState::Assigned(assignment) = &hauler.dispatch {
         if assignment.item == item && assignment.destination == destination {
           let in_flight = match assignment.phase {
-            DispatchPhase::Collect => hauler.carry_limit,
-            DispatchPhase::Deliver => hauler.cargo.count(item),
+            DispatchPhase::Collect | DispatchPhase::Deliver => hauler.carry_limit,
             DispatchPhase::Retrieve | DispatchPhase::Deploy => 0,
           };
           need = need.saturating_sub(in_flight);
@@ -616,26 +631,33 @@ impl GameState {
       if !matches!(hauler.dispatch, DispatchReceiverState::Unassigned) || !hauler.cargo.is_empty() {
         continue;
       }
+      let hauler_position = hauler.position;
       let source_node = self
         .world
         .sources
         .iter()
         .filter(|source| {
-          source
-            .dispatch
-            .intents
-            .iter()
-            .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
+          self.world.topology.has_transfer_access(source.node)
+            && source
+              .dispatch
+              .intents
+              .iter()
+              .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
         })
         .map(|source| source.node)
         .chain(self.world.factories.iter().filter_map(|factory| {
-          factory
-            .dispatch
-            .intents
-            .iter()
-            .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item)
-            .then_some(factory.node)
+          (self.world.topology.has_transfer_access(factory.node)
+            && factory
+              .dispatch
+              .intents
+              .iter()
+              .any(|intent| intent.verb == DispatchVerb::Collect && intent.item == item))
+          .then_some(factory.node)
         }))
+        .filter(|source| {
+          self.world.topology.path(*source, destination).is_some()
+            && self.world.topology.path(hauler_position, *source).is_some()
+        })
         .min_by_key(|source| self.dispatch_distance(*source, destination));
       let source_node = match source_node {
         Some(node) => node,
@@ -783,6 +805,17 @@ impl GameState {
         events.push(format!(
           "dispatch collect {} from {} to {} by hauler-{}",
           moved, assignment.source, assignment.destination, hauler.id
+        ));
+      } else {
+        let hauler = &mut self.world.haulers[hauler_index];
+        hauler.clear_assignment();
+        hauler.alerts.record(
+          self.world.tick,
+          format!("empty source {}", assignment.source),
+        );
+        events.push(format!(
+          "dispatch cancel empty {} at {} for hauler-{}",
+          assignment.item, assignment.source, hauler.id
         ));
       }
     }
@@ -1036,8 +1069,7 @@ impl GameState {
           self
             .world
             .topology
-            .blocked
-            .remove(&self.world.topology.position(source.node));
+            .unblock(self.world.topology.position(source.node));
           self.metrics.world_deletions += 1;
           events.push(format!(
             "world delete depleted mining drill at {}",
@@ -1057,7 +1089,7 @@ impl GameState {
           let Some(position) = self.world.topology.replace_node_id(build_site, structure) else {
             continue;
           };
-          self.world.topology.blocked.insert(position);
+          self.world.topology.block(position);
           self.world.structures.push(StructureSnapshot {
             node: structure,
             item,
@@ -1229,9 +1261,13 @@ impl GameState {
     let Some(power) = &mut self.world.power else {
       return;
     };
-    let (burned, generated) = power.generate(&mut self.world.batteries, events);
-    self.metrics.fuel_burned += burned;
-    self.metrics.energy_generated += generated;
+    for (generator, burned, generated) in power.generate(&mut self.world.batteries, events) {
+      self.metrics.fuel_burned = self.metrics.fuel_burned.saturating_add(burned);
+      self.metrics.energy_generated = self.metrics.energy_generated.saturating_add(generated);
+      self
+        .metrics
+        .record_generator_power(generator, burned, generated);
+    }
     self.construct_power_lines(events);
     self.metrics.energy_balanced = self
       .metrics
@@ -1573,6 +1609,12 @@ impl GameState {
             "move hauler-{} no available path {} -> {}",
             hauler.id, current, target
           ));
+          if matches!(hauler.dispatch, DispatchReceiverState::Assigned(_)) {
+            hauler.clear_assignment();
+            hauler
+              .alerts
+              .record(self.world.tick, format!("no available path to {target}"));
+          }
           continue;
         };
         hauler.route = path.into_iter().skip(1).collect();
@@ -1601,7 +1643,7 @@ impl GameState {
     }
   }
 
-  pub fn step(&mut self) -> TickSnapshot {
+  fn advance_tick(&mut self) -> Vec<String> {
     self.world.tick += 1;
     let mut events = Vec::new();
     self.advance_receiver_phases(&mut events);
@@ -1621,11 +1663,103 @@ impl GameState {
     if events.is_empty() {
       self.metrics.idle_ticks += 1;
     }
+    events
+  }
+
+  pub fn step(&mut self) -> TickSnapshot {
+    let events = self.advance_tick();
     self.snapshot(events)
+  }
+
+  pub fn advance_without_snapshot(&mut self) {
+    self.advance_tick();
   }
 
   pub fn metrics(&self) -> RunMetricsSnapshot {
     self.metrics.snapshot()
+  }
+
+  pub fn liveness_summary(&self) -> LivenessSummary {
+    let power_intents = self.world.power.as_ref().map_or(0, |power| {
+      power
+        .generators
+        .iter()
+        .map(|generator| generator.dispatch.intents.len())
+        .sum()
+    });
+    let dispatch_intents = self
+      .world
+      .sources
+      .iter()
+      .map(|source| source.dispatch.intents.len())
+      .sum::<usize>()
+      + self
+        .world
+        .factories
+        .iter()
+        .map(|factory| factory.dispatch.intents.len())
+        .sum::<usize>()
+      + self
+        .world
+        .radars
+        .iter()
+        .map(|radar| radar.dispatch.intents.len())
+        .sum::<usize>()
+      + power_intents;
+    LivenessSummary {
+      tick: self.world.tick,
+      deployed_sources: self
+        .world
+        .sources
+        .iter()
+        .filter(|source| source.deployed)
+        .count(),
+      occupied_sources: self
+        .world
+        .sources
+        .iter()
+        .filter(|source| source.occupied_by.is_some())
+        .count(),
+      exhausted_sources: self
+        .world
+        .sources
+        .iter()
+        .filter(|source| source.exhausted)
+        .count(),
+      generators: self
+        .world
+        .power
+        .as_ref()
+        .map_or(0, |power| power.generators.len()),
+      claimed_radars: self
+        .world
+        .radars
+        .iter()
+        .filter(|radar| radar.claimed_target.is_some())
+        .count(),
+      dispatch_intents,
+      assigned_haulers: self
+        .world
+        .haulers
+        .iter()
+        .filter(|hauler| matches!(hauler.dispatch, DispatchReceiverState::Assigned(_)))
+        .count(),
+      routed_haulers: self
+        .world
+        .haulers
+        .iter()
+        .filter(|hauler| !hauler.route.is_empty())
+        .count(),
+      max_route_len: self
+        .world
+        .haulers
+        .iter()
+        .map(|hauler| hauler.route.len())
+        .max()
+        .unwrap_or(0),
+      queued_mutations: self.world.queued_mutations.len(),
+      power_line_cells: self.world.power_lines.len(),
+    }
   }
 
   pub fn snapshot(&self, events: Vec<String>) -> TickSnapshot {
@@ -1815,14 +1949,141 @@ mod tests {
         "{metrics:?}"
       );
     }
-    assert_eq!(2_147, metrics.units_collected, "{metrics:?}");
-    assert_eq!(1_552, metrics.units_delivered, "{metrics:?}");
+    assert_eq!(2_131, metrics.units_collected, "{metrics:?}");
+    assert_eq!(1_301, metrics.units_delivered, "{metrics:?}");
     for item in [IRON_BARS, FRAMES, BUILDING_MATERIALS] {
       assert!(
         metrics.crafted.get(item.as_str()).copied().unwrap_or(0) > 0,
         "{metrics:?}"
       );
     }
+  }
+
+  #[cfg(not(debug_assertions))]
+  #[test]
+  fn v2_world_sustains_remote_power_after_starter_charge() {
+    let mut first = GameState::new(ContentDatabase::starter(), V2_WORLD_SCENARIO).unwrap();
+    let mut second = GameState::new(ContentDatabase::starter(), V2_WORLD_SCENARIO).unwrap();
+    let mut after_first_drained_source = None;
+    let mut drained_source_deposits = std::collections::BTreeMap::new();
+
+    for tick in 1..=650 {
+      first.advance_without_snapshot();
+      second.advance_without_snapshot();
+
+      let summary = first.liveness_summary();
+      let structural_intent_bound = first.world.sources.len()
+        + first
+          .world
+          .factories
+          .iter()
+          .map(|factory| factory.production.recipe.inputs.len() + 1)
+          .sum::<usize>()
+        + first.world.radars.len()
+        + first
+          .world
+          .power
+          .as_ref()
+          .map_or(0, |power| power.generators.len());
+      assert!(summary.dispatch_intents <= structural_intent_bound);
+      assert!(summary.assigned_haulers <= first.world.haulers.len());
+      assert!(summary.routed_haulers <= first.world.haulers.len());
+      assert!(
+        summary.max_route_len
+          <= usize::try_from(first.world.topology.width * first.world.topology.height).unwrap()
+      );
+      assert!(summary.claimed_radars <= first.world.radars.len());
+      assert_eq!(0, summary.queued_mutations);
+      assert!(
+        summary.power_line_cells
+          <= usize::try_from(first.world.topology.width * first.world.topology.height).unwrap()
+      );
+
+      if tick >= 500 {
+        for source in &first.world.sources {
+          let Deposit::Finite(remaining) = source.mining.deposit else {
+            continue;
+          };
+          if source.deployed
+            && remaining > 0
+            && first.world.batteries[&BatteryOwner::Node(source.node)].energy == 0
+          {
+            drained_source_deposits
+              .entry(source.node)
+              .or_insert(remaining);
+            if after_first_drained_source.is_none() {
+              after_first_drained_source = Some(first.metrics());
+            }
+          }
+        }
+      }
+      if tick % 50 == 0 {
+        assert_eq!(first.metrics(), second.metrics());
+        assert_eq!(first.liveness_summary(), second.liveness_summary());
+      }
+    }
+
+    let after_drain =
+      after_first_drained_source.expect("an active deposit exhausts its starter charge");
+    let metrics = first.metrics();
+    assert!(
+      drained_source_deposits.iter().any(|(node, before)| {
+        first
+          .world
+          .sources
+          .iter()
+          .find(|source| source.node == *node)
+          .is_some_and(|source| {
+            matches!(source.mining.deposit, Deposit::Finite(after) if after < *before)
+          })
+      }),
+      "a deposit resumes extraction after its own battery reaches zero: {metrics:?}"
+    );
+    assert!(
+      metrics.mined.get(COAL.as_str()).copied().unwrap_or(0)
+        > after_drain.mined.get(COAL.as_str()).copied().unwrap_or(0),
+      "remote coal extraction continues after a source battery drains: {metrics:?}"
+    );
+    assert!(metrics.units_collected > after_drain.units_collected);
+    assert!(metrics.units_delivered > after_drain.units_delivered);
+    for item in [IRON_BARS, FRAMES, MOTORS] {
+      assert!(
+        metrics.crafted.get(item.as_str()).copied().unwrap_or(0)
+          > after_drain.crafted.get(item.as_str()).copied().unwrap_or(0),
+        "{item} continues through the observation window: {metrics:?}"
+      );
+    }
+    assert!(
+      metrics
+        .energy_generated_by_generator
+        .get("generator-1")
+        .copied()
+        .unwrap_or(0)
+        > after_drain
+          .energy_generated_by_generator
+          .get("generator-1")
+          .copied()
+          .unwrap_or(0)
+    );
+    let remote = &first.world.power.as_ref().unwrap().generators[1];
+    assert!(
+      remote.fuel.count(COAL) > 0,
+      "remote generator remains fueled"
+    );
+    let post_drain_ticks = u32::try_from(metrics.ticks - after_drain.ticks).unwrap();
+    let powered_actor_count = first.liveness_summary().deployed_sources
+      + first.world.factories.len()
+      + first.world.haulers.len()
+      + first.world.radars.len()
+      + first.world.power.as_ref().unwrap().generators.len();
+    let starvation_bound = u32::try_from(powered_actor_count).unwrap() * post_drain_ticks;
+    assert!(
+      metrics
+        .power_starvations
+        .saturating_sub(after_drain.power_starvations)
+        <= starvation_bound,
+      "starvation stays bounded by powered actors and observed ticks: {metrics:?}"
+    );
   }
 
   #[test]
@@ -2083,6 +2344,28 @@ mod tests {
   }
 
   #[test]
+  fn snapshot_free_ticks_preserve_simulation_state() {
+    let mut snapshot_state =
+      GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+    let mut summary_state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+
+    for _ in 0..12 {
+      snapshot_state.step();
+      summary_state.advance_without_snapshot();
+    }
+
+    assert_eq!(snapshot_state.metrics(), summary_state.metrics());
+    assert_eq!(
+      snapshot_state.liveness_summary(),
+      summary_state.liveness_summary()
+    );
+    assert_eq!(
+      snapshot_state.snapshot(Vec::new()),
+      summary_state.snapshot(Vec::new())
+    );
+  }
+
+  #[test]
   fn adjacent_transfer_stops_before_entering_occupied_buildings() {
     let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
 
@@ -2208,6 +2491,34 @@ mod tests {
 
     assert_eq!(IRON_ORE, assignment.item);
     assert_eq!(NodeId::Source(1), assignment.source);
+    assert_eq!(NodeId::Factory(0), assignment.destination);
+  }
+
+  #[test]
+  fn dispatch_skips_a_nearer_source_without_transfer_access() {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists");
+    scenario.sources.push(scenario.sources[0].clone());
+    scenario.layout.width = 8;
+    scenario.layout.height = 5;
+    scenario.layout.source_positions = vec![GridPoint { x: 0, y: 2 }, GridPoint { x: 5, y: 2 }];
+    scenario.layout.road_position = GridPoint { x: 1, y: 2 };
+    scenario.layout.factory_positions = vec![GridPoint { x: 7, y: 2 }];
+    scenario.layout.obstacles = (1..=3)
+      .flat_map(|y| (4..=6).map(move |x| GridPoint { x, y }))
+      .collect();
+
+    let mut state = GameState::new(content, IRON_BARS_SCENARIO).unwrap();
+    let first = state.step();
+    let DispatchReceiverState::Assigned(assignment) = &first.haulers[0].dispatch else {
+      panic!("the reachable source receives the dispatch");
+    };
+
+    assert!(!state.world.topology.has_transfer_access(NodeId::Source(1)));
+    assert_eq!(NodeId::Source(0), assignment.source);
     assert_eq!(NodeId::Factory(0), assignment.destination);
   }
 
@@ -2938,7 +3249,20 @@ mod tests {
     let mut state = GameState::new(ContentDatabase::starter(), HYBRID_GRID_SCENARIO).unwrap();
     let snapshot = state.step();
 
-    assert_eq!(120, state.metrics().energy_generated);
+    let metrics = state.metrics();
+    assert_eq!(120, metrics.energy_generated);
+    assert_eq!(
+      Some(&2),
+      metrics.fuel_burned_by_generator.get("generator-0")
+    );
+    assert_eq!(
+      Some(&80),
+      metrics.energy_generated_by_generator.get("generator-0")
+    );
+    assert_eq!(
+      Some(&40),
+      metrics.energy_generated_by_generator.get("generator-1")
+    );
     assert_eq!(2, snapshot.power.as_ref().unwrap().generators.len());
     assert_eq!(
       Some(COAL),

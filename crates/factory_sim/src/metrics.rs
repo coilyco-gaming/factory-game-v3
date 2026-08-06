@@ -1,3 +1,4 @@
+use crate::NodeId;
 use factory_content::ItemId;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -12,6 +13,8 @@ pub struct RunMetrics {
   pub units_delivered: u32,
   pub fuel_burned: u32,
   pub energy_generated: u32,
+  pub fuel_burned_by_generator: BTreeMap<NodeId, u32>,
+  pub energy_generated_by_generator: BTreeMap<NodeId, u32>,
   pub energy_balanced: u64,
   pub energy_consumed: u32,
   pub power_starvations: u32,
@@ -34,6 +37,20 @@ impl RunMetrics {
     }
   }
 
+  pub fn record_generator_power(&mut self, generator: NodeId, burned: u32, generated: u32) {
+    if burned > 0 {
+      let total = self.fuel_burned_by_generator.entry(generator).or_insert(0);
+      *total = total.saturating_add(burned);
+    }
+    if generated > 0 {
+      let total = self
+        .energy_generated_by_generator
+        .entry(generator)
+        .or_insert(0);
+      *total = total.saturating_add(generated);
+    }
+  }
+
   pub fn snapshot(&self) -> RunMetricsSnapshot {
     RunMetricsSnapshot {
       ticks: self.ticks,
@@ -52,6 +69,16 @@ impl RunMetrics {
       units_delivered: self.units_delivered,
       fuel_burned: self.fuel_burned,
       energy_generated: self.energy_generated,
+      fuel_burned_by_generator: self
+        .fuel_burned_by_generator
+        .iter()
+        .map(|(generator, quantity)| (generator.to_string(), *quantity))
+        .collect(),
+      energy_generated_by_generator: self
+        .energy_generated_by_generator
+        .iter()
+        .map(|(generator, quantity)| (generator.to_string(), *quantity))
+        .collect(),
       energy_balanced: self.energy_balanced,
       energy_consumed: self.energy_consumed,
       power_starvations: self.power_starvations,
@@ -73,6 +100,8 @@ pub struct RunMetricsSnapshot {
   pub units_delivered: u32,
   pub fuel_burned: u32,
   pub energy_generated: u32,
+  pub fuel_burned_by_generator: BTreeMap<String, u32>,
+  pub energy_generated_by_generator: BTreeMap<String, u32>,
   pub energy_balanced: u64,
   pub energy_consumed: u32,
   pub power_starvations: u32,

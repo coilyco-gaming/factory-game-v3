@@ -184,18 +184,16 @@ impl PowerGrid {
     &mut self,
     batteries: &mut BTreeMap<BatteryOwner, Battery>,
     events: &mut Vec<String>,
-  ) -> (u32, u32) {
-    let mut burned = 0_u32;
-    let mut generated = 0_u32;
+  ) -> Vec<(NodeId, u32, u32)> {
+    let mut generation = Vec::with_capacity(self.generators.len());
     for generator in &mut self.generators {
       let battery = batteries
         .get_mut(&BatteryOwner::Node(generator.node))
         .expect("powered scenario has every generator battery");
       let (generator_burned, generator_output) = generator.generate(battery, events);
-      burned = burned.saturating_add(generator_burned);
-      generated = generated.saturating_add(generator_output);
+      generation.push((generator.node, generator_burned, generator_output));
     }
-    (burned, generated)
+    generation
   }
 
   pub fn snapshot(&self, batteries: impl Iterator<Item = Battery>) -> PowerSnapshot {
