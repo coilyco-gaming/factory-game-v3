@@ -55,7 +55,7 @@ The world generalizes to N sources, factories, haulers, and generators:
 - finite ore and its empty drill queue ordered deletion after the last stockpile
   is hauled, then release the source's occupied grid cell
 
-The twelve layouts and their proof goals are listed in
+The fifteen layouts and their proof goals are listed in
 [factory-scenarios.md](factory-scenarios.md).
 
 ## Headless runner

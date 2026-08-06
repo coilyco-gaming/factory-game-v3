@@ -69,6 +69,9 @@ pub const POWER_LINE_SCENARIO: ScenarioId = ScenarioId::new("power-line-demo");
 pub const BUILDING_DEPLOYMENT_SCENARIO: ScenarioId = ScenarioId::new("building-deployment");
 pub const HYBRID_GRID_SCENARIO: ScenarioId = ScenarioId::new("hybrid-grid");
 pub const V2_WORLD_SCENARIO: ScenarioId = ScenarioId::new("v2-world");
+pub const LEGACY_ASSEMBLY_YARD_SCENARIO: ScenarioId = ScenarioId::new("legacy-assembly-yard");
+pub const TWIN_PLANT_BASIN_SCENARIO: ScenarioId = ScenarioId::new("twin-plant-basin");
+pub const FOUR_CORNERS_WORKS_SCENARIO: ScenarioId = ScenarioId::new("four-corners-works");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -372,7 +375,7 @@ fn v2_world_scenario() -> ScenarioDefinition {
   ];
   ScenarioDefinition {
     id: V2_WORLD_SCENARIO,
-    name: "V2 50x50 Factory World".into(),
+    name: "V3 50x50 Factory World".into(),
     sources,
     factories,
     build_sites: Vec::new(),
@@ -453,6 +456,390 @@ fn v2_world_scenario() -> ScenarioDefinition {
         v2_position(7, 2),
         v2_position(7, 3),
         v2_position(7, 4),
+      ],
+      obstacles: Vec::new(),
+    },
+  }
+}
+
+fn authored_sources(
+  fields: [(ItemId, &[GridPoint]); 3],
+  stone_position: GridPoint,
+  requires_deployment: bool,
+) -> (Vec<SourceSpec>, Vec<GridPoint>) {
+  let mut sources = Vec::new();
+  let mut positions = Vec::new();
+  for (item, field) in fields {
+    for position in field {
+      sources.push(SourceSpec {
+        item,
+        deposit: 4_000,
+        mining_speed: 20,
+        requires_deployment,
+      });
+      positions.push(*position);
+    }
+  }
+  sources.push(SourceSpec {
+    item: STONE,
+    deposit: 0,
+    mining_speed: 20,
+    requires_deployment: false,
+  });
+  positions.push(stone_position);
+  (sources, positions)
+}
+
+fn world_power(generators: Vec<GeneratorSpec>) -> PowerSpec {
+  PowerSpec {
+    generators,
+    mining_cost: 2,
+    dispatch_cost: 1,
+    production_cost: 2,
+    object_batteries: ObjectBatterySpec {
+      source_capacity: 1_000,
+      factory_capacity: 1_000,
+      hauler_capacity: 250,
+      start_charged: true,
+    },
+  }
+}
+
+fn legacy_assembly_yard_scenario() -> ScenarioDefinition {
+  const IRON_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 4, y: 7 },
+    GridPoint { x: 7, y: 7 },
+    GridPoint { x: 10, y: 7 },
+    GridPoint { x: 13, y: 7 },
+    GridPoint { x: 4, y: 11 },
+    GridPoint { x: 7, y: 11 },
+    GridPoint { x: 10, y: 11 },
+    GridPoint { x: 13, y: 11 },
+  ];
+  const COPPER_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 36, y: 7 },
+    GridPoint { x: 39, y: 7 },
+    GridPoint { x: 42, y: 7 },
+    GridPoint { x: 45, y: 7 },
+    GridPoint { x: 36, y: 11 },
+    GridPoint { x: 39, y: 11 },
+    GridPoint { x: 42, y: 11 },
+    GridPoint { x: 45, y: 11 },
+  ];
+  const COAL_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 13, y: 40 },
+    GridPoint { x: 16, y: 40 },
+    GridPoint { x: 19, y: 40 },
+    GridPoint { x: 22, y: 40 },
+    GridPoint { x: 25, y: 40 },
+    GridPoint { x: 28, y: 40 },
+    GridPoint { x: 31, y: 40 },
+    GridPoint { x: 34, y: 40 },
+  ];
+  let (sources, source_positions) = authored_sources(
+    [
+      (IRON_ORE, &IRON_FIELD),
+      (COPPER_ORE, &COPPER_FIELD),
+      (COAL, &COAL_FIELD),
+    ],
+    v2_position(1, 0),
+    false,
+  );
+  ScenarioDefinition {
+    id: LEGACY_ASSEMBLY_YARD_SCENARIO,
+    name: "Legacy Assembly Yard".into(),
+    sources,
+    factories: vec![
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(COPPER_BARS, 100, 100),
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(BUILDING_MATERIALS, 100, 20),
+      FactorySpec::new(MOTORS, 100, 20),
+      FactorySpec::new(CIRCUITS, 100, 20),
+      FactorySpec::new(FRAMES, 100, 20),
+      FactorySpec::new(COAL_PLANT, 100, 1),
+      FactorySpec::new(FACTORY_BUILDING, 100, 1),
+      FactorySpec::new(MINING_DRILL, 100, 10),
+    ],
+    build_sites: Vec::new(),
+    radars: Vec::new(),
+    hauler_count: 8,
+    hauler_capacity: 500,
+    hauler_weight_capacity: 500,
+    hauler_volume_capacity: 500,
+    power: Some(world_power(vec![GeneratorSpec::coal_plant(4_000)])),
+    layout: LayoutSpec {
+      width: V2_MAP_SIZE,
+      height: V2_MAP_SIZE,
+      source_positions,
+      road_position: v2_position(0, 0),
+      factory_positions: vec![
+        v2_position(2, 0),
+        v2_position(3, 0),
+        v2_position(4, 0),
+        v2_position(1, 1),
+        v2_position(2, 1),
+        v2_position(3, 1),
+        v2_position(4, 1),
+        v2_position(1, 2),
+        v2_position(2, 2),
+        v2_position(3, 2),
+      ],
+      generator_positions: vec![v2_position(0, 0)],
+      hauler_positions: vec![
+        v2_position(-1, 0),
+        v2_position(-1, 1),
+        v2_position(-1, 2),
+        v2_position(-1, 3),
+        v2_position(5, 0),
+        v2_position(5, 1),
+        v2_position(5, 2),
+        v2_position(5, 3),
+      ],
+      obstacles: Vec::new(),
+    },
+  }
+}
+
+fn twin_plant_basin_scenario() -> ScenarioDefinition {
+  const IRON_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 5, y: 5 },
+    GridPoint { x: 8, y: 5 },
+    GridPoint { x: 5, y: 8 },
+    GridPoint { x: 8, y: 8 },
+    GridPoint { x: 11, y: 8 },
+    GridPoint { x: 8, y: 11 },
+    GridPoint { x: 11, y: 11 },
+    GridPoint { x: 14, y: 11 },
+  ];
+  const COPPER_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 35, y: 5 },
+    GridPoint { x: 38, y: 5 },
+    GridPoint { x: 41, y: 5 },
+    GridPoint { x: 35, y: 8 },
+    GridPoint { x: 38, y: 8 },
+    GridPoint { x: 41, y: 8 },
+    GridPoint { x: 38, y: 11 },
+    GridPoint { x: 41, y: 11 },
+  ];
+  const COAL_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 7, y: 37 },
+    GridPoint { x: 10, y: 40 },
+    GridPoint { x: 13, y: 43 },
+    GridPoint { x: 16, y: 40 },
+    GridPoint { x: 33, y: 40 },
+    GridPoint { x: 36, y: 43 },
+    GridPoint { x: 39, y: 40 },
+    GridPoint { x: 42, y: 37 },
+  ];
+  let (sources, source_positions) = authored_sources(
+    [
+      (IRON_ORE, &IRON_FIELD),
+      (COPPER_ORE, &COPPER_FIELD),
+      (COAL, &COAL_FIELD),
+    ],
+    v2_position(6, 0),
+    true,
+  );
+  ScenarioDefinition {
+    id: TWIN_PLANT_BASIN_SCENARIO,
+    name: "Twin Plant Basin".into(),
+    sources,
+    factories: vec![
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(COPPER_BARS, 100, 100),
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(MOTORS, 100, 20),
+      FactorySpec::new(FRAMES, 100, 20),
+      FactorySpec::new(MINING_DRILL, 100, 10)
+        .with_starting_items(BTreeMap::from([(MINING_DRILL, 10)])),
+    ],
+    build_sites: Vec::new(),
+    radars: vec![
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: IRON_ORE,
+        position: v2_position(0, 0),
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COPPER_ORE,
+        position: v2_position(0, 1),
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COAL,
+        position: v2_position(0, 2),
+      },
+    ],
+    hauler_count: 12,
+    hauler_capacity: 500,
+    hauler_weight_capacity: 500,
+    hauler_volume_capacity: 500,
+    power: Some(world_power(vec![
+      GeneratorSpec::coal_plant(4_000),
+      GeneratorSpec::coal_plant(4_000),
+    ])),
+    layout: LayoutSpec {
+      width: V2_MAP_SIZE,
+      height: V2_MAP_SIZE,
+      source_positions,
+      road_position: v2_position(0, 0),
+      factory_positions: vec![
+        v2_position(2, 0),
+        v2_position(3, 0),
+        v2_position(4, 0),
+        v2_position(2, 1),
+        v2_position(4, 1),
+        v2_position(3, 2),
+      ],
+      generator_positions: vec![v2_position(2, 2), v2_position(4, 2)],
+      hauler_positions: vec![
+        v2_position(1, 0),
+        v2_position(1, 1),
+        v2_position(1, 2),
+        v2_position(1, 3),
+        v2_position(2, 3),
+        v2_position(3, 3),
+        v2_position(4, 3),
+        v2_position(5, 0),
+        v2_position(5, 1),
+        v2_position(5, 2),
+        v2_position(5, 3),
+        v2_position(5, 4),
+      ],
+      obstacles: Vec::new(),
+    },
+  }
+}
+
+fn four_corners_works_scenario() -> ScenarioDefinition {
+  const IRON_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 5, y: 5 },
+    GridPoint { x: 9, y: 5 },
+    GridPoint { x: 5, y: 9 },
+    GridPoint { x: 9, y: 9 },
+    GridPoint { x: 5, y: 40 },
+    GridPoint { x: 9, y: 40 },
+    GridPoint { x: 5, y: 44 },
+    GridPoint { x: 9, y: 44 },
+  ];
+  const COPPER_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 40, y: 5 },
+    GridPoint { x: 44, y: 5 },
+    GridPoint { x: 40, y: 9 },
+    GridPoint { x: 44, y: 9 },
+    GridPoint { x: 40, y: 40 },
+    GridPoint { x: 44, y: 40 },
+    GridPoint { x: 40, y: 44 },
+    GridPoint { x: 44, y: 44 },
+  ];
+  const COAL_FIELD: [GridPoint; 8] = [
+    GridPoint { x: 20, y: 5 },
+    GridPoint { x: 24, y: 5 },
+    GridPoint { x: 28, y: 5 },
+    GridPoint { x: 32, y: 5 },
+    GridPoint { x: 20, y: 44 },
+    GridPoint { x: 24, y: 44 },
+    GridPoint { x: 28, y: 44 },
+    GridPoint { x: 32, y: 44 },
+  ];
+  let (sources, source_positions) = authored_sources(
+    [
+      (IRON_ORE, &IRON_FIELD),
+      (COPPER_ORE, &COPPER_FIELD),
+      (COAL, &COAL_FIELD),
+    ],
+    v2_position(0, 8),
+    true,
+  );
+  ScenarioDefinition {
+    id: FOUR_CORNERS_WORKS_SCENARIO,
+    name: "Four Corners Works".into(),
+    sources,
+    factories: vec![
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(IRON_BARS, 100, 100),
+      FactorySpec::new(COPPER_BARS, 100, 100),
+      FactorySpec::new(COPPER_BARS, 100, 100),
+      FactorySpec::new(COPPER_BARS, 100, 100),
+      FactorySpec::new(MOTORS, 100, 20),
+      FactorySpec::new(CIRCUITS, 100, 20),
+      FactorySpec::new(FRAMES, 100, 20),
+      FactorySpec::new(BUILDING_MATERIALS, 100, 20),
+      FactorySpec::new(MINING_DRILL, 100, 12)
+        .with_starting_items(BTreeMap::from([(MINING_DRILL, 12)])),
+      FactorySpec::new(COAL_PLANT, 100, 1),
+    ],
+    build_sites: Vec::new(),
+    radars: vec![
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: IRON_ORE,
+        position: v2_position(0, -1),
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COPPER_ORE,
+        position: v2_position(0, 0),
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COAL,
+        position: v2_position(0, 1),
+      },
+      RadarSpec {
+        deployment_item: COAL_PLANT,
+        target_item: COAL,
+        position: v2_position(0, 2),
+      },
+    ],
+    hauler_count: 16,
+    hauler_capacity: 500,
+    hauler_weight_capacity: 500,
+    hauler_volume_capacity: 500,
+    power: Some(world_power(vec![
+      GeneratorSpec::coal_plant(4_000),
+      GeneratorSpec::coal_plant(4_000),
+    ])),
+    layout: LayoutSpec {
+      width: V2_MAP_SIZE,
+      height: V2_MAP_SIZE,
+      source_positions,
+      road_position: v2_position(0, 0),
+      factory_positions: vec![
+        v2_position(-5, -3),
+        v2_position(-5, 0),
+        v2_position(-5, 3),
+        v2_position(5, -3),
+        v2_position(5, 0),
+        v2_position(5, 3),
+        v2_position(-2, -5),
+        v2_position(2, -5),
+        v2_position(-2, 5),
+        v2_position(2, 5),
+        v2_position(0, 7),
+        v2_position(0, -7),
+      ],
+      generator_positions: vec![v2_position(-1, 0), v2_position(1, 0)],
+      hauler_positions: vec![
+        v2_position(-3, -2),
+        v2_position(-3, -1),
+        v2_position(-3, 0),
+        v2_position(-3, 1),
+        v2_position(-3, 2),
+        v2_position(3, -2),
+        v2_position(3, -1),
+        v2_position(3, 0),
+        v2_position(3, 1),
+        v2_position(3, 2),
+        v2_position(-2, -3),
+        v2_position(-1, -3),
+        v2_position(0, -3),
+        v2_position(1, -3),
+        v2_position(2, -3),
+        v2_position(0, 3),
       ],
       obstacles: Vec::new(),
     },
@@ -1046,6 +1433,12 @@ impl ContentDatabase {
       },
     );
     scenarios.insert(V2_WORLD_SCENARIO, v2_world_scenario());
+    scenarios.insert(
+      LEGACY_ASSEMBLY_YARD_SCENARIO,
+      legacy_assembly_yard_scenario(),
+    );
+    scenarios.insert(TWIN_PLANT_BASIN_SCENARIO, twin_plant_basin_scenario());
+    scenarios.insert(FOUR_CORNERS_WORKS_SCENARIO, four_corners_works_scenario());
 
     Self { items, scenarios }
   }
@@ -1274,5 +1667,38 @@ mod tests {
       scenario,
       ContentDatabase::starter().scenario(V2_WORLD_SCENARIO)
     );
+  }
+
+  #[test]
+  fn selectable_worlds_are_distinct_authored_50x50_layouts() {
+    let content = ContentDatabase::starter();
+    let world_ids = [
+      V2_WORLD_SCENARIO,
+      LEGACY_ASSEMBLY_YARD_SCENARIO,
+      TWIN_PLANT_BASIN_SCENARIO,
+      FOUR_CORNERS_WORKS_SCENARIO,
+    ];
+    let names = world_ids
+      .iter()
+      .map(|id| content.scenario(*id).name.as_str())
+      .collect::<BTreeSet<_>>();
+
+    assert_eq!(world_ids.len(), names.len());
+    for id in world_ids {
+      let scenario = content.scenario(id);
+      assert_eq!((50, 50), (scenario.layout.width, scenario.layout.height));
+      assert_eq!(
+        scenario.sources.len(),
+        scenario.layout.source_positions.len()
+      );
+      assert_eq!(
+        scenario.factories.len(),
+        scenario.layout.factory_positions.len()
+      );
+      assert_eq!(
+        usize::try_from(scenario.hauler_count).unwrap(),
+        scenario.layout.hauler_positions.len()
+      );
+    }
   }
 }

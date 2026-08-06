@@ -42,7 +42,7 @@ ward exec image-build
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
 See [docs/unity-parity.md](docs/unity-parity.md) for the source-level gameplay
-audit, [docs/v2-world.md](docs/v2-world.md) for the game-scale proof, and
+audit, [docs/v3-worlds.md](docs/v3-worlds.md) for the selectable game-scale worlds, and
 [docs/deployment-radar.md](docs/deployment-radar.md) for autonomous target
 claims. Remote power expansion is covered in
 [docs/remote-coal-plants.md](docs/remote-coal-plants.md), and the post-starter

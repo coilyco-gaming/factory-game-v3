@@ -1,6 +1,6 @@
 # Factory simulation scenarios
 
-The deterministic scenario catalog covers twelve layouts:
+The deterministic scenario catalog covers fifteen layouts:
 
 - **Iron bars** - one hauler supplies one foundry from a finite iron deposit.
 - **Iron bars fleet** - three haulers arbitrate the same bounded demand.
@@ -22,13 +22,22 @@ The deterministic scenario catalog covers twelve layouts:
   occupied structure.
 - **Hybrid generator grid** - fueled and fuel-free generators produce together,
   build independent links, and balance their combined output across the grid.
-- **V2 50x50 factory world** - 423 generated ore deposits, one manifest stone
+- **V3 50x50 factory world** - 423 generated ore deposits, one manifest stone
   source, three mining-drill radars, one coal-plant radar, 15 haulers, seven
   foundries, eight factories, and the central coal plant run deployment,
   mining, freight, production, and remote power expansion together. A 650-tick
   release proof survives a complete non-generator energy cutoff at tick 500.
+- **Legacy assembly yard** - the early C# row yard places a coal plant, three
+  foundries, seven assembly factories, and eight haulers between three active
+  authored ore fields.
+- **Twin plant basin** - the later C# two-generator yard adds three deployment
+  radars, two coal plants, six factories, and twelve haulers around three
+  dormant authored ore fields.
+- **Four corners works** - a new distributed yard separates iron and copper
+  foundries across the center, places coal at the north and south edges, and
+  gives sixteen haulers four deployment radars and two coal plants.
 
 Every scenario remains available through the headless CLI and test suite. The
-Bevy/Wasm control deck exposes only complete world simulations, currently the
-v2 world, so focused component fixtures no longer appear as player-facing
-content.
+Bevy/Wasm control deck exposes only the four complete 50x50 world simulations,
+so focused component fixtures do not appear as player-facing content. See
+[v3-worlds.md](v3-worlds.md) for the world roster and provenance.

@@ -2,8 +2,9 @@ use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use factory_content::{
-  ContentDatabase, ItemId, ScenarioId, COAL, COAL_PLANT, COPPER_ORE, IRON_BARS, IRON_ORE,
-  MINING_DRILL, STONE, STORAGE_WAREHOUSE, V2_WORLD_SCENARIO,
+  ContentDatabase, ItemId, ScenarioId, COAL, COAL_PLANT, COPPER_ORE, FOUR_CORNERS_WORKS_SCENARIO,
+  IRON_BARS, IRON_ORE, LEGACY_ASSEMBLY_YARD_SCENARIO, MINING_DRILL, STONE, STORAGE_WAREHOUSE,
+  TWIN_PLANT_BASIN_SCENARIO, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
   BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerId,
@@ -30,7 +31,12 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const WORLD_SCENARIOS: [ScenarioId; 1] = [V2_WORLD_SCENARIO];
+const WORLD_SCENARIOS: [ScenarioId; 4] = [
+  V2_WORLD_SCENARIO,
+  LEGACY_ASSEMBLY_YARD_SCENARIO,
+  TWIN_PLANT_BASIN_SCENARIO,
+  FOUR_CORNERS_WORKS_SCENARIO,
+];
 const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
 const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
@@ -3509,10 +3515,35 @@ mod tests {
     let mut host = SimHost::new();
 
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!([V2_WORLD_SCENARIO], WORLD_SCENARIOS);
+    assert_eq!(
+      [
+        V2_WORLD_SCENARIO,
+        LEGACY_ASSEMBLY_YARD_SCENARIO,
+        TWIN_PLANT_BASIN_SCENARIO,
+        FOUR_CORNERS_WORKS_SCENARIO,
+      ],
+      WORLD_SCENARIOS
+    );
     host.select_world(1);
+    assert_eq!(LEGACY_ASSEMBLY_YARD_SCENARIO, host.snapshot.scenario.id);
+    host.select_world(2);
+    assert_eq!(TWIN_PLANT_BASIN_SCENARIO, host.snapshot.scenario.id);
+    host.select_world(3);
+    assert_eq!(FOUR_CORNERS_WORKS_SCENARIO, host.snapshot.scenario.id);
+    host.select_world(4);
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(1, host.scene_revision);
+    assert_eq!(4, host.scene_revision);
     assert_eq!(0, host.snapshot.tick);
+  }
+
+  #[test]
+  fn viewer_worlds_construct_and_advance_deterministically() {
+    for scenario in WORLD_SCENARIOS {
+      let mut first = scenario_game(scenario);
+      let mut second = scenario_game(scenario);
+      for _ in 0..20 {
+        assert_eq!(first.step(), second.step());
+      }
+    }
   }
 }
