@@ -20,14 +20,12 @@ pub use mining::{Deposit, MiningExtractor};
 pub use power::{
   Battery, BatteryOwner, GeneratorSnapshot, PowerGenerator, PowerGrid, PowerSnapshot,
 };
-pub use production::{
-  CraftSnapshot, FactoryProduction, ProductionBlockReason, RecipeRuntime,
-};
+pub use production::{CraftSnapshot, FactoryProduction, ProductionBlockReason, RecipeRuntime};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
-  FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerSnapshot, NodeId, ScenarioSnapshot,
-  SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot, Topology, TopologyNode,
-  TopologySnapshot, WorldMutation, WorldState,
+  FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerId, HaulerSnapshot, NodeId, NodeIndex,
+  ScenarioSnapshot, SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot, Topology,
+  TopologyNode, TopologySnapshot, WorldMutation, WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -74,6 +72,14 @@ enum AdjacentProvider {
   Factory(usize),
 }
 
+fn node_index(index: usize) -> NodeIndex {
+  NodeIndex::try_from(index).expect("scenario object index fits NodeIndex")
+}
+
+fn hauler_id(index: usize) -> HaulerId {
+  HaulerId::try_from(index).expect("hauler index fits HaulerId")
+}
+
 impl GameState {
   pub fn new(content: ContentDatabase, scenario_id: ScenarioId) -> Result<Self, SimulationError> {
     let scenario = content
@@ -86,6 +92,9 @@ impl GameState {
     }
     if scenario.sources.len() != scenario.layout.source_positions.len()
       || scenario.factories.len() != scenario.layout.factory_positions.len()
+      || (!scenario.layout.hauler_positions.is_empty()
+        && usize::try_from(scenario.hauler_count).expect("hauler count fits usize")
+          != scenario.layout.hauler_positions.len())
       || scenario
         .power
         .as_ref()
@@ -121,7 +130,7 @@ impl GameState {
             .expect("scenario starting inventory fits its factory");
         }
         Ok(FactoryNode::new(
-          NodeId::Factory(index as u8),
+          NodeId::Factory(node_index(index)),
           FactoryProduction::new(inventory, recipe, spec.output_buffer),
           spec.input_buffer,
         ))
@@ -134,7 +143,7 @@ impl GameState {
       .enumerate()
       .map(|(index, spec)| {
         SourceNode::new(
-          NodeId::Source(index as u8),
+          NodeId::Source(node_index(index)),
           Inventory::new(1024, 1024),
           spec.item,
           MiningExtractor::for_item(&content, spec.item, spec.mining_speed, spec.deposit),
@@ -144,13 +153,25 @@ impl GameState {
       .collect();
     let haulers: Vec<Hauler> = (0..scenario.hauler_count)
       .map(|index| {
+        let index = usize::try_from(index).expect("hauler index fits usize");
+        let position = scenario
+          .layout
+          .hauler_positions
+          .get(index)
+          .map(|position| {
+            NodeId::Transit(GridPosition {
+              x: position.x,
+              y: position.y,
+            })
+          })
+          .unwrap_or(NodeId::Road);
         Hauler::new(
-          index as u8,
+          hauler_id(index),
           Inventory::new(
             scenario.hauler_weight_capacity,
             scenario.hauler_volume_capacity,
           ),
-          NodeId::Road,
+          position,
           scenario.hauler_capacity,
         )
       })
@@ -162,24 +183,42 @@ impl GameState {
       .map(|spec| PowerGrid::new(&content, spec));
     let topology = Topology::from_scenario(&scenario);
     let mut batteries = std::collections::BTreeMap::new();
-    if power.is_some() {
+    if let Some(power) = &power {
+      let battery_spec = &power.spec.object_batteries;
       for source in &sources {
         let owner = BatteryOwner::Node(source.node);
-        batteries.insert(owner, Battery::new(owner, 0, 100));
+        let energy = battery_spec
+          .start_charged
+          .then_some(battery_spec.source_capacity)
+          .unwrap_or(0);
+        batteries.insert(
+          owner,
+          Battery::new(owner, energy, battery_spec.source_capacity),
+        );
       }
       for factory in &factories {
         let owner = BatteryOwner::Node(factory.node);
-        batteries.insert(owner, Battery::new(owner, 0, 1_000));
+        let energy = battery_spec
+          .start_charged
+          .then_some(battery_spec.factory_capacity)
+          .unwrap_or(0);
+        batteries.insert(
+          owner,
+          Battery::new(owner, energy, battery_spec.factory_capacity),
+        );
       }
       for hauler in &haulers {
         let owner = BatteryOwner::Hauler(hauler.id);
-        batteries.insert(owner, Battery::new(owner, 0, 250));
+        let energy = battery_spec
+          .start_charged
+          .then_some(battery_spec.hauler_capacity)
+          .unwrap_or(0);
+        batteries.insert(
+          owner,
+          Battery::new(owner, energy, battery_spec.hauler_capacity),
+        );
       }
-      for generator in &power
-        .as_ref()
-        .expect("powered scenario has a grid")
-        .generators
-      {
+      for generator in &power.generators {
         let owner = BatteryOwner::Node(generator.node);
         batteries.insert(owner, Battery::new(owner, 0, generator.spec.grid_capacity));
       }
@@ -328,7 +367,7 @@ impl GameState {
         .world
         .structures
         .iter()
-        .any(|structure| structure.node == NodeId::Structure(site_index as u8))
+        .any(|structure| structure.node == NodeId::Structure(node_index(site_index)))
       {
         continue;
       }
@@ -339,7 +378,7 @@ impl GameState {
         .enumerate()
         .filter(|(_, factory)| factory.production.inventory.count(site.item) > 0)
         .min_by_key(|(_, factory)| {
-          self.dispatch_distance(factory.node, NodeId::BuildSite(site_index as u8))
+          self.dispatch_distance(factory.node, NodeId::BuildSite(node_index(site_index)))
         })
         .map(|(index, _)| index)
       {
@@ -347,7 +386,7 @@ impl GameState {
         factory.dispatch.intents.push(DispatchIntent::retrieve(
           site.item,
           factory.node,
-          NodeId::BuildSite(site_index as u8),
+          NodeId::BuildSite(node_index(site_index)),
         ));
       }
     }
@@ -528,10 +567,7 @@ impl GameState {
       need = need.saturating_sub(hauler.carry_limit);
       events.push(format!(
         "dispatch assigned collect {} {} -> {} to hauler-{}",
-        item,
-        source_node,
-        destination,
-        hauler.id
+        item, source_node, destination, hauler.id
       ));
     }
   }
@@ -590,7 +626,10 @@ impl GameState {
         };
         hauler.clear_assignment();
         hauler.alerts.record(tick, alert);
-        events.push(format!("receiver hauler-{} {:?} => awaiting", hauler.id, phase));
+        events.push(format!(
+          "receiver hauler-{} {:?} => awaiting",
+          hauler.id, phase
+        ));
       }
     }
   }
@@ -744,9 +783,7 @@ impl GameState {
             ));
           }
         }
-        DispatchPhase::Deploy
-          if self.nodes_in_transfer_range(position, assignment.destination) =>
-        {
+        DispatchPhase::Deploy if self.nodes_in_transfer_range(position, assignment.destination) => {
           if self.world.haulers[hauler_index]
             .cargo
             .remove_exact(assignment.item, 1)
@@ -758,19 +795,20 @@ impl GameState {
                 .queued_mutations
                 .push(WorldMutation::DeploySource(source_index)),
               NodeId::BuildSite(site_index) => {
-                self.world.queued_mutations.push(WorldMutation::SpawnStructure {
-                  site_index,
-                  item: assignment.item,
-                  hauler_id: self.world.haulers[hauler_index].id,
-                });
+                self
+                  .world
+                  .queued_mutations
+                  .push(WorldMutation::SpawnStructure {
+                    site_index,
+                    item: assignment.item,
+                    hauler_id: self.world.haulers[hauler_index].id,
+                  });
               }
               _ => continue,
             }
             events.push(format!(
               "dispatch deploy {} queued at {} by hauler-{}",
-              assignment.item,
-              assignment.destination,
-              self.world.haulers[hauler_index].id
+              assignment.item, assignment.destination, self.world.haulers[hauler_index].id
             ));
           }
         }
@@ -824,7 +862,10 @@ impl GameState {
             .blocked
             .remove(&self.world.topology.position(source.node));
           self.metrics.world_deletions += 1;
-          events.push(format!("world delete depleted mining drill at {}", source.node));
+          events.push(format!(
+            "world delete depleted mining drill at {}",
+            source.node
+          ));
         }
         WorldMutation::SpawnStructure {
           site_index,
@@ -891,12 +932,14 @@ impl GameState {
         self
           .world
           .queued_mutations
-          .push(WorldMutation::DeleteDepletedDeposit(source_index as u8));
+          .push(WorldMutation::DeleteDepletedDeposit(node_index(
+            source_index,
+          )));
       } else if source.exhausted && source.deployed && source.stockpile.is_empty() {
         self
           .world
           .queued_mutations
-          .push(WorldMutation::TeardownSource(source_index as u8));
+          .push(WorldMutation::TeardownSource(node_index(source_index)));
       }
     }
   }
@@ -921,11 +964,7 @@ impl GameState {
           if adjacent(source_position, target_position)
             && source.production.inventory.count(item) > 0
           {
-            transfers.push((
-              target_index,
-              item,
-              AdjacentProvider::Factory(source_index),
-            ));
+            transfers.push((target_index, item, AdjacentProvider::Factory(source_index)));
           }
         }
       }
@@ -963,11 +1002,8 @@ impl GameState {
           )
         }
         AdjacentProvider::Factory(source_index) => {
-          let (source, target) = two_factories_mut(
-            &mut self.world.factories,
-            source_index,
-            target_index,
-          );
+          let (source, target) =
+            two_factories_mut(&mut self.world.factories, source_index, target_index);
           (
             source.production.inventory.transfer_up_to(
               &self.content,
@@ -997,9 +1033,7 @@ impl GameState {
         .production
         .wants_power(&self.content);
       let node = self.world.factories[factory_index].node;
-      if wants_power
-        && !self.consume_power(node, production_cost, &node.to_string(), events)
-      {
+      if wants_power && !self.consume_power(node, production_cost, &node.to_string(), events) {
         continue;
       }
       let factory = &mut self.world.factories[factory_index];
@@ -1127,7 +1161,18 @@ impl GameState {
         (owner, position)
       })
       .collect::<std::collections::BTreeMap<_, _>>();
-    let mut unseen = positions.keys().copied().collect::<std::collections::BTreeSet<_>>();
+    let mut unseen = positions
+      .keys()
+      .copied()
+      .collect::<std::collections::BTreeSet<_>>();
+    let mut owners_by_position =
+      std::collections::BTreeMap::<GridPosition, Vec<BatteryOwner>>::new();
+    for (owner, position) in &positions {
+      owners_by_position
+        .entry(*position)
+        .or_default()
+        .push(*owner);
+    }
 
     while let Some(start) = unseen.pop_first() {
       let mut component = vec![start];
@@ -1135,28 +1180,25 @@ impl GameState {
       while cursor < component.len() {
         let owner = component[cursor];
         cursor += 1;
-        let neighbors = unseen
-          .iter()
-          .copied()
-          .filter(|candidate| {
-            positions[&owner] == positions[candidate]
-              || adjacent(positions[&owner], positions[candidate])
-          })
-          .collect::<Vec<_>>();
-        for neighbor in neighbors {
-          unseen.remove(&neighbor);
-          component.push(neighbor);
+        let position = positions[&owner];
+        for y in position.y - 1..=position.y + 1 {
+          for x in position.x - 1..=position.x + 1 {
+            let Some(neighbors) = owners_by_position.get(&GridPosition { x, y }) else {
+              continue;
+            };
+            for neighbor in neighbors {
+              if unseen.remove(neighbor) {
+                component.push(*neighbor);
+              }
+            }
+          }
         }
       }
       self.balance_battery_component(&component, events);
     }
   }
 
-  fn balance_battery_component(
-    &mut self,
-    owners: &[BatteryOwner],
-    events: &mut Vec<String>,
-  ) {
+  fn balance_battery_component(&mut self, owners: &[BatteryOwner], events: &mut Vec<String>) {
     let total_energy = owners
       .iter()
       .map(|owner| u64::from(self.world.batteries[owner].energy))
@@ -1187,11 +1229,12 @@ impl GameState {
       *energy += 1;
     }
     shares.sort_by_key(|(owner, _, _)| *owner);
-    let changed = shares.iter().any(|(owner, energy, _)| {
-      self.world.batteries[owner].energy != *energy
-    });
+    let changed = shares
+      .iter()
+      .any(|(owner, energy, _)| self.world.batteries[owner].energy != *energy);
     for (owner, energy, _) in shares {
-      self.world
+      self
+        .world
         .batteries
         .get_mut(&owner)
         .expect("component owner has a battery")
@@ -1218,7 +1261,9 @@ impl GameState {
     }
     let owner = BatteryOwner::Node(node);
     let Some(battery) = self.world.batteries.get_mut(&owner) else {
-      events.push(format!("power starved {consumer} missing battery at {node}"));
+      events.push(format!(
+        "power starved {consumer} missing battery at {node}"
+      ));
       self.metrics.power_starvations += 1;
       self.record_node_alert(node, format!("not enough energy for {consumer}"));
       return false;
@@ -1307,16 +1352,24 @@ impl GameState {
       let current_position = topology.position(current);
       let target_position = topology.position(target);
       if current_position == target_position || adjacent(current_position, target_position) {
+        hauler.route.clear();
         continue;
       }
-      let Some(next) = topology.step_toward(current, target) else {
-        events.push(format!(
-          "move hauler-{} no available path {} -> {}",
-          hauler.id, current, target
-        ));
+      if hauler.route.is_empty() {
+        let Some(path) = topology.path(current, target) else {
+          events.push(format!(
+            "move hauler-{} no available path {} -> {}",
+            hauler.id, current, target
+          ));
+          continue;
+        };
+        hauler.route = path.into_iter().skip(1).collect();
+      }
+      let Some(next) = hauler.route.front().copied() else {
         continue;
       };
       if next == current {
+        hauler.route.pop_front();
         continue;
       }
       if matches!(next, NodeId::Transit(_)) && !reserved_transit.insert(next) {
@@ -1326,6 +1379,7 @@ impl GameState {
         ));
         continue;
       }
+      hauler.route.pop_front();
       self.world.queued_mutations.push(WorldMutation::MoveHauler {
         hauler_id: hauler.id,
         from: current,
@@ -1421,9 +1475,11 @@ impl GameState {
         })
         .collect(),
       structures: self.world.structures.clone(),
-      power: self.world.power.as_ref().map(|power| {
-        power.snapshot(self.world.batteries.values().cloned())
-      }),
+      power: self
+        .world
+        .power
+        .as_ref()
+        .map(|power| power.snapshot(self.world.batteries.values().cloned())),
       events,
     }
   }
@@ -1461,10 +1517,10 @@ mod tests {
   use super::*;
   use factory_content::{
     ContentDatabase, GeneratorSpec, GridPoint, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO,
-    COAL, COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO,
-    FRAMES, HYBRID_GRID_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO,
-    IRON_ORE, MINING_DRILL, MOTORS, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
-    POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
+    COAL, COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, FRAMES,
+    HYBRID_GRID_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE,
+    MINING_DRILL, MOTORS, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
+    POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE, V2_WORLD_SCENARIO,
   };
 
   #[test]
@@ -1500,6 +1556,55 @@ mod tests {
   }
 
   #[test]
+  fn v2_world_runs_deployment_freight_and_upper_tier_production_at_scale() {
+    let content = ContentDatabase::starter();
+    let mut state = GameState::new(content.clone(), V2_WORLD_SCENARIO).expect("v2 world is valid");
+    let first = state.step();
+    assert_eq!(424, first.sources.len());
+    assert_eq!(NodeId::Source(423), first.sources[423].node);
+    assert_eq!(
+      424,
+      first
+        .sources
+        .iter()
+        .map(|source| source.node)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+    );
+    assert_eq!(15, first.haulers.len());
+    assert!(
+      first
+        .haulers
+        .iter()
+        .map(|hauler| hauler.position_grid)
+        .collect::<std::collections::BTreeSet<_>>()
+        .len()
+        > 1
+    );
+
+    for _ in 1..50 {
+      state.step();
+    }
+    let metrics = state.metrics();
+    assert_eq!(50, metrics.ticks);
+    assert_eq!(3, metrics.deployments, "{metrics:?}");
+    for item in [IRON_ORE, COPPER_ORE, COAL, STONE] {
+      assert!(
+        metrics.mined.get(item.as_str()).copied().unwrap_or(0) > 0,
+        "{metrics:?}"
+      );
+    }
+    assert_eq!(996, metrics.units_collected, "{metrics:?}");
+    assert_eq!(776, metrics.units_delivered, "{metrics:?}");
+    for item in [IRON_BARS, FRAMES, BUILDING_MATERIALS] {
+      assert!(
+        metrics.crafted.get(item.as_str()).copied().unwrap_or(0) > 0,
+        "{metrics:?}"
+      );
+    }
+  }
+
+  #[test]
   fn mining_manifest_items_create_from_nothing() {
     let content = ContentDatabase::starter();
     let mut extractor = MiningExtractor::for_item(&content, STONE, 2, 0);
@@ -1525,7 +1630,10 @@ mod tests {
 
     let first = state.step();
 
-    assert_eq!(Some(&1), first.factories[0].inventory.items.get(STONE.as_str()));
+    assert_eq!(
+      Some(&1),
+      first.factories[0].inventory.items.get(STONE.as_str())
+    );
     assert_eq!(Some(&1), state.metrics().crafted.get(STONE.as_str()));
   }
 
@@ -1719,8 +1827,14 @@ mod tests {
     hauler.cargo.force_insert(IRON_ORE, 1);
 
     let snapshot = state.step();
-    assert_eq!("collect => deliver", snapshot.haulers[0].alerts.latest().unwrap().message);
-    assert!(snapshot.sources.iter().all(|source| source.alerts.entries.is_empty()));
+    assert_eq!(
+      "collect => deliver",
+      snapshot.haulers[0].alerts.latest().unwrap().message
+    );
+    assert!(snapshot
+      .sources
+      .iter()
+      .all(|source| source.alerts.entries.is_empty()));
     assert!(snapshot
       .factories
       .iter()
@@ -1737,8 +1851,7 @@ mod tests {
 
     assert_eq!(first_run, second_run);
     assert!(first_run.iter().any(|snapshot| {
-      snapshot
-        .factories[0]
+      snapshot.factories[0]
         .inventory
         .items
         .get(IRON_BARS.as_str())
@@ -1776,10 +1889,7 @@ mod tests {
       .find(|node| node.id == NodeId::Factory(0))
       .unwrap()
       .position;
-    assert!(second
-      .topology
-      .blocked
-      .contains(&factory_position));
+    assert!(second.topology.blocked.contains(&factory_position));
   }
 
   #[test]
@@ -1846,8 +1956,7 @@ mod tests {
       GameState::new(ContentDatabase::starter(), BUILDING_MATERIALS_SCENARIO).unwrap();
 
     let first = state.step();
-    let intent_items: Vec<&str> = first
-      .factories[0]
+    let intent_items: Vec<&str> = first.factories[0]
       .dispatch
       .intents
       .iter()
@@ -1866,8 +1975,7 @@ mod tests {
     scenario.sources.push(scenario.sources[0].clone());
     scenario.layout.width = 6;
     scenario.layout.height = 3;
-    scenario.layout.source_positions =
-      vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
+    scenario.layout.source_positions = vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
     scenario.layout.road_position = GridPoint { x: 3, y: 0 };
     scenario.layout.factory_positions = vec![GridPoint { x: 5, y: 1 }];
 
@@ -1893,8 +2001,7 @@ mod tests {
     scenario.layout.height = 3;
     scenario.layout.source_positions = vec![GridPoint { x: 0, y: 1 }];
     scenario.layout.road_position = GridPoint { x: 2, y: 1 };
-    scenario.layout.factory_positions =
-      vec![GridPoint { x: 3, y: 0 }, GridPoint { x: 5, y: 1 }];
+    scenario.layout.factory_positions = vec![GridPoint { x: 3, y: 0 }, GridPoint { x: 5, y: 1 }];
     content
   }
 
@@ -1908,11 +2015,7 @@ mod tests {
     );
     assert_eq!(
       None,
-      state.set_dispatch_priority(
-        NodeId::Factory(1),
-        IRON_ORE,
-        DispatchPriority::HIGH,
-      )
+      state.set_dispatch_priority(NodeId::Factory(1), IRON_ORE, DispatchPriority::HIGH,)
     );
 
     let first = state.step();
@@ -1996,8 +2099,7 @@ mod tests {
     scenario.sources.push(scenario.sources[0].clone());
     scenario.layout.width = 6;
     scenario.layout.height = 3;
-    scenario.layout.source_positions =
-      vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
+    scenario.layout.source_positions = vec![GridPoint { x: 0, y: 1 }, GridPoint { x: 4, y: 1 }];
     scenario.layout.road_position = GridPoint { x: 3, y: 0 };
     scenario.layout.factory_positions = vec![GridPoint { x: 5, y: 1 }];
 
@@ -2034,8 +2136,7 @@ mod tests {
         > 0
     );
     assert!(first_run.iter().any(|snapshot| {
-      snapshot
-        .factories[0]
+      snapshot.factories[0]
         .inventory
         .items
         .get(BUILDING_MATERIALS.as_str())
@@ -2047,26 +2148,23 @@ mod tests {
 
   #[test]
   fn adjacent_inserters_run_the_multi_factory_drill_chain() {
-    let mut first =
-      GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
-    let mut second =
-      GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
+    let mut first = GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
+    let mut second = GameState::new(ContentDatabase::starter(), PRODUCTION_CHAIN_SCENARIO).unwrap();
 
     let first_run: Vec<_> = (0..80).map(|_| first.step()).collect();
     let second_run: Vec<_> = (0..80).map(|_| second.step()).collect();
     assert_eq!(first_run, second_run);
     assert_eq!(5, first_run[0].factories.len());
-    assert!(first_run.iter().flat_map(|snapshot| &snapshot.events).any(
-      |event| event.starts_with("inserter move iron_ore") && event.contains("source-0")
-    ));
-    assert!(first_run.iter().flat_map(|snapshot| &snapshot.events).any(
-      |event| event.starts_with("inserter move frames") && event.contains("factory-2")
-    ));
+    assert!(first_run
+      .iter()
+      .flat_map(|snapshot| &snapshot.events)
+      .any(|event| event.starts_with("inserter move iron_ore") && event.contains("source-0")));
+    assert!(first_run
+      .iter()
+      .flat_map(|snapshot| &snapshot.events)
+      .any(|event| event.starts_with("inserter move frames") && event.contains("factory-2")));
     assert!(
-      first_run
-        .last()
-        .unwrap()
-        .factories[4]
+      first_run.last().unwrap().factories[4]
         .inventory
         .items
         .get(MINING_DRILL.as_str())
@@ -2078,20 +2176,17 @@ mod tests {
 
   #[test]
   fn haulers_retrieve_factory_output_for_nonadjacent_demand() {
-    let mut state =
-      GameState::new(ContentDatabase::starter(), DISTRIBUTED_CHAIN_SCENARIO).unwrap();
+    let mut state = GameState::new(ContentDatabase::starter(), DISTRIBUTED_CHAIN_SCENARIO).unwrap();
     let snapshots: Vec<_> = (0..100).map(|_| state.step()).collect();
 
-    assert!(snapshots.iter().flat_map(|snapshot| &snapshot.events).any(
-      |event| event.contains("dispatch collect")
+    assert!(snapshots
+      .iter()
+      .flat_map(|snapshot| &snapshot.events)
+      .any(|event| event.contains("dispatch collect")
         && event.contains("factory-0")
-        && event.contains("factory-1")
-    ));
+        && event.contains("factory-1")));
     assert!(
-      snapshots
-        .last()
-        .unwrap()
-        .factories[1]
+      snapshots.last().unwrap().factories[1]
         .inventory
         .items
         .get(FRAMES.as_str())
@@ -2122,7 +2217,13 @@ mod tests {
       state.step();
     }
 
-    assert_eq!(0, state.world.factories[4].production.inventory.count(MINING_DRILL));
+    assert_eq!(
+      0,
+      state.world.factories[4]
+        .production
+        .inventory
+        .count(MINING_DRILL)
+    );
     assert!(state.world.factories[2].production.inventory.count(FRAMES) > 0);
     assert!(state.world.factories[3].production.inventory.count(MOTORS) > 0);
   }
@@ -2147,16 +2248,14 @@ mod tests {
     let mut bars_seen = false;
     for _ in 0..16 {
       let snapshot = state.step();
-      let input_stock = snapshot
-        .factories[0]
+      let input_stock = snapshot.factories[0]
         .inventory
         .items
         .get(IRON_ORE.as_str())
         .copied()
         .unwrap_or(0);
       assert!(input_stock <= 6, "input stock {input_stock} exceeds buffer");
-      bars_seen |= snapshot
-        .factories[0]
+      bars_seen |= snapshot.factories[0]
         .inventory
         .items
         .get(IRON_BARS.as_str())
@@ -2211,8 +2310,7 @@ mod tests {
       grid_capacity: 100,
     };
     let node = NodeId::Generator(0);
-    let mut generator =
-      PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
+    let mut generator = PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
     let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
     let mut events = Vec::new();
 
@@ -2235,8 +2333,7 @@ mod tests {
       grid_capacity: 100,
     };
     let node = NodeId::Generator(0);
-    let mut generator =
-      PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
+    let mut generator = PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
     let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
 
     generator.refresh_dispatch();
@@ -2257,8 +2354,7 @@ mod tests {
       grid_capacity: 100,
     };
     let node = NodeId::Generator(0);
-    let mut generator =
-      PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
+    let mut generator = PowerGenerator::new(&content, node, spec, Inventory::new(64, 64));
     let mut battery = Battery::new(BatteryOwner::Node(node), 100, 100);
 
     assert_eq!((0, 0), generator.generate(&mut battery, &mut Vec::new()));
@@ -2278,8 +2374,7 @@ mod tests {
       grid_capacity: 100,
     };
     let node = NodeId::Generator(0);
-    let mut generator =
-      PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
+    let mut generator = PowerGenerator::new(&content, node, spec, Inventory::new(1, 1));
     let mut battery = Battery::new(BatteryOwner::Node(node), 0, 100);
 
     assert_eq!((0, 100), generator.generate(&mut battery, &mut Vec::new()));
@@ -2293,14 +2388,22 @@ mod tests {
 
     assert_eq!(120, state.metrics().energy_generated);
     assert_eq!(2, snapshot.power.as_ref().unwrap().generators.len());
-    assert_eq!(Some(COAL), snapshot.power.as_ref().unwrap().generators[0].fuel_item);
-    assert_eq!(None, snapshot.power.as_ref().unwrap().generators[1].fuel_item);
-    assert!(snapshot.events.iter().any(|event| {
-      event.starts_with("power generate generator-0 burned 2 generated 80")
-    }));
-    assert!(snapshot.events.iter().any(|event| {
-      event.starts_with("power generate generator-1 burned 0 generated 40")
-    }));
+    assert_eq!(
+      Some(COAL),
+      snapshot.power.as_ref().unwrap().generators[0].fuel_item
+    );
+    assert_eq!(
+      None,
+      snapshot.power.as_ref().unwrap().generators[1].fuel_item
+    );
+    assert!(snapshot
+      .events
+      .iter()
+      .any(|event| { event.starts_with("power generate generator-0 burned 2 generated 80") }));
+    assert!(snapshot
+      .events
+      .iter()
+      .any(|event| { event.starts_with("power generate generator-1 burned 0 generated 40") }));
   }
 
   #[test]
@@ -2377,8 +2480,7 @@ mod tests {
 
   #[test]
   fn adjacent_batteries_balance_by_capacity_without_losing_energy() {
-    let mut state =
-      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    let mut state = GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
     state.world.batteries.clear();
     let first = BatteryOwner::Node(NodeId::Source(0));
     let second = BatteryOwner::Node(NodeId::Source(1));
@@ -2408,8 +2510,7 @@ mod tests {
 
   #[test]
   fn disconnected_batteries_do_not_exchange_energy() {
-    let mut state =
-      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    let mut state = GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
     state.world.batteries.clear();
     let source = BatteryOwner::Node(NodeId::Source(0));
     let factory = BatteryOwner::Node(NodeId::Factory(0));
@@ -2430,8 +2531,7 @@ mod tests {
 
   #[test]
   fn powered_snapshots_expose_every_object_battery() {
-    let mut state =
-      GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
+    let mut state = GameState::new(ContentDatabase::starter(), POWERED_IRONWORKS_SCENARIO).unwrap();
     let snapshot = state.step();
     let power = snapshot.power.unwrap();
 
@@ -2472,9 +2572,13 @@ mod tests {
       .iter()
       .any(|event| event.starts_with("power line generator-0 built 3 cells")));
     for position in &first.topology.power_lines {
-      assert!(first.power.as_ref().unwrap().batteries.iter().any(
-        |battery| battery.owner == BatteryOwner::PowerLine(*position)
-      ));
+      assert!(first
+        .power
+        .as_ref()
+        .unwrap()
+        .batteries
+        .iter()
+        .any(|battery| battery.owner == BatteryOwner::PowerLine(*position)));
     }
     assert!(
       first
@@ -2514,27 +2618,21 @@ mod tests {
     assert!(snapshots[..deploy_tick]
       .iter()
       .all(|snapshot| snapshot.sources[0].stockpile.items.is_empty()));
-    assert!(snapshots
+    assert!(snapshots.iter().any(|snapshot| snapshot
+      .events
       .iter()
-      .any(|snapshot| snapshot.events.iter().any(|event| {
-        event.contains("dispatch retrieve") && event.contains("factory")
-      })));
-    assert!(snapshots
+      .any(|event| { event.contains("dispatch retrieve") && event.contains("factory") })));
+    assert!(snapshots.iter().any(|snapshot| snapshot
+      .events
       .iter()
-      .any(|snapshot| snapshot.events.iter().any(|event| {
-        event.contains("dispatch deploy") && event.contains("queued")
-      })));
-    assert!(snapshots
+      .any(|event| { event.contains("dispatch deploy") && event.contains("queued") })));
+    assert!(snapshots.iter().any(|snapshot| snapshot
+      .events
       .iter()
-      .any(|snapshot| snapshot.events.iter().any(|event| {
-        event.contains("world deploy mining drill")
-      })));
+      .any(|event| { event.contains("world deploy mining drill") })));
     assert!(snapshots.last().expect("run has snapshots").sources[0].deployed);
     assert!(
-      snapshots
-        .last()
-        .expect("run has snapshots")
-        .sources[0]
+      snapshots.last().expect("run has snapshots").sources[0]
         .stockpile
         .items
         .get(IRON_ORE.as_str())
@@ -2545,10 +2643,7 @@ mod tests {
     assert_eq!(1, state.metrics().deployments);
     assert_eq!(
       0,
-      snapshots
-        .last()
-        .expect("run has snapshots")
-        .factories[0]
+      snapshots.last().expect("run has snapshots").factories[0]
         .inventory
         .items
         .get(MINING_DRILL.as_str())
@@ -2585,9 +2680,10 @@ mod tests {
       })
       .expect("warehouse construction completes");
 
-    assert!(snapshots.iter().any(|snapshot| snapshot.events.iter().any(
-      |event| event.contains("dispatch retrieve") && event.contains("factory")
-    )));
+    assert!(snapshots.iter().any(|snapshot| snapshot
+      .events
+      .iter()
+      .any(|event| event.contains("dispatch retrieve") && event.contains("factory"))));
     assert_eq!(
       vec![StructureSnapshot {
         node: NodeId::Structure(0),

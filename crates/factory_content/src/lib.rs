@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -68,6 +68,7 @@ pub const DISTRIBUTED_CHAIN_SCENARIO: ScenarioId = ScenarioId::new("distributed-
 pub const POWER_LINE_SCENARIO: ScenarioId = ScenarioId::new("power-line-demo");
 pub const BUILDING_DEPLOYMENT_SCENARIO: ScenarioId = ScenarioId::new("building-deployment");
 pub const HYBRID_GRID_SCENARIO: ScenarioId = ScenarioId::new("hybrid-grid");
+pub const V2_WORLD_SCENARIO: ScenarioId = ScenarioId::new("v2-world");
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct ItemDefinition {
@@ -147,11 +148,12 @@ pub struct LayoutSpec {
   pub road_position: GridPoint,
   pub factory_positions: Vec<GridPoint>,
   pub generator_positions: Vec<GridPoint>,
+  pub hauler_positions: Vec<GridPoint>,
   pub obstacles: Vec<GridPoint>,
 }
 
 impl LayoutSpec {
-  pub fn linear(source_count: u8, include_generator: bool) -> Self {
+  pub fn linear(source_count: u16, include_generator: bool) -> Self {
     Self {
       width: 3,
       height: i32::from(source_count).max(2),
@@ -167,6 +169,7 @@ impl LayoutSpec {
         .then_some(GridPoint { x: 2, y: 1 })
         .into_iter()
         .collect(),
+      hauler_positions: Vec::new(),
       obstacles: Vec::new(),
     }
   }
@@ -202,6 +205,26 @@ pub struct PowerSpec {
   pub mining_cost: u32,
   pub dispatch_cost: u32,
   pub production_cost: u32,
+  pub object_batteries: ObjectBatterySpec,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ObjectBatterySpec {
+  pub source_capacity: u32,
+  pub factory_capacity: u32,
+  pub hauler_capacity: u32,
+  pub start_charged: bool,
+}
+
+impl Default for ObjectBatterySpec {
+  fn default() -> Self {
+    Self {
+      source_capacity: 100,
+      factory_capacity: 1_000,
+      hauler_capacity: 250,
+      start_charged: false,
+    }
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -227,6 +250,167 @@ pub struct ScenarioDefinition {
   pub hauler_volume_capacity: u32,
   pub power: Option<PowerSpec>,
   pub layout: LayoutSpec,
+}
+
+const V2_MAP_SIZE: i32 = 100;
+const V2_ORE_PER_ITEM: usize = 141;
+const V2_RANDOM_SEED: u32 = 4_382_721;
+
+struct V2WorldRng(u32);
+
+impl V2WorldRng {
+  fn new(seed: u32) -> Self {
+    Self(seed)
+  }
+
+  fn next(&mut self) -> u32 {
+    self.0 = self.0.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+    self.0
+  }
+}
+
+fn v2_ore_position(rng: &mut V2WorldRng, occupied: &mut BTreeSet<GridPoint>) -> GridPoint {
+  let valid = |position: GridPoint| {
+    let dx = position.x - V2_MAP_SIZE / 2;
+    let dy = position.y - V2_MAP_SIZE / 2;
+    dx * dx + dy * dy > 100 && !occupied.contains(&position)
+  };
+  for _ in 0..10 {
+    let position = GridPoint {
+      x: i32::try_from(rng.next() % 100).expect("generated x fits i32"),
+      y: i32::try_from(rng.next() % 100).expect("generated y fits i32"),
+    };
+    if valid(position) {
+      occupied.insert(position);
+      return position;
+    }
+  }
+  for y in 0..V2_MAP_SIZE {
+    for x in 0..V2_MAP_SIZE {
+      let position = GridPoint { x, y };
+      if valid(position) {
+        occupied.insert(position);
+        return position;
+      }
+    }
+  }
+  panic!("v2 world has space for every generated ore deposit")
+}
+
+fn v2_world_scenario() -> ScenarioDefinition {
+  let mut rng = V2WorldRng::new(V2_RANDOM_SEED);
+  let mut occupied = BTreeSet::new();
+  let mut sources = Vec::with_capacity(V2_ORE_PER_ITEM * 3 + 1);
+  let mut source_positions = Vec::with_capacity(V2_ORE_PER_ITEM * 3 + 1);
+  for item in [IRON_ORE, COPPER_ORE, COAL] {
+    for _ in 0..V2_ORE_PER_ITEM {
+      source_positions.push(v2_ore_position(&mut rng, &mut occupied));
+      sources.push(SourceSpec {
+        item,
+        deposit: 2_000 + (rng.next() % 200) * 20,
+        mining_speed: 20,
+        requires_deployment: true,
+      });
+    }
+  }
+  source_positions.push(GridPoint { x: 56, y: 50 });
+  sources.push(SourceSpec {
+    item: STONE,
+    deposit: 0,
+    mining_speed: 20,
+    requires_deployment: false,
+  });
+
+  let factories = vec![
+    FactorySpec::new(IRON_BARS, 100, 100),
+    FactorySpec::new(COPPER_BARS, 100, 100),
+    FactorySpec::new(IRON_BARS, 100, 100),
+    FactorySpec::new(COPPER_BARS, 100, 100),
+    FactorySpec::new(IRON_BARS, 100, 100),
+    FactorySpec::new(IRON_BARS, 100, 100),
+    FactorySpec::new(COPPER_BARS, 100, 100),
+    FactorySpec::new(MOTORS, 100, 20),
+    FactorySpec::new(FRAMES, 100, 20),
+    FactorySpec::new(MINING_DRILL, 100, 10)
+      .with_starting_items(BTreeMap::from([(MINING_DRILL, 10)])),
+    FactorySpec::new(COAL_PLANT, 100, 1),
+    FactorySpec::new(CIRCUITS, 100, 20),
+    FactorySpec::new(FRAMES, 100, 20),
+    FactorySpec::new(MOTORS, 100, 20),
+    FactorySpec::new(BUILDING_MATERIALS, 100, 20),
+  ];
+  ScenarioDefinition {
+    id: V2_WORLD_SCENARIO,
+    name: "V2 100x100 Factory World".into(),
+    sources,
+    factories,
+    build_sites: Vec::new(),
+    hauler_count: 15,
+    hauler_capacity: 500,
+    hauler_weight_capacity: 500,
+    hauler_volume_capacity: 500,
+    power: Some(PowerSpec {
+      generators: vec![GeneratorSpec {
+        fuel_item: Some(COAL),
+        initial_fuel: 4_000,
+        fuel_buffer: 4_000,
+        burn_rate: 4,
+        gain_rate: 160,
+        grid_capacity: 10_000,
+      }],
+      mining_cost: 2,
+      dispatch_cost: 1,
+      production_cost: 2,
+      object_batteries: ObjectBatterySpec {
+        source_capacity: 1_000,
+        factory_capacity: 1_000,
+        hauler_capacity: 250,
+        start_charged: true,
+      },
+    }),
+    layout: LayoutSpec {
+      width: V2_MAP_SIZE,
+      height: V2_MAP_SIZE,
+      source_positions,
+      road_position: GridPoint { x: 50, y: 50 },
+      factory_positions: vec![
+        GridPoint { x: 52, y: 50 },
+        GridPoint { x: 53, y: 50 },
+        GridPoint { x: 54, y: 50 },
+        GridPoint { x: 57, y: 52 },
+        GridPoint { x: 57, y: 51 },
+        GridPoint { x: 57, y: 53 },
+        GridPoint { x: 55, y: 50 },
+        GridPoint { x: 52, y: 51 },
+        GridPoint { x: 54, y: 51 },
+        GridPoint { x: 53, y: 52 },
+        GridPoint { x: 55, y: 52 },
+        GridPoint { x: 55, y: 51 },
+        GridPoint { x: 56, y: 52 },
+        GridPoint { x: 56, y: 53 },
+        GridPoint { x: 56, y: 51 },
+      ],
+      generator_positions: vec![GridPoint { x: 52, y: 52 }],
+      hauler_positions: vec![
+        GridPoint { x: 49, y: 50 },
+        GridPoint { x: 49, y: 51 },
+        GridPoint { x: 49, y: 52 },
+        GridPoint { x: 51, y: 50 },
+        GridPoint { x: 51, y: 51 },
+        GridPoint { x: 51, y: 52 },
+        GridPoint { x: 51, y: 53 },
+        GridPoint { x: 52, y: 53 },
+        GridPoint { x: 53, y: 53 },
+        GridPoint { x: 54, y: 53 },
+        GridPoint { x: 57, y: 50 },
+        GridPoint { x: 57, y: 51 },
+        GridPoint { x: 57, y: 52 },
+        GridPoint { x: 57, y: 53 },
+        GridPoint { x: 57, y: 54 },
+      ],
+      obstacles: Vec::new(),
+    },
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -523,6 +707,7 @@ impl ContentDatabase {
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
+          object_batteries: ObjectBatterySpec::default(),
         }),
         layout: LayoutSpec::linear(2, true),
       },
@@ -538,10 +723,8 @@ impl ContentDatabase {
           mining_speed: 3,
           requires_deployment: true,
         }],
-        factories: vec![
-          FactorySpec::new(IRON_BARS, 6, 100)
-            .with_starting_items(BTreeMap::from([(MINING_DRILL, 1)])),
-        ],
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 100)
+          .with_starting_items(BTreeMap::from([(MINING_DRILL, 1)]))],
         build_sites: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
@@ -576,6 +759,7 @@ impl ContentDatabase {
           road_position: GridPoint { x: 1, y: 0 },
           factory_positions: vec![GridPoint { x: 3, y: 1 }],
           generator_positions: Vec::new(),
+          hauler_positions: Vec::new(),
           obstacles: vec![GridPoint { x: 1, y: 1 }],
         },
       },
@@ -625,6 +809,7 @@ impl ContentDatabase {
             GridPoint { x: 3, y: 1 },
           ],
           generator_positions: Vec::new(),
+          hauler_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -657,6 +842,7 @@ impl ContentDatabase {
           road_position: GridPoint { x: 1, y: 1 },
           factory_positions: vec![GridPoint { x: 2, y: 0 }, GridPoint { x: 4, y: 1 }],
           generator_positions: Vec::new(),
+          hauler_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -690,6 +876,7 @@ impl ContentDatabase {
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
+          object_batteries: ObjectBatterySpec::default(),
         }),
         layout: LayoutSpec {
           width: 5,
@@ -698,6 +885,7 @@ impl ContentDatabase {
           road_position: GridPoint { x: 4, y: 0 },
           factory_positions: vec![GridPoint { x: 4, y: 1 }],
           generator_positions: vec![GridPoint { x: 0, y: 1 }],
+          hauler_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -708,10 +896,8 @@ impl ContentDatabase {
         id: BUILDING_DEPLOYMENT_SCENARIO,
         name: "Warehouse Construction".into(),
         sources: Vec::new(),
-        factories: vec![
-          FactorySpec::new(IRON_BARS, 6, 20)
-            .with_starting_items(BTreeMap::from([(STORAGE_WAREHOUSE, 1)])),
-        ],
+        factories: vec![FactorySpec::new(IRON_BARS, 6, 20)
+          .with_starting_items(BTreeMap::from([(STORAGE_WAREHOUSE, 1)]))],
         build_sites: vec![BuildSiteSpec {
           item: STORAGE_WAREHOUSE,
           position: GridPoint { x: 4, y: 1 },
@@ -728,6 +914,7 @@ impl ContentDatabase {
           road_position: GridPoint { x: 1, y: 1 },
           factory_positions: vec![GridPoint { x: 0, y: 1 }],
           generator_positions: Vec::new(),
+          hauler_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
@@ -779,6 +966,7 @@ impl ContentDatabase {
           mining_cost: 1,
           dispatch_cost: 1,
           production_cost: 2,
+          object_batteries: ObjectBatterySpec::default(),
         }),
         layout: LayoutSpec {
           width: 4,
@@ -787,10 +975,12 @@ impl ContentDatabase {
           road_position: GridPoint { x: 1, y: 0 },
           factory_positions: vec![GridPoint { x: 3, y: 0 }],
           generator_positions: vec![GridPoint { x: 1, y: 1 }, GridPoint { x: 2, y: 1 }],
+          hauler_positions: Vec::new(),
           obstacles: Vec::new(),
         },
       },
     );
+    scenarios.insert(V2_WORLD_SCENARIO, v2_world_scenario());
 
     Self { items, scenarios }
   }
@@ -953,5 +1143,58 @@ mod tests {
     assert_eq!(None, power.generators[1].fuel_item);
     assert_eq!(0, power.generators[1].burn_rate);
     assert!(power.generators[1].gain_rate > 0);
+  }
+
+  #[test]
+  fn v2_world_recreates_the_large_generated_map_and_central_district() {
+    let content = ContentDatabase::starter();
+    let scenario = content.scenario(V2_WORLD_SCENARIO);
+
+    assert_eq!((100, 100), (scenario.layout.width, scenario.layout.height));
+    assert_eq!(424, scenario.sources.len());
+    assert_eq!(
+      423,
+      scenario
+        .sources
+        .iter()
+        .filter(|source| source.item != STONE)
+        .count()
+    );
+    for item in [IRON_ORE, COPPER_ORE, COAL] {
+      assert_eq!(
+        141,
+        scenario
+          .sources
+          .iter()
+          .filter(|source| source.item == item)
+          .count()
+      );
+    }
+    assert_eq!(
+      scenario.layout.source_positions.len(),
+      scenario
+        .layout
+        .source_positions
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>()
+        .len()
+    );
+    assert_eq!(15, scenario.factories.len());
+    assert_eq!(15, scenario.hauler_count);
+    assert_eq!(15, scenario.layout.hauler_positions.len());
+    assert_eq!(10, scenario.factories[9].starting_items[&MINING_DRILL]);
+    assert_eq!(
+      GridPoint { x: 52, y: 52 },
+      scenario.layout.generator_positions[0]
+    );
+    assert_eq!(
+      GridPoint { x: 56, y: 50 },
+      scenario.layout.source_positions[423]
+    );
+    assert_eq!(
+      scenario,
+      ContentDatabase::starter().scenario(V2_WORLD_SCENARIO)
+    );
   }
 }

@@ -5,7 +5,7 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 ## Crates
 
 - `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, build sites, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining, insertion and retrieval, indexed factories, typed multi-hauler dispatch, queued deployment, construction and movement, occupied-grid A-star pathfinding, transit arbitration, per-object batteries and alerts, automatic power lines, multi-generator power, and tick stepping.
+- `factory_sim` - deterministic inventory, mining, insertion and retrieval, wide indexed factories and sources, typed multi-hauler dispatch, queued deployment, construction and movement, cached occupied-grid A-star routes, transit arbitration, per-object batteries and alerts, spatial power balancing, automatic power lines, multi-generator power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -44,7 +44,7 @@ The world generalizes to N sources, factories, haulers, and generators:
 - finite ore and its empty drill queue ordered deletion after the last stockpile
   is hauled, then release the source's occupied grid cell
 
-The eleven layouts and their proof goals are listed in
+The twelve layouts and their proof goals are listed in
 [factory-scenarios.md](factory-scenarios.md).
 
 ## Run

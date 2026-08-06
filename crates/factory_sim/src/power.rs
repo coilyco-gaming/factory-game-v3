@@ -1,7 +1,7 @@
 use crate::alerts::AlertHistory;
 use crate::dispatch::{DispatchBoard, DispatchIntent};
 use crate::resources::{Inventory, InventorySnapshot};
-use crate::{GridPosition, NodeId};
+use crate::{GridPosition, HaulerId, NodeId, NodeIndex};
 use factory_content::{ContentDatabase, GeneratorSpec, ItemId, PowerSpec};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 #[serde(rename_all = "snake_case")]
 pub enum BatteryOwner {
   Node(NodeId),
-  Hauler(u8),
+  Hauler(HaulerId),
   PowerLine(GridPosition),
 }
 
@@ -89,11 +89,7 @@ impl PowerGenerator {
       .collect();
   }
 
-  pub fn generate(
-    &mut self,
-    battery: &mut Battery,
-    events: &mut Vec<String>,
-  ) -> (u32, u32) {
+  pub fn generate(&mut self, battery: &mut Battery, events: &mut Vec<String>) -> (u32, u32) {
     if battery.energy >= battery.capacity || self.spec.gain_rate == 0 {
       return (0, 0);
     }
@@ -145,11 +141,22 @@ impl PowerGrid {
       .cloned()
       .enumerate()
       .map(|(index, generator)| {
+        let fuel_capacity = generator.fuel_buffer.max(generator.initial_fuel).max(64);
+        let (weight_capacity, volume_capacity) = generator
+          .fuel_item
+          .map(|item| {
+            let definition = content.item(item);
+            (
+              fuel_capacity.saturating_mul(definition.weight),
+              fuel_capacity.saturating_mul(definition.volume),
+            )
+          })
+          .unwrap_or((64, 64));
         PowerGenerator::new(
           content,
-          NodeId::Generator(index as u8),
+          NodeId::Generator(NodeIndex::try_from(index).expect("generator index fits NodeIndex")),
           generator,
-          Inventory::new(64, 64),
+          Inventory::new(weight_capacity, volume_capacity),
         )
       })
       .collect();

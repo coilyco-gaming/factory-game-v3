@@ -49,3 +49,21 @@ fn cli_serializes_each_hybrid_grid_generator() {
   assert!(generators[1]["fuel_item"].is_null());
   assert_eq!(Some(40), generators[1]["gain_rate"].as_u64());
 }
+
+#[test]
+fn cli_retains_every_v2_world_object_and_wide_source_id() {
+  let output = Command::new(env!("CARGO_BIN_EXE_factory_cli"))
+    .args(["run", "--scenario", "v2-world", "--ticks", "1"])
+    .output()
+    .expect("cli runs");
+
+  assert!(output.status.success());
+  let stdout = String::from_utf8(output.stdout).expect("utf8");
+  let tick: serde_json::Value =
+    serde_json::from_str(stdout.lines().next().expect("tick line")).expect("json");
+
+  assert_eq!(Some(424), tick["sources"].as_array().map(Vec::len));
+  assert_eq!(Some(15), tick["factories"].as_array().map(Vec::len));
+  assert_eq!(Some(15), tick["haulers"].as_array().map(Vec::len));
+  assert_eq!(Some("source-423"), tick["sources"][423]["node"].as_str());
+}

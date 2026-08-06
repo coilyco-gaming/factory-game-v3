@@ -6,17 +6,21 @@ use crate::production::{CraftSnapshot, FactoryProduction};
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
 use serde::{Serialize, Serializer};
-use std::collections::{BTreeMap, BTreeSet};
+use std::cmp::Reverse;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, VecDeque};
 use std::fmt;
+
+pub type NodeIndex = u16;
+pub type HaulerId = u16;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodeId {
-  Source(u8),
+  Source(NodeIndex),
   Road,
-  Factory(u8),
-  Generator(u8),
-  BuildSite(u8),
-  Structure(u8),
+  Factory(NodeIndex),
+  Generator(NodeIndex),
+  BuildSite(NodeIndex),
+  Structure(NodeIndex),
   Transit(GridPosition),
 }
 
@@ -62,7 +66,7 @@ pub struct Topology {
 }
 
 impl Topology {
-  pub fn for_sources(source_count: u8, include_generator: bool) -> Self {
+  pub fn for_sources(source_count: NodeIndex, include_generator: bool) -> Self {
     Self::from_layout(&LayoutSpec::linear(source_count, include_generator))
   }
 
@@ -71,7 +75,7 @@ impl Topology {
       Vec::with_capacity(layout.source_positions.len() + layout.factory_positions.len() + 2);
     for (index, position) in layout.source_positions.iter().enumerate() {
       nodes.push(TopologyNode {
-        id: NodeId::Source(index as u8),
+        id: NodeId::Source(node_index(index)),
         position: GridPosition {
           x: position.x,
           y: position.y,
@@ -87,7 +91,7 @@ impl Topology {
     });
     for (index, position) in layout.factory_positions.iter().enumerate() {
       nodes.push(TopologyNode {
-        id: NodeId::Factory(index as u8),
+        id: NodeId::Factory(node_index(index)),
         position: GridPosition {
           x: position.x,
           y: position.y,
@@ -96,7 +100,7 @@ impl Topology {
     }
     for (index, position) in layout.generator_positions.iter().enumerate() {
       nodes.push(TopologyNode {
-        id: NodeId::Generator(index as u8),
+        id: NodeId::Generator(node_index(index)),
         position: GridPosition {
           x: position.x,
           y: position.y,
@@ -134,7 +138,7 @@ impl Topology {
         .iter()
         .enumerate()
         .map(|(index, site)| TopologyNode {
-          id: NodeId::BuildSite(index as u8),
+          id: NodeId::BuildSite(node_index(index)),
           position: GridPosition {
             x: site.position.x,
             y: site.position.y,
@@ -144,10 +148,7 @@ impl Topology {
     topology
   }
 
-  pub fn with_obstacles(
-    mut self,
-    obstacles: impl IntoIterator<Item = GridPosition>,
-  ) -> Self {
+  pub fn with_obstacles(mut self, obstacles: impl IntoIterator<Item = GridPosition>) -> Self {
     let obstacles = obstacles.into_iter().collect::<Vec<_>>();
     self.blocked.extend(obstacles.iter().copied());
     self.obstacles.extend(obstacles);
@@ -167,10 +168,7 @@ impl Topology {
   }
 
   fn in_bounds(&self, position: GridPosition) -> bool {
-    position.x >= 0
-      && position.y >= 0
-      && position.x < self.width
-      && position.y < self.height
+    position.x >= 0 && position.y >= 0 && position.x < self.width && position.y < self.height
   }
 
   fn walkable(&self, position: GridPosition, start: GridPosition, end: GridPosition) -> bool {
@@ -227,26 +225,21 @@ impl Topology {
   pub fn path(&self, from: NodeId, target: NodeId) -> Option<Vec<NodeId>> {
     let start = self.position(from);
     let end = self.position(target);
-    let mut open = vec![start];
+    let start_heuristic = Self::heuristic(start, end);
+    let mut open = BinaryHeap::from([Reverse((
+      start_heuristic,
+      start_heuristic,
+      start.y,
+      start.x,
+      start,
+    ))]);
     let mut came_from = BTreeMap::new();
     let mut cost = BTreeMap::from([(start, 0_u32)]);
 
-    while !open.is_empty() {
-      let current_index = open
-        .iter()
-        .enumerate()
-        .min_by_key(|(_, position)| {
-          (
-            cost.get(position).copied().unwrap_or(u32::MAX)
-              + Self::heuristic(**position, end),
-            Self::heuristic(**position, end),
-            position.y,
-            position.x,
-          )
-        })
-        .map(|(index, _)| index)
-        .expect("open path set is not empty");
-      let current = open.swap_remove(current_index);
+    while let Some(Reverse((estimated_cost, heuristic, _, _, current))) = open.pop() {
+      if cost[&current] + heuristic != estimated_cost {
+        continue;
+      }
       if current == end {
         let mut path = vec![end];
         let mut cursor = end;
@@ -286,9 +279,14 @@ impl Topology {
         }
         came_from.insert(neighbor, current);
         cost.insert(neighbor, candidate_cost);
-        if !open.contains(&neighbor) {
-          open.push(neighbor);
-        }
+        let heuristic = Self::heuristic(neighbor, end);
+        open.push(Reverse((
+          candidate_cost + heuristic,
+          heuristic,
+          neighbor.y,
+          neighbor.x,
+          neighbor,
+        )));
       }
     }
     None
@@ -376,27 +374,29 @@ impl FactoryNode {
     if self.production.inventory.count(output_item) > 0
       && !content.item(output_item).can_spawn_game_object
     {
-      self
-        .dispatch
-        .intents
-        .push(DispatchIntent::collect(output_item, self.node, NodeId::Road));
+      self.dispatch.intents.push(DispatchIntent::collect(
+        output_item,
+        self.node,
+        NodeId::Road,
+      ));
     }
   }
 }
 
 #[derive(Clone, Debug)]
 pub struct Hauler {
-  pub id: u8,
+  pub id: HaulerId,
   pub cargo: Inventory,
   pub position: NodeId,
   pub target: NodeId,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
   pub alerts: AlertHistory,
+  pub route: VecDeque<NodeId>,
 }
 
 impl Hauler {
-  pub fn new(id: u8, cargo: Inventory, position: NodeId, carry_limit: u32) -> Self {
+  pub fn new(id: HaulerId, cargo: Inventory, position: NodeId, carry_limit: u32) -> Self {
     Self {
       id,
       cargo,
@@ -405,10 +405,14 @@ impl Hauler {
       carry_limit,
       dispatch: DispatchReceiverState::Unassigned,
       alerts: AlertHistory::default(),
+      route: VecDeque::new(),
     }
   }
 
   pub fn set_target(&mut self, target: NodeId) {
+    if self.target != target {
+      self.route.clear();
+    }
     self.target = target;
   }
 
@@ -451,7 +455,7 @@ pub struct StructureSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HaulerSnapshot {
-  pub id: u8,
+  pub id: HaulerId,
   pub position: NodeId,
   pub position_grid: GridPosition,
   pub target: NodeId,
@@ -493,20 +497,24 @@ pub struct TickSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorldMutation {
-  DeploySource(u8),
-  DeleteDepletedDeposit(u8),
-  TeardownSource(u8),
+  DeploySource(NodeIndex),
+  DeleteDepletedDeposit(NodeIndex),
+  TeardownSource(NodeIndex),
   SpawnStructure {
-    site_index: u8,
+    site_index: NodeIndex,
     item: ItemId,
-    hauler_id: u8,
+    hauler_id: HaulerId,
   },
   MoveHauler {
-    hauler_id: u8,
+    hauler_id: HaulerId,
     from: NodeId,
     to: NodeId,
     target: NodeId,
   },
+}
+
+fn node_index(index: usize) -> NodeIndex {
+  NodeIndex::try_from(index).expect("scenario object index fits NodeIndex")
 }
 
 #[derive(Clone, Debug)]
@@ -548,6 +556,7 @@ mod tests {
       road_position: GridPoint { x: 1, y: 0 },
       factory_positions: vec![GridPoint { x: 3, y: 1 }],
       generator_positions: Vec::new(),
+      hauler_positions: Vec::new(),
       obstacles: vec![GridPoint { x: 1, y: 1 }],
     });
     assert_eq!(

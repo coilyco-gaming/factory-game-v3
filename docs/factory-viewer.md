@@ -21,11 +21,8 @@ through Bevy entities.
 
 ## Showcase
 
-The viewer rotates through eleven scenarios, including powered ironworks, drill
-deployment, a collision-arbitrated obstacle convoy, and a five-factory drill
-production chain. A separated freight line makes haulers carry foundry output
-to a frame factory. The hybrid grid pairs fueled and fuel-free generation.
-Grid-link draws power cells, while build occupies a typed site. Each scene displays:
+The viewer rotates through twelve scenarios, from focused fixtures for freight,
+power, building, and production to the 100x100 v2 world. Each scene displays:
 
 - source, road, factory, build-site, structure, generator, and blocked cells
 - hauler position, cargo, and dispatch phase
@@ -69,8 +66,8 @@ The keyboard mirrors the same typed actions:
 - `F` toggles between 2 and 8 ticks per second.
 - `C` advances to the next scenario.
 - `L` toggles automatic scenario cycling.
-- `WASD` or arrow keys move the bounded grid focus and camera.
-- `Q`/`E` or the mouse wheel zoom from level one through ten.
+- `WASD` or arrow keys move focus. Hold `Shift` to move ten cells.
+- `Q`/`E` or the wheel zoom. `O` toggles detail and whole-map views.
 
 ## Development
 

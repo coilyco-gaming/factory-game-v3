@@ -1,15 +1,15 @@
-use bevy::prelude::*;
 use bevy::input::mouse::MouseWheel;
+use bevy::prelude::*;
 use bevy::sprite::Anchor;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
   DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, HYBRID_GRID_SCENARIO,
   IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
-  POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
+  POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
-  HaulerSnapshot, NodeId, TickSnapshot,
+  HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -27,7 +27,7 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 11] = [
+const DEMO_SCENARIOS: [ScenarioId; 12] = [
   IRON_BARS_SCENARIO,
   IRON_BARS_FLEET_SCENARIO,
   BUILDING_MATERIALS_SCENARIO,
@@ -39,6 +39,7 @@ const DEMO_SCENARIOS: [ScenarioId; 11] = [
   POWER_LINE_SCENARIO,
   BUILDING_DEPLOYMENT_SCENARIO,
   HYBRID_GRID_SCENARIO,
+  V2_WORLD_SCENARIO,
 ];
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
@@ -295,7 +296,7 @@ struct NodeVisual(NodeId);
 struct NodeLabel(NodeId);
 
 #[derive(Component)]
-struct HaulerVisual(u8);
+struct HaulerVisual(HaulerId);
 
 #[derive(Component)]
 struct RouteVisual(NodeId);
@@ -309,13 +310,13 @@ struct RouteDash {
 }
 
 #[derive(Component)]
-struct HaulerLabel(u8);
+struct HaulerLabel(HaulerId);
 
 #[derive(Component)]
 struct HaulerTarget(Vec2);
 
 #[derive(Component)]
-struct CargoBadge(u8);
+struct CargoBadge(HaulerId);
 
 #[derive(Component)]
 struct CraftGaugeFill {
@@ -418,7 +419,10 @@ fn setup(
 
   spawn_status_panels(&mut commands);
   commands.spawn((
-    Sprite::from_color(Color::srgba(0.95, 0.86, 0.32, 0.28), Vec2::new(150.0, 100.0)),
+    Sprite::from_color(
+      Color::srgba(0.95, 0.86, 0.32, 0.28),
+      Vec2::new(150.0, 100.0),
+    ),
     Transform::from_xyz(0.0, 0.0, 2.7),
     PlayerCursor,
     Annotation,
@@ -654,6 +658,7 @@ fn spawn_control_deck(commands: &mut Commands) {
               (ControlAction::SelectScenario(8), "GRID LINK"),
               (ControlAction::SelectScenario(9), "BUILD"),
               (ControlAction::SelectScenario(10), "HYBRID"),
+              (ControlAction::SelectScenario(11), "V2 WORLD"),
             ],
           );
           spawn_control_row(
@@ -797,7 +802,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
   }
 
   for hauler in &snapshot.haulers {
-    let position = hauler_world_position(hauler);
+    let position = hauler_world_position(snapshot, hauler);
     commands.spawn((
       Sprite::from_color(hauler_color(hauler), Vec2::splat(hauler_size(hauler))),
       Transform::from_xyz(position.x, position.y, 2.0),
@@ -838,7 +843,11 @@ fn spawn_craft_gauge(
   node: NodeId,
   factory: Vec2,
 ) {
-  let Some(factory_snapshot) = snapshot.factories.iter().find(|factory| factory.node == node) else {
+  let Some(factory_snapshot) = snapshot
+    .factories
+    .iter()
+    .find(|factory| factory.node == node)
+  else {
     return;
   };
   let y = factory.y - 28.0;
@@ -881,11 +890,12 @@ fn spawn_power_gauge(
   node: NodeId,
   generator_position: Vec2,
 ) {
-  let Some(generator) = snapshot
-    .power
-    .as_ref()
-    .and_then(|power| power.generators.iter().find(|generator| generator.node == node))
-  else {
+  let Some(generator) = snapshot.power.as_ref().and_then(|power| {
+    power
+      .generators
+      .iter()
+      .find(|generator| generator.node == node)
+  }) else {
     return;
   };
   let y = generator_position.y - 28.0;
@@ -919,6 +929,9 @@ fn spawn_power_gauge(
 }
 
 fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
+  if snapshot.topology.width > 20 || snapshot.topology.height > 20 {
+    return;
+  }
   let road = snapshot
     .topology
     .nodes
@@ -993,20 +1006,26 @@ fn handle_player_view(
   mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
 ) {
   if view.scene_revision != host.scene_revision {
-    view.position = GridPosition {
-      x: host.snapshot.topology.width / 2,
-      y: host.snapshot.topology.height / 2,
-    };
+    view.position = initial_player_position(&host.snapshot);
     view.zoom_level = 1;
     view.scene_revision = host.scene_revision;
   }
 
-  let horizontal = i32::from(
-    keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight),
-  ) - i32::from(keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft));
-  let vertical =
-    i32::from(keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp))
-      - i32::from(keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown));
+  let pan_distance = if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
+    10
+  } else {
+    1
+  };
+  let move_right = keys.just_pressed(KeyCode::KeyD)
+    || keys.just_pressed(KeyCode::ArrowRight);
+  let move_left = keys.just_pressed(KeyCode::KeyA)
+    || keys.just_pressed(KeyCode::ArrowLeft);
+  let move_up = keys.just_pressed(KeyCode::KeyW)
+    || keys.just_pressed(KeyCode::ArrowUp);
+  let move_down = keys.just_pressed(KeyCode::KeyS)
+    || keys.just_pressed(KeyCode::ArrowDown);
+  let horizontal = pan_distance * (i32::from(move_right) - i32::from(move_left));
+  let vertical = pan_distance * (i32::from(move_up) - i32::from(move_down));
   view.position = move_player_focus(
     view.position,
     horizontal,
@@ -1022,6 +1041,9 @@ fn handle_player_view(
   if keys.just_pressed(KeyCode::KeyQ) || wheel_delta < 0.0 {
     view.zoom_level = view.zoom_level.saturating_add(1).min(10);
   }
+  if keys.just_pressed(KeyCode::KeyO) {
+    view.zoom_level = if view.zoom_level == 10 { 1 } else { 10 };
+  }
 
   let world = grid_to_world(view.position);
   camera.0.translation.x = world.x;
@@ -1029,7 +1051,11 @@ fn handle_player_view(
   cursor.translation.x = world.x;
   cursor.translation.y = world.y;
   if let Projection::Orthographic(projection) = &mut *camera.1 {
-    projection.scale = player_zoom_scale(view.zoom_level);
+    projection.scale = player_zoom_scale(
+      view.zoom_level,
+      host.snapshot.topology.width,
+      host.snapshot.topology.height,
+    );
   }
 }
 
@@ -1102,7 +1128,7 @@ fn project_snapshot(
       .iter()
       .find(|hauler| hauler.id == visual.0)
     {
-      target.0 = hauler_world_position(hauler);
+      target.0 = hauler_world_position(&host.snapshot, hauler);
     }
   }
 
@@ -1113,7 +1139,7 @@ fn project_snapshot(
       .iter()
       .find(|hauler| hauler.id == label.0)
     {
-      let position = hauler_world_position(hauler);
+      let position = hauler_world_position(&host.snapshot, hauler);
       target.0 = Vec2::new(position.x, position.y - 28.0);
     }
   }
@@ -1125,7 +1151,7 @@ fn project_snapshot(
       .iter()
       .find(|hauler| hauler.id == badge.0)
     {
-      target.0 = hauler_world_position(hauler);
+      target.0 = hauler_world_position(&host.snapshot, hauler);
     }
   }
 }
@@ -1221,8 +1247,7 @@ fn project_craft_gauge(
     else {
       continue;
     };
-    let progress =
-      craft_progress_fraction(factory.craft.craft_progress, factory.craft.craft_time);
+    let progress = craft_progress_fraction(factory.craft.craft_progress, factory.craft.craft_time);
     let width = gauge.max_width * progress;
     sprite.custom_size = Some(Vec2::new(width, 6.0));
     transform.translation.x = gauge.left + width / 2.0;
@@ -1422,7 +1447,11 @@ fn sync_annotation_visibility(
     *annotation = visibility;
   }
 
-  deck.width = if host.annotations_visible { px(408) } else { px(104) };
+  deck.width = if host.annotations_visible {
+    px(408)
+  } else {
+    px(104)
+  };
   content.display = if host.annotations_visible {
     Display::Flex
   } else {
@@ -1461,12 +1490,13 @@ fn update_text(
   >,
   mut hud_title: Query<
     &mut Text,
-    (With<HudTitleText>, Without<HudValueText>, Without<EventText>),
+    (
+      With<HudTitleText>,
+      Without<HudValueText>,
+      Without<EventText>,
+    ),
   >,
-  mut hud_values: Query<
-    (&HudValueText, &mut Text),
-    (Without<HudTitleText>, Without<EventText>),
-  >,
+  mut hud_values: Query<(&HudValueText, &mut Text), (Without<HudTitleText>, Without<EventText>)>,
   mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
 ) {
   if !host.is_changed() {
@@ -1554,7 +1584,10 @@ fn truncate_for_display(value: &str, max_chars: usize) -> String {
   }
 
   let visible_chars = max_chars - 3;
-  format!("{}...", value.chars().take(visible_chars).collect::<String>())
+  format!(
+    "{}...",
+    value.chars().take(visible_chars).collect::<String>()
+  )
 }
 
 fn move_player_focus(
@@ -1570,8 +1603,43 @@ fn move_player_focus(
   }
 }
 
-fn player_zoom_scale(level: u8) -> f32 {
-  1.0 + f32::from(level.clamp(1, 10) - 1) * 0.18
+fn initial_player_position(snapshot: &TickSnapshot) -> GridPosition {
+  if snapshot.topology.width <= 20 && snapshot.topology.height <= 20 {
+    return GridPosition {
+      x: snapshot.topology.width / 2,
+      y: snapshot.topology.height / 2,
+    };
+  }
+  let factory_positions = snapshot
+    .topology
+    .nodes
+    .iter()
+    .filter(|node| matches!(node.id, NodeId::Factory(_)))
+    .map(|node| node.position)
+    .collect::<Vec<_>>();
+  let min_x = factory_positions.iter().map(|position| position.x).min();
+  let max_x = factory_positions.iter().map(|position| position.x).max();
+  let min_y = factory_positions.iter().map(|position| position.y).min();
+  let max_y = factory_positions.iter().map(|position| position.y).max();
+  match (min_x, max_x, min_y, max_y) {
+    (Some(min_x), Some(max_x), Some(min_y), Some(max_y)) => GridPosition {
+      x: (min_x + max_x) / 2,
+      y: (min_y + max_y) / 2,
+    },
+    _ => GridPosition {
+      x: snapshot.topology.width / 2,
+      y: snapshot.topology.height / 2,
+    },
+  }
+}
+
+fn player_zoom_scale(level: u8, width: i32, height: i32) -> f32 {
+  let level = level.clamp(1, 10);
+  if width <= 10 && height <= 10 {
+    return 1.0 + f32::from(level - 1) * 0.18;
+  }
+  let overview = (width as f32 / 7.0).max(height as f32 / 6.0).max(2.62);
+  overview.powf(f32::from(level - 1) / 9.0)
 }
 
 fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
@@ -1618,10 +1686,12 @@ fn focused_alert(snapshot: &TickSnapshot, position: GridPosition) -> String {
     .iter()
     .filter(|hauler| hauler.position_grid == position)
     .filter_map(|hauler| {
-      hauler
-        .alerts
-        .latest()
-        .map(|alert| (alert.tick, format!("hauler-{}: {}", hauler.id, alert.message)))
+      hauler.alerts.latest().map(|alert| {
+        (
+          alert.tick,
+          format!("hauler-{}: {}", hauler.id, alert.message),
+        )
+      })
     });
   node_alerts
     .chain(hauler_alerts)
@@ -1666,13 +1736,18 @@ fn snapshot_inventory_totals(snapshot: &TickSnapshot) -> BTreeMap<String, u32> {
     .iter()
     .map(|source| &source.stockpile.items)
     .chain(snapshot.haulers.iter().map(|hauler| &hauler.cargo.items))
-    .chain(snapshot.factories.iter().map(|factory| &factory.inventory.items))
     .chain(
       snapshot
-        .power
+        .factories
         .iter()
-        .flat_map(|power| power.generators.iter().map(|generator| &generator.fuel.items)),
+        .map(|factory| &factory.inventory.items),
     )
+    .chain(snapshot.power.iter().flat_map(|power| {
+      power
+        .generators
+        .iter()
+        .map(|generator| &generator.fuel.items)
+    }))
   {
     for (item, quantity) in items {
       *totals.entry(item.clone()).or_default() += quantity;
@@ -1688,9 +1763,14 @@ fn grid_to_world(position: GridPosition) -> Vec2 {
   )
 }
 
-fn hauler_world_position(hauler: &HaulerSnapshot) -> Vec2 {
+fn hauler_world_position(snapshot: &TickSnapshot, hauler: &HaulerSnapshot) -> Vec2 {
   let position = grid_to_world(hauler.position_grid);
-  Vec2::new(position.x, position.y - 54.0 - f32::from(hauler.id) * 30.0)
+  let stack_index = snapshot
+    .haulers
+    .iter()
+    .filter(|candidate| candidate.position_grid == hauler.position_grid && candidate.id < hauler.id)
+    .count();
+  Vec2::new(position.x, position.y - 54.0 - stack_index as f32 * 30.0)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1789,9 +1869,11 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
           .find(|generator| generator.node == node)
       })
       .map_or(NodeActivity::Idle, |generator| {
-        if snapshot.events.iter().any(|event| {
-          event.starts_with(&format!("power generate {} ", generator.node))
-        }) {
+        if snapshot
+          .events
+          .iter()
+          .any(|event| event.starts_with(&format!("power generate {} ", generator.node)))
+        {
           NodeActivity::Powering
         } else if generator.energy > 0 {
           NodeActivity::Ready
@@ -2130,7 +2212,10 @@ mod tests {
     let mut app = App::new();
     app.insert_resource(host);
     app.add_systems(Update, sync_annotation_visibility);
-    let annotation = app.world_mut().spawn((Annotation, Visibility::Visible)).id();
+    let annotation = app
+      .world_mut()
+      .spawn((Annotation, Visibility::Visible))
+      .id();
     let deck = app.world_mut().spawn((Node::default(), ControlDeck)).id();
     let content = app
       .world_mut()
@@ -2143,9 +2228,15 @@ mod tests {
 
     app.update();
 
-    assert_eq!(Visibility::Hidden, *app.world().get::<Visibility>(annotation).unwrap());
+    assert_eq!(
+      Visibility::Hidden,
+      *app.world().get::<Visibility>(annotation).unwrap()
+    );
     assert_eq!(px(104), app.world().get::<Node>(deck).unwrap().width);
-    assert_eq!(Display::None, app.world().get::<Node>(content).unwrap().display);
+    assert_eq!(
+      Display::None,
+      app.world().get::<Node>(content).unwrap().display
+    );
     assert_eq!("SHOW UI", app.world().get::<Text>(label).unwrap().as_str());
   }
 
@@ -2322,10 +2413,24 @@ mod tests {
 
   #[test]
   fn player_zoom_preserves_the_unity_one_to_ten_bounds() {
-    assert_eq!(1.0, player_zoom_scale(1));
-    assert_eq!(player_zoom_scale(1), player_zoom_scale(0));
-    assert_eq!(player_zoom_scale(10), player_zoom_scale(11));
-    assert!(player_zoom_scale(10) > player_zoom_scale(1));
+    assert_eq!(1.0, player_zoom_scale(1, 100, 100));
+    assert_eq!(
+      player_zoom_scale(1, 100, 100),
+      player_zoom_scale(0, 100, 100)
+    );
+    assert_eq!(
+      player_zoom_scale(10, 100, 100),
+      player_zoom_scale(11, 100, 100)
+    );
+    assert!(player_zoom_scale(10, 100, 100) > 16.0);
+  }
+
+  #[test]
+  fn large_world_focus_starts_on_the_factory_district() {
+    let game = scenario_game(V2_WORLD_SCENARIO);
+    let snapshot = game.snapshot(Vec::new());
+
+    assert_eq!(GridPosition { x: 54, y: 51 }, initial_player_position(&snapshot));
   }
 
   #[test]
@@ -2333,8 +2438,7 @@ mod tests {
     let game = scenario_game(BUILDING_DEPLOYMENT_SCENARIO);
     let snapshot = game.snapshot(Vec::new());
 
-    assert!(focused_status(&snapshot, GridPosition { x: 4, y: 1 })
-      .contains("awaiting structure"));
+    assert!(focused_status(&snapshot, GridPosition { x: 4, y: 1 }).contains("awaiting structure"));
     assert_eq!(
       Some(&1),
       snapshot_inventory_totals(&snapshot).get("storage_warehouse")
@@ -2397,11 +2501,20 @@ mod tests {
       "ALERT t007  factory-0: product output full",
       app.world().get::<Text>(overlay).unwrap().as_str()
     );
-    assert_eq!(Visibility::Visible, *app.world().get::<Visibility>(overlay).unwrap());
+    assert_eq!(
+      Visibility::Visible,
+      *app.world().get::<Visibility>(overlay).unwrap()
+    );
 
-    app.world_mut().resource_mut::<SimHost>().annotations_visible = false;
+    app
+      .world_mut()
+      .resource_mut::<SimHost>()
+      .annotations_visible = false;
     app.update();
-    assert_eq!(Visibility::Hidden, *app.world().get::<Visibility>(overlay).unwrap());
+    assert_eq!(
+      Visibility::Hidden,
+      *app.world().get::<Visibility>(overlay).unwrap()
+    );
   }
 
   #[test]
@@ -2456,8 +2569,10 @@ mod tests {
     host.next_scenario("test");
     assert_eq!(HYBRID_GRID_SCENARIO, host.snapshot.scenario.id);
     host.next_scenario("test");
+    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
+    host.next_scenario("test");
     assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(11, host.scene_revision);
+    assert_eq!(12, host.scene_revision);
   }
 
   #[test]

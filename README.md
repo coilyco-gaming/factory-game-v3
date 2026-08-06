@@ -41,8 +41,8 @@ ward exec image-build
 ## Inventory
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
-See [docs/unity-parity.md](docs/unity-parity.md) for the completed source-level
-gameplay parity audit.
+See [docs/unity-parity.md](docs/unity-parity.md) for the source-level gameplay
+audit and [docs/v2-world.md](docs/v2-world.md) for the game-scale proof.
 
 ## See also
 

@@ -7,6 +7,9 @@ commands:
   cargo-test:
     run: cargo test --workspace
     description: "Run the Rust workspace tests."
+  cargo-fmt:
+    run: cargo fmt --all -- --config tab_spaces=2
+    description: "Format the Rust workspace with the repository's two-space style."
   cargo-run:
     run: cargo run -p factory_cli --
     description: "Run the headless Rust scenario runner."
