@@ -9,7 +9,7 @@ use factory_sim::{
   BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerId,
   HaulerSnapshot, NodeId, TickSnapshot, TopologyNode,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
@@ -399,8 +399,8 @@ struct HudTitleText;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum HudField {
-  Flow,
-  Stock,
+  Resources,
+  Materials,
   Power,
 }
 
@@ -574,8 +574,16 @@ fn spawn_status_bar(commands: &mut Commands) {
 
 fn status_metrics() -> [(&'static str, HudField, Color); 3] {
   [
-    ("FLOW", HudField::Flow, Color::srgb(0.96, 0.58, 0.28)),
-    ("STOCK", HudField::Stock, Color::srgb(0.95, 0.78, 0.36)),
+    (
+      "RESOURCES",
+      HudField::Resources,
+      Color::srgb(0.96, 0.58, 0.28),
+    ),
+    (
+      "MATERIALS",
+      HudField::Materials,
+      Color::srgb(0.95, 0.78, 0.36),
+    ),
     ("POWER", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
   ]
 }
@@ -1765,6 +1773,7 @@ fn update_text(
 
   let metrics = host.game.metrics();
   let totals = snapshot_inventory_totals(&host.snapshot);
+  let (resources, materials) = split_stockpile_totals(host.game.content(), totals);
   let power = host
     .snapshot
     .power
@@ -1776,12 +1785,8 @@ fn update_text(
   }
   for (field, mut text) in &mut hud_values {
     let value = match field.0 {
-      HudField::Flow => format!(
-        "mined {}  |  crafted {}",
-        format_items(&metrics.mined),
-        format_items(&metrics.crafted)
-      ),
-      HudField::Stock => format_items(&totals),
+      HudField::Resources => format_items(&resources),
+      HudField::Materials => format_items(&materials),
       HudField::Power => format!(
         "{}  |  {} made  |  {} moved  |  {} used  |  {} starved",
         power,
@@ -1946,6 +1951,21 @@ fn snapshot_inventory_totals(snapshot: &TickSnapshot) -> BTreeMap<String, u32> {
     }
   }
   totals
+}
+
+fn split_stockpile_totals(
+  content: &ContentDatabase,
+  totals: BTreeMap<String, u32>,
+) -> (BTreeMap<String, u32>, BTreeMap<String, u32>) {
+  let resource_items = content
+    .items
+    .values()
+    .filter(|item| item.ingredients.is_empty())
+    .map(|item| item.id.as_str())
+    .collect::<BTreeSet<_>>();
+  totals
+    .into_iter()
+    .partition(|(item, _)| resource_items.contains(item.as_str()))
 }
 
 fn grid_to_world(position: GridPosition) -> Vec2 {
@@ -2639,13 +2659,13 @@ mod tests {
   }
 
   #[test]
-  fn status_bar_contains_only_flow_stock_and_power() {
+  fn status_bar_contains_only_resources_materials_and_power() {
     assert_eq!(
-      ["FLOW", "STOCK", "POWER"],
+      ["RESOURCES", "MATERIALS", "POWER"],
       status_metrics().map(|(label, _, _)| label)
     );
     assert_eq!(
-      [HudField::Flow, HudField::Stock, HudField::Power],
+      [HudField::Resources, HudField::Materials, HudField::Power],
       status_metrics().map(|(_, field, _)| field)
     );
 
@@ -2653,6 +2673,31 @@ mod tests {
     assert_eq!(percent(100), row.width);
     assert_eq!(FlexDirection::Row, row.flex_direction);
     assert_eq!(1.0, row.flex_grow);
+  }
+
+  #[test]
+  fn stockpile_totals_split_resources_from_recipe_materials() {
+    let content = ContentDatabase::starter();
+    let totals = BTreeMap::from([
+      ("iron_ore".to_string(), 12),
+      ("coal".to_string(), 7),
+      ("iron_bars".to_string(), 5),
+      ("storage_warehouse".to_string(), 1),
+    ]);
+
+    let (resources, materials) = split_stockpile_totals(&content, totals);
+
+    assert_eq!(
+      BTreeMap::from([("coal".to_string(), 7), ("iron_ore".to_string(), 12)]),
+      resources
+    );
+    assert_eq!(
+      BTreeMap::from([
+        ("iron_bars".to_string(), 5),
+        ("storage_warehouse".to_string(), 1),
+      ]),
+      materials
+    );
   }
 
   #[test]

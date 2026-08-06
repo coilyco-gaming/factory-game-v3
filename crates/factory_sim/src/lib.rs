@@ -262,6 +262,10 @@ impl GameState {
     Self::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).expect("starter scenario is valid")
   }
 
+  pub fn content(&self) -> &ContentDatabase {
+    &self.content
+  }
+
   pub fn dispatch_priority(&self, destination: NodeId, item: ItemId) -> DispatchPriority {
     self.dispatch_policy.priority(destination, item)
   }
