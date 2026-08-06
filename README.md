@@ -47,6 +47,8 @@ audit, [docs/v3-worlds.md](docs/v3-worlds.md) for the selectable game-scale worl
 claims. Remote power expansion is covered in
 [docs/remote-coal-plants.md](docs/remote-coal-plants.md), and the post-starter
 power proof is in [docs/v2-liveness.md](docs/v2-liveness.md).
+The compact player-loop contract is in
+[docs/compact-first-playable.md](docs/compact-first-playable.md).
 
 ## See also
 

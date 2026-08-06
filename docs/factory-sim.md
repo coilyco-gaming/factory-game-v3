@@ -6,9 +6,8 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 
 - `factory_content` - typed items and scenarios for sources, factories, radars,
   build sites, fleets, power, starting objects, and grid layouts.
-- `factory_sim` - deterministic gameplay, exclusive radar claims, typed fleet
-  dispatch, queued drill, structure, and generator mutations, indexed topology,
-  cached A-star routes, power, alerts, metrics, and tick stepping.
+- `factory_sim` - deterministic fixture gameplay plus the road-bound compact
+  player loop described in [compact-first-playable.md](compact-first-playable.md).
 - `factory_cli` - a headless runner that emits JSON tick snapshots or advances
   through a summary-only path for long-running proofs.
 
