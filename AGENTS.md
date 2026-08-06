@@ -21,6 +21,24 @@ This repo is the factory-game-v3 migration baseline. The current surface is stil
 - Preserve the current `Assets/` tree unless an issue explicitly says to remove or rewrite it.
 - Do not touch `.gitattributes` or binary asset policy here unless the work explicitly includes the LFS migration from issue #4.
 
+### The simulation owns logic
+
+New gameplay features are implemented in the simulation and CLI layer. The
+presentation layer does not get its own branch of logic.
+
+- `factory_sim` owns authority. Every rule, state transition, and edit validation lands here.
+- `factory_cli` exercises those rules headlessly. A feature the runner cannot reach is a feature no determinism proof covers.
+- `factory_shell` projects immutable snapshots and sends explicit edit commands back. It decides how the world looks, never what the world does.
+
+State flows one way. The sim produces a snapshot, the shell draws it, the shell
+sends a command, the sim decides. A snapshot is never fed back in as input, and
+a snapshot type is never a save format or a source of truth.
+
+When a feature needs a new rule, the rule lands in the sim and the shell learns
+to draw it. Never the reverse. Logic that lives only in the shell is invisible
+to `ward exec cargo-run` and to every `factory_sim` test, which is where this
+repo keeps its proofs.
+
 ## Commands
 
 - Route dev commands through ward.
