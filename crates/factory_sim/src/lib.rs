@@ -10,8 +10,8 @@ use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, M
 use std::fmt;
 
 pub use dispatch::{
-  DispatchAssignment, DispatchBoard, DispatchIntent, DispatchPhase, DispatchReceiverState,
-  DispatchVerb,
+  DispatchAssignment, DispatchBoard, DispatchIntent, DispatchPhase, DispatchPolicy,
+  DispatchPriority, DispatchReceiverState, DispatchVerb,
 };
 pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
@@ -58,6 +58,7 @@ impl std::error::Error for SimulationError {}
 pub struct GameState {
   pub world: WorldState,
   content: ContentDatabase,
+  dispatch_policy: DispatchPolicy,
   metrics: RunMetrics,
 }
 
@@ -189,12 +190,36 @@ impl GameState {
         scenario,
       },
       content,
+      dispatch_policy: DispatchPolicy::default(),
       metrics: RunMetrics::default(),
     })
   }
 
   pub fn starter_iron_bars() -> Self {
     Self::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).expect("starter scenario is valid")
+  }
+
+  pub fn dispatch_priority(&self, destination: NodeId, item: ItemId) -> DispatchPriority {
+    self.dispatch_policy.priority(destination, item)
+  }
+
+  pub fn set_dispatch_priority(
+    &mut self,
+    destination: NodeId,
+    item: ItemId,
+    priority: DispatchPriority,
+  ) -> Option<DispatchPriority> {
+    self
+      .dispatch_policy
+      .set_priority(destination, item, priority)
+  }
+
+  pub fn clear_dispatch_priority(
+    &mut self,
+    destination: NodeId,
+    item: ItemId,
+  ) -> Option<DispatchPriority> {
+    self.dispatch_policy.clear_priority(destination, item)
   }
 
   fn advance_mining(&mut self, events: &mut Vec<String>) {
@@ -247,6 +272,11 @@ impl GameState {
     }
     for factory in &mut self.world.factories {
       factory.refresh_dispatch(&self.content);
+      for intent in &mut factory.dispatch.intents {
+        if intent.verb == DispatchVerb::Deliver {
+          intent.priority = self.dispatch_policy.priority(intent.to, intent.item);
+        }
+      }
     }
     let mut claimed_targets = std::collections::BTreeSet::new();
     for factory_index in 0..self.world.factories.len() {
@@ -306,13 +336,16 @@ impl GameState {
     }
     if let Some(power) = &mut self.world.power {
       power.refresh_dispatch();
+      for intent in &mut power.dispatch.intents {
+        intent.priority = self.dispatch_policy.priority(intent.to, intent.item);
+      }
     }
   }
 
-  // Demand minus in-flight cargo goes to unassigned haulers in index
-  // order (collect phase counts at carry limit): never double-served.
+  // Priority, destination, and item order demand before haulers are chosen.
+  // In-flight cargo still reduces need so demand is never double-served.
   fn assign_dispatch(&mut self, events: &mut Vec<String>) {
-    let demands: Vec<(ItemId, NodeId, u32, u32)> = self
+    let demands: Vec<(DispatchPriority, ItemId, NodeId, u32, u32)> = self
       .world
       .factories
       .iter()
@@ -324,6 +357,7 @@ impl GameState {
           .filter(|intent| intent.verb == DispatchVerb::Deliver)
           .map(|intent| {
             (
+              intent.priority,
               intent.item,
               factory.node,
               factory.input_buffer,
@@ -336,6 +370,7 @@ impl GameState {
     if let Some(power) = &self.world.power {
       demands.extend(power.dispatch.intents.iter().map(|intent| {
         (
+          intent.priority,
           intent.item,
           NodeId::PowerPlant,
           power.spec.fuel_buffer,
@@ -343,8 +378,11 @@ impl GameState {
         )
       }));
     }
-    for (item, destination, buffer, stocked) in demands {
-      self.assign_dispatch_for_demand(item, destination, buffer, stocked, events);
+    demands.sort_by_key(|(priority, item, destination, _, _)| {
+      (std::cmp::Reverse(*priority), *destination, *item)
+    });
+    for (priority, item, destination, buffer, stocked) in demands {
+      self.assign_dispatch_for_demand(priority, item, destination, buffer, stocked, events);
     }
     self.assign_deployments(events);
   }
@@ -397,6 +435,7 @@ impl GameState {
 
   fn assign_dispatch_for_demand(
     &mut self,
+    priority: DispatchPriority,
     item: ItemId,
     destination: NodeId,
     buffer: u32,
@@ -458,7 +497,12 @@ impl GameState {
         break;
       }
       let hauler = &mut self.world.haulers[hauler_index];
-      hauler.assign(DispatchAssignment::collect(item, source_node, destination));
+      hauler.assign(DispatchAssignment::collect_with_priority(
+        item,
+        source_node,
+        destination,
+        priority,
+      ));
       self.metrics.dispatches_assigned += 1;
       need = need.saturating_sub(hauler.carry_limit);
       events.push(format!(
@@ -1566,6 +1610,7 @@ mod tests {
       source: NodeId::Source(0),
       destination: NodeId::Factory(0),
       phase: DispatchPhase::Collect,
+      priority: DispatchPriority::NORMAL,
     });
 
     let collect_snapshot = state.step();
@@ -1594,6 +1639,7 @@ mod tests {
       source: NodeId::Source(0),
       destination: NodeId::Factory(0),
       phase: DispatchPhase::Deliver,
+      priority: DispatchPriority::NORMAL,
     });
 
     let deliver_snapshot = state.step();
@@ -1653,6 +1699,73 @@ mod tests {
     assert_eq!(IRON_ORE, assignment.item);
     assert_eq!(NodeId::Source(1), assignment.source);
     assert_eq!(NodeId::Factory(0), assignment.destination);
+  }
+
+  fn contested_dispatch_content() -> ContentDatabase {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists");
+    scenario.factories.push(scenario.factories[0].clone());
+    scenario.layout.width = 6;
+    scenario.layout.height = 3;
+    scenario.layout.source_positions = vec![GridPoint { x: 0, y: 1 }];
+    scenario.layout.road_position = GridPoint { x: 2, y: 1 };
+    scenario.layout.factory_positions =
+      vec![GridPoint { x: 3, y: 0 }, GridPoint { x: 5, y: 1 }];
+    content
+  }
+
+  #[test]
+  fn higher_priority_dispatch_demand_wins_one_hauler_contention() {
+    let mut state = GameState::new(contested_dispatch_content(), IRON_BARS_SCENARIO).unwrap();
+
+    assert_eq!(
+      DispatchPriority::NORMAL,
+      state.dispatch_priority(NodeId::Factory(1), IRON_ORE)
+    );
+    assert_eq!(
+      None,
+      state.set_dispatch_priority(
+        NodeId::Factory(1),
+        IRON_ORE,
+        DispatchPriority::HIGH,
+      )
+    );
+
+    let first = state.step();
+    let DispatchReceiverState::Assigned(assignment) = &first.haulers[0].dispatch else {
+      panic!("the available hauler receives contested demand");
+    };
+
+    assert_eq!(NodeId::Factory(1), assignment.destination);
+    assert_eq!(DispatchPriority::HIGH, assignment.priority);
+    assert_eq!(
+      Some(DispatchPriority::HIGH),
+      first.factories[1]
+        .dispatch
+        .intents
+        .iter()
+        .find(|intent| intent.verb == DispatchVerb::Deliver && intent.item == IRON_ORE)
+        .map(|intent| intent.priority)
+    );
+  }
+
+  #[test]
+  fn equal_priority_dispatch_demand_uses_deterministic_destination_order() {
+    let mut first = GameState::new(contested_dispatch_content(), IRON_BARS_SCENARIO).unwrap();
+    let mut second = GameState::new(contested_dispatch_content(), IRON_BARS_SCENARIO).unwrap();
+
+    let first_snapshot = first.step();
+    let second_snapshot = second.step();
+    assert_eq!(first_snapshot, second_snapshot);
+
+    let DispatchReceiverState::Assigned(assignment) = &first_snapshot.haulers[0].dispatch else {
+      panic!("the available hauler receives contested demand");
+    };
+    assert_eq!(NodeId::Factory(0), assignment.destination);
+    assert_eq!(DispatchPriority::NORMAL, assignment.priority);
   }
 
   #[test]
@@ -2273,6 +2386,7 @@ mod tests {
         source: NodeId::Source(0),
         destination: NodeId::Factory(0),
         phase: DispatchPhase::Deliver,
+        priority: DispatchPriority::NORMAL,
       });
     }
     let mut events = Vec::new();

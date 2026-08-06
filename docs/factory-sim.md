@@ -27,7 +27,9 @@ The world generalizes to N sources, N factories, and N haulers:
 - haulers queue movement for the world-mutation boundary, competing moves into
   one transit cell resolve in hauler order while building endpoints remain
   shareable
-- dispatch arbitration is deterministic: factory demand minus in-flight cargo is handed to unassigned empty haulers in index order (collect-phase haulers count at carry limit), so demand is never double-served
+- dispatch arbitration applies programmable priorities before deterministic
+  destination, item, and hauler tie-breaks. See
+  [dispatch-policy.md](dispatch-policy.md)
 - deterministic mine, intent-refresh, assign, collect, deliver, craft-progress, and move steps
 - powered scenarios use the node-owned battery and automatic-line model in
   [factory-power.md](factory-power.md)
