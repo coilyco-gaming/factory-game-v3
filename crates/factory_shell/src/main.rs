@@ -29,9 +29,9 @@ const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
 const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
 const MIN_VISIBLE_CELLS: f32 = 10.0;
-const PAN_REPEAT_DELAY_SECONDS: f32 = 0.25;
-const PAN_REPEAT_INTERVAL_SECONDS: f32 = 0.08;
-const MAX_PAN_REPEATS_PER_FRAME: u8 = 4;
+const INPUT_REPEAT_DELAY_SECONDS: f32 = 0.25;
+const INPUT_REPEAT_INTERVAL_SECONDS: f32 = 0.08;
+const MAX_INPUT_REPEATS_PER_FRAME: u8 = 4;
 const NODE_ART_SIZE: f32 = 100.0;
 const DRILL_ART_SIZE: f32 = 76.0;
 const TRUCK_ART_SIZE: f32 = 72.0;
@@ -340,8 +340,8 @@ impl Default for PlayerView {
 }
 
 #[derive(Default)]
-struct PanRepeatState {
-  direction: IVec2,
+struct InputRepeatState<T> {
+  direction: T,
   held_seconds: f32,
   next_repeat_seconds: f32,
 }
@@ -1139,7 +1139,8 @@ fn handle_player_view(
   mut mouse_wheel: MessageReader<MouseWheel>,
   host: Res<SimHost>,
   mut view: ResMut<PlayerView>,
-  mut pan_repeat: Local<PanRepeatState>,
+  mut pan_repeat: Local<InputRepeatState<IVec2>>,
+  mut zoom_repeat: Local<InputRepeatState<i8>>,
   window: Single<&Window>,
   mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
   mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
@@ -1148,7 +1149,8 @@ fn handle_player_view(
     view.position = initial_player_position(&host.snapshot);
     view.zoom_level = MAX_ZOOM_LEVEL;
     view.scene_revision = host.scene_revision;
-    *pan_repeat = PanRepeatState::default();
+    *pan_repeat = InputRepeatState::default();
+    *zoom_repeat = InputRepeatState::default();
   }
 
   let pan_distance = if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
@@ -1164,7 +1166,7 @@ fn handle_player_view(
     i32::from(move_right) - i32::from(move_left),
     i32::from(move_up) - i32::from(move_down),
   );
-  let repeat_steps = repeated_pan_steps(&mut pan_repeat, direction, time.delta_secs());
+  let repeat_steps = repeated_input_steps(&mut pan_repeat, direction, time.delta_secs());
   let horizontal = pan_distance * direction.x * i32::from(repeat_steps);
   let vertical = pan_distance * direction.y * i32::from(repeat_steps);
   let next_position = move_player_focus(
@@ -1179,13 +1181,12 @@ fn handle_player_view(
   }
 
   let wheel_delta = mouse_wheel.read().map(|event| event.y).sum::<f32>();
-  let mut next_zoom = view.zoom_level;
-  if keys.just_pressed(KeyCode::KeyE) || wheel_delta > 0.0 {
-    next_zoom = next_zoom.saturating_sub(1).max(MIN_ZOOM_LEVEL);
-  }
-  if keys.just_pressed(KeyCode::KeyQ) || wheel_delta < 0.0 {
-    next_zoom = next_zoom.saturating_add(1).min(MAX_ZOOM_LEVEL);
-  }
+  let zoom_direction =
+    i8::from(keys.pressed(KeyCode::KeyQ)) - i8::from(keys.pressed(KeyCode::KeyE));
+  let zoom_steps = repeated_input_steps(&mut zoom_repeat, zoom_direction, time.delta_secs());
+  let mut next_zoom = move_zoom_level(view.zoom_level, zoom_direction, zoom_steps);
+  let wheel_direction = i8::from(wheel_delta < 0.0) - i8::from(wheel_delta > 0.0);
+  next_zoom = move_zoom_level(next_zoom, wheel_direction, u8::from(wheel_direction != 0));
   if keys.just_pressed(KeyCode::KeyO) {
     next_zoom = if next_zoom == MAX_ZOOM_LEVEL {
       MIN_ZOOM_LEVEL
@@ -1927,28 +1928,41 @@ fn world_detail_visible(annotations_visible: bool, zoom_level: u8) -> bool {
   annotations_visible && zoom_level <= MAX_DETAIL_ZOOM_LEVEL
 }
 
-fn repeated_pan_steps(state: &mut PanRepeatState, direction: IVec2, delta_seconds: f32) -> u8 {
-  if direction == IVec2::ZERO {
-    *state = PanRepeatState::default();
+fn repeated_input_steps<T>(state: &mut InputRepeatState<T>, direction: T, delta_seconds: f32) -> u8
+where
+  T: Copy + Default + PartialEq,
+{
+  if direction == T::default() {
+    *state = InputRepeatState::default();
     return 0;
   }
   if direction != state.direction {
     state.direction = direction;
     state.held_seconds = 0.0;
-    state.next_repeat_seconds = PAN_REPEAT_DELAY_SECONDS;
+    state.next_repeat_seconds = INPUT_REPEAT_DELAY_SECONDS;
     return 1;
   }
 
   state.held_seconds += delta_seconds.max(0.0);
   let mut repeats = 0;
-  while state.held_seconds >= state.next_repeat_seconds && repeats < MAX_PAN_REPEATS_PER_FRAME {
+  while state.held_seconds >= state.next_repeat_seconds && repeats < MAX_INPUT_REPEATS_PER_FRAME {
     repeats += 1;
-    state.next_repeat_seconds += PAN_REPEAT_INTERVAL_SECONDS;
+    state.next_repeat_seconds += INPUT_REPEAT_INTERVAL_SECONDS;
   }
-  if repeats == MAX_PAN_REPEATS_PER_FRAME && state.held_seconds >= state.next_repeat_seconds {
-    state.next_repeat_seconds = state.held_seconds + PAN_REPEAT_INTERVAL_SECONDS;
+  if repeats == MAX_INPUT_REPEATS_PER_FRAME && state.held_seconds >= state.next_repeat_seconds {
+    state.next_repeat_seconds = state.held_seconds + INPUT_REPEAT_INTERVAL_SECONDS;
   }
   repeats
+}
+
+fn move_zoom_level(level: u8, direction: i8, steps: u8) -> u8 {
+  if direction < 0 {
+    level.saturating_sub(steps).max(MIN_ZOOM_LEVEL)
+  } else if direction > 0 {
+    level.saturating_add(steps).min(MAX_ZOOM_LEVEL)
+  } else {
+    level
+  }
 }
 
 fn move_player_focus(
@@ -3200,20 +3214,36 @@ mod tests {
   #[test]
   fn held_navigation_repeats_after_delay_independent_of_frame_slicing() {
     let direction = IVec2::new(1, -1);
-    let mut one_frame = PanRepeatState::default();
-    assert_eq!(1, repeated_pan_steps(&mut one_frame, direction, 0.0));
-    let one_frame_repeats = repeated_pan_steps(&mut one_frame, direction, 0.4);
+    let mut one_frame = InputRepeatState::default();
+    assert_eq!(1, repeated_input_steps(&mut one_frame, direction, 0.0));
+    let one_frame_repeats = repeated_input_steps(&mut one_frame, direction, 0.4);
 
-    let mut split_frames = PanRepeatState::default();
-    assert_eq!(1, repeated_pan_steps(&mut split_frames, direction, 0.0));
+    let mut split_frames = InputRepeatState::default();
+    assert_eq!(1, repeated_input_steps(&mut split_frames, direction, 0.0));
     let split_repeats = (0..5)
-      .map(|_| repeated_pan_steps(&mut split_frames, direction, 0.08))
+      .map(|_| repeated_input_steps(&mut split_frames, direction, 0.08))
       .sum::<u8>();
 
     assert_eq!(2, one_frame_repeats);
     assert_eq!(one_frame_repeats, split_repeats);
-    assert_eq!(0, repeated_pan_steps(&mut split_frames, IVec2::ZERO, 0.08));
-    assert_eq!(1, repeated_pan_steps(&mut split_frames, -direction, 0.0));
+    assert_eq!(
+      0,
+      repeated_input_steps(&mut split_frames, IVec2::ZERO, 0.08)
+    );
+    assert_eq!(1, repeated_input_steps(&mut split_frames, -direction, 0.0));
+  }
+
+  #[test]
+  fn held_zoom_repeats_resets_and_remains_bounded() {
+    let mut repeat = InputRepeatState::default();
+
+    assert_eq!(1, repeated_input_steps(&mut repeat, -1_i8, 0.0));
+    assert_eq!(0, repeated_input_steps(&mut repeat, -1, 0.24));
+    assert_eq!(1, repeated_input_steps(&mut repeat, -1, 0.01));
+    assert_eq!(0, repeated_input_steps(&mut repeat, 0, 0.08));
+    assert_eq!(1, repeated_input_steps(&mut repeat, 1, 0.0));
+    assert_eq!(MIN_ZOOM_LEVEL, move_zoom_level(MIN_ZOOM_LEVEL, -1, 4));
+    assert_eq!(MAX_ZOOM_LEVEL, move_zoom_level(MAX_ZOOM_LEVEL, 1, 4));
   }
 
   #[test]

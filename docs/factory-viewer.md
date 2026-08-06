@@ -66,9 +66,9 @@ The keyboard mirrors the same typed actions:
 - `F` toggles between 2 and 8 ticks per second.
 - `C` advances to the next world when the roster contains more than one.
 - `WASD` or arrows move focus and repeat while held. `Shift` moves ten cells.
-- `Q`/`E` or the wheel zoom. `O` toggles the approximately 10x10-cell detail
-  view and the full-world extent. Startup uses the full-world extent, and the
-  camera cannot zoom farther out than that fit.
+- `Q`/`E` zoom and repeat while held. The wheel steps once. `O` toggles the
+  approximately 10x10-cell detail and full-world views. Startup fits the world
+  and cannot zoom farther out.
 
 ## Development
 
