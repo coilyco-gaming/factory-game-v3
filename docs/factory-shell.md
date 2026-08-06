@@ -18,9 +18,8 @@ and sends typed planning commands back to the simulation.
 - `ward exec shell-build-web` - Wasm viewer bundle in
   `crates/factory_shell/dist/`.
 
-Local quirk: if a Homebrew Rust shadows rustup on PATH, the wasm build fails
-with "can't find crate for `core`" - the wasm target lives in the rustup
-toolchain, so put `~/.cargo/bin` first (`PATH="$HOME/.cargo/bin:$PATH"`).
+The wrapper prefers rustup when Homebrew Rust shadows it. The repository pins
+the Docker-matched Rust toolchain and installs its Wasm target automatically.
 
 ## Deploy shape
 
