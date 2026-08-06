@@ -35,18 +35,18 @@ typed site into an occupied warehouse. Each scene displays:
 - current tick, run metrics, and a bounded rolling activity feed
 - focused-cell status plus global object and stored-resource totals
 
-The scene rebuilds its generated primitives when the scenario changes. Hauler
-sprites move smoothly between the discrete positions in each authoritative
-snapshot. The presentation does not depend on retained Unity assets or Git
-LFS objects.
+The scene rebuilds when the scenario changes and interpolates haulers between
+authoritative snapshots. Bounded screen-space panels keep compact status and the
+latest four events outside the world projection while the host retains eight
+events across scenarios. A presentation offset keeps labels between those top
+panels and the compact control deck. No presentation depends on retained Unity
+assets or Git LFS objects.
 
-Material-flow telemetry brightens stocked sources and changes the factory color
-while it demands inputs or crafts. A slim gauge tracks recipe progress, and
-completed output ejects a short stack of stone-and-steel product chips. Active
-nodes pulse, route dashes show direction, and cargo badges brighten when loaded.
-The coal plant changes state as it burns fuel or holds charge. Its gauge tracks the authoritative shared grid.
-The latest eight events persist across scenarios. Frame-time effects move
-smoothly between ticks and never write back into simulation state.
+Material-flow telemetry brightens stocked sources and active factories. Gauges
+track craft and grid progress, completed output ejects product chips, active
+nodes pulse, route dashes show direction, and loaded cargo badges brighten. The
+coal plant reflects fuel and charge state. Frame-time effects never write back
+into simulation state.
 
 Automatic cycling advances to the next scenario after eight consecutive quiet
 ticks. This gives the native and browser viewers a continuous demonstration

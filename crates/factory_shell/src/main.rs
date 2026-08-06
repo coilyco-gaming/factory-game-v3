@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy::input::mouse::MouseWheel;
+use bevy::sprite::Anchor;
 use factory_content::{
   ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
   DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, IRON_BARS_FLEET_SCENARIO,
@@ -17,6 +18,7 @@ const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
 const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
 const MAX_RECENT_EVENTS: usize = 8;
+const MAX_VISIBLE_EVENTS: usize = 4;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -39,6 +41,7 @@ const DEMO_SCENARIOS: [ScenarioId; 10] = [
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
+const CAMERA_UI_OFFSET_Y: f32 = 52.0;
 const BUTTON_NORMAL: Color = Color::srgb(0.14, 0.17, 0.22);
 const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
 const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
@@ -105,7 +108,6 @@ fn main() {
         animate_activity,
         animate_output_chips,
         animate_haulers,
-        anchor_overlay_text,
         update_text,
         sync_annotation_visibility,
         style_control_buttons,
@@ -392,28 +394,7 @@ fn setup(
   spawn_projection(&mut commands, &host.snapshot);
   projection_scene.revision = host.scene_revision;
 
-  commands.spawn((
-    Text2d::new(""),
-    TextFont {
-      font_size: FontSize::Px(19.0),
-      ..default()
-    },
-    TextColor(Color::srgb(0.91, 0.92, 0.94)),
-    Transform::from_xyz(315.0, 190.0, 4.0),
-    HudText,
-    Annotation,
-  ));
-  commands.spawn((
-    Text2d::new(""),
-    TextFont {
-      font_size: FontSize::Px(15.0),
-      ..default()
-    },
-    TextColor(Color::srgb(0.72, 0.76, 0.82)),
-    Transform::from_xyz(315.0, -105.0, 4.0),
-    EventText,
-    Annotation,
-  ));
+  spawn_status_panels(&mut commands);
   commands.spawn((
     Sprite::from_color(Color::srgba(0.95, 0.86, 0.32, 0.28), Vec2::new(150.0, 100.0)),
     Transform::from_xyz(0.0, 0.0, 2.7),
@@ -423,6 +404,72 @@ fn setup(
   spawn_control_deck(&mut commands);
 }
 
+fn spawn_status_panels(commands: &mut Commands) {
+  commands
+    .spawn((
+      Node {
+        position_type: PositionType::Absolute,
+        left: px(18),
+        top: px(18),
+        width: px(540),
+        padding: UiRect::all(px(12)),
+        border: UiRect::all(px(1)),
+        ..default()
+      },
+      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
+      BorderColor::all(BUTTON_BORDER),
+      GlobalZIndex(90),
+      Annotation,
+    ))
+    .with_children(|panel| {
+      panel.spawn((
+        Text::new(""),
+        TextFont {
+          font_size: FontSize::Px(13.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.91, 0.92, 0.94)),
+        Node {
+          width: percent(100),
+          ..default()
+        },
+        HudText,
+      ));
+    });
+
+  commands
+    .spawn((
+      Node {
+        position_type: PositionType::Absolute,
+        right: px(18),
+        top: px(18),
+        width: px(420),
+        padding: UiRect::all(px(12)),
+        border: UiRect::all(px(1)),
+        ..default()
+      },
+      BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
+      BorderColor::all(BUTTON_BORDER),
+      GlobalZIndex(90),
+      Annotation,
+    ))
+    .with_children(|panel| {
+      panel.spawn((
+        Text::new(""),
+        TextFont {
+          font_size: FontSize::Px(12.0),
+          ..default()
+        },
+        TextColor(Color::srgb(0.72, 0.76, 0.82)),
+        Node {
+          width: percent(100),
+          ..default()
+        },
+        EventText,
+      ));
+    });
+}
+
 fn spawn_control_deck(commands: &mut Commands) {
   commands
     .spawn((
@@ -430,10 +477,10 @@ fn spawn_control_deck(commands: &mut Commands) {
         position_type: PositionType::Absolute,
         right: px(18),
         bottom: px(18),
-        width: px(452),
+        width: px(408),
         flex_direction: FlexDirection::Column,
-        row_gap: px(7),
-        padding: UiRect::all(px(10)),
+        row_gap: px(5),
+        padding: UiRect::all(px(8)),
         border: UiRect::all(px(1)),
         ..default()
       },
@@ -447,11 +494,11 @@ fn spawn_control_deck(commands: &mut Commands) {
         Button,
         ControlButton(ControlAction::ToggleAnnotations),
         Node {
-          height: px(34),
+          height: px(30),
           border: UiRect::all(px(1)),
           justify_content: JustifyContent::Center,
           align_items: AlignItems::Center,
-          padding: UiRect::axes(px(7), px(3)),
+          padding: UiRect::axes(px(5), px(2)),
           ..default()
         },
         BackgroundColor(BUTTON_NORMAL),
@@ -470,7 +517,7 @@ fn spawn_control_deck(commands: &mut Commands) {
         .spawn((
           Node {
             flex_direction: FlexDirection::Column,
-            row_gap: px(7),
+            row_gap: px(5),
             ..default()
           },
           ControlDeckContent,
@@ -479,7 +526,7 @@ fn spawn_control_deck(commands: &mut Commands) {
           content.spawn((
             Text::new("CONTROL DECK"),
             TextFont {
-              font_size: FontSize::Px(13.0),
+              font_size: FontSize::Px(12.0),
               ..default()
             },
             TextColor(Color::srgb(0.72, 0.76, 0.82)),
@@ -522,8 +569,8 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
   parent
     .spawn(Node {
       width: percent(100),
-      height: px(34),
-      column_gap: px(6),
+      height: px(30),
+      column_gap: px(4),
       ..default()
     })
     .with_children(|row| {
@@ -537,7 +584,7 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
             border: UiRect::all(px(1)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
-            padding: UiRect::axes(px(7), px(3)),
+            padding: UiRect::axes(px(5), px(2)),
             ..default()
           },
           BackgroundColor(BUTTON_NORMAL),
@@ -545,7 +592,7 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
           children![(
             Text::new(*label),
             TextFont {
-              font_size: FontSize::Px(12.0),
+              font_size: FontSize::Px(11.0),
               ..default()
             },
             TextColor(Color::srgb(0.92, 0.94, 0.97)),
@@ -613,14 +660,25 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeVisual(node.id),
       ProjectionEntity,
     ));
+    let label_anchor = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
+      Anchor::BOTTOM_CENTER
+    } else {
+      Anchor::BOTTOM_LEFT
+    };
+    let label_x = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
+      position.x
+    } else {
+      position.x - size.x / 2.0
+    };
     commands.spawn((
       Text2d::new(node_label_value(snapshot, node.id)),
       TextFont {
-        font_size: FontSize::Px(17.0),
+        font_size: FontSize::Px(15.0),
         ..default()
       },
       TextColor(Color::srgb(0.96, 0.96, 0.94)),
-      Transform::from_xyz(position.x, position.y + 58.0, 3.0),
+      Transform::from_xyz(label_x, position.y + size.y / 2.0 + 8.0, 3.0),
+      label_anchor,
       NodeLabel(node.id),
       Annotation,
       ProjectionEntity,
@@ -851,7 +909,7 @@ fn handle_player_view(
 
   let world = grid_to_world(view.position);
   camera.0.translation.x = world.x;
-  camera.0.translation.y = world.y;
+  camera.0.translation.y = world.y - CAMERA_UI_OFFSET_Y;
   cursor.translation.x = world.x;
   cursor.translation.y = world.y;
   if let Projection::Orthographic(projection) = &mut *camera.1 {
@@ -1200,20 +1258,6 @@ fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Tran
   }
 }
 
-fn anchor_overlay_text(
-  camera: Single<&Transform, With<MainCamera>>,
-  mut hud: Single<&mut Transform, (With<HudText>, Without<MainCamera>, Without<EventText>)>,
-  mut events: Single<
-    &mut Transform,
-    (With<EventText>, Without<MainCamera>, Without<HudText>),
-  >,
-) {
-  hud.translation.x = camera.translation.x + 315.0;
-  hud.translation.y = camera.translation.y + 190.0;
-  events.translation.x = camera.translation.x + 315.0;
-  events.translation.y = camera.translation.y - 105.0;
-}
-
 fn style_control_buttons(
   host: Res<SimHost>,
   mut buttons: Query<(
@@ -1255,7 +1299,7 @@ fn sync_annotation_visibility(
     *annotation = visibility;
   }
 
-  deck.width = if host.annotations_visible { px(452) } else { px(112) };
+  deck.width = if host.annotations_visible { px(408) } else { px(104) };
   content.display = if host.annotations_visible {
     Display::Flex
   } else {
@@ -1278,8 +1322,8 @@ fn update_text(
     (&HaulerLabel, &mut Text2d),
     (Without<NodeLabel>, Without<HudText>, Without<EventText>),
   >,
-  mut hud: Query<&mut Text2d, (With<HudText>, Without<EventText>)>,
-  mut events: Query<&mut Text2d, (With<EventText>, Without<HudText>)>,
+  mut hud: Query<&mut Text, (With<HudText>, Without<EventText>)>,
+  mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
 ) {
   if !host.is_changed() && !view.is_changed() {
     return;
@@ -1305,65 +1349,67 @@ fn update_text(
   let cycle_status = if host.auto_cycle { "auto" } else { "locked" };
   let focused = focused_status(&host.snapshot, view.position);
   let totals = snapshot_inventory_totals(&host.snapshot);
+  let power = host
+    .snapshot
+    .power
+    .as_ref()
+    .map(|power| format!("{}/{}", power.energy, power.capacity))
+    .unwrap_or_else(|| "off-grid".into());
   let hud_value = format!(
-    "FACTORY GAME\n{}\n\nfocus: {}, {} | zoom {}\n{}\n\n\
-     tick: {}\nstatus: {}\nspeed: {:.0} ticks/sec\n\n\
-     mined: {}\ncrafted: {}\ndispatches: {}\nidle ticks: {}\n\
-     objects: {} sources, {} haulers, {} factories, {} structures\nstored: {}\n\
-     power: {}\nenergy used: {}\nstarvations: {}\ndeployments: {}\ndeletions: {}\n\n\
-     showcase: {}\nquiet: {}/{}\ncompleted: {}\n\n\
-     click the control deck below\nkeyboard: WASD/arrows Q/E Space N R F C L",
+    "FACTORY GAME  /  {}\n\
+     {}  |  tick {}  |  {:.0} TPS  |  {} {}/{}  |  {} complete\n\
+     FOCUS {},{}  |  zoom {}  |  {}\n\n\
+     FLOW  mined {}  |  crafted {}\n\
+     STOCK  {}\n\
+     LOGISTICS  {} dispatched  |  {} idle  |  {} haulers\n\
+     WORLD  {} sources  |  {} factories  |  {} built\n\
+     POWER  {}  |  {} used  |  {} starved\n\
+     \n\
+     WASD/arrows move  |  Q/E zoom  |  Space pause  |  N step",
     host.snapshot.scenario.name,
-    view.position.x,
-    view.position.y,
-    view.zoom_level,
-    focused,
-    host.snapshot.tick,
     status,
+    host.snapshot.tick,
     host.ticks_per_second,
-    format_items(&metrics.mined),
-    format_items(&metrics.crafted),
-    metrics.dispatches_assigned,
-    metrics.idle_ticks,
-    host.snapshot.sources.len(),
-    host.snapshot.haulers.len(),
-    host.snapshot.factories.len(),
-    host.snapshot.structures.len(),
-    format_items(&totals),
-    host
-      .snapshot
-      .power
-      .as_ref()
-      .map(|power| format!("{}/{}", power.energy, power.capacity))
-      .unwrap_or_else(|| "off-grid".into()),
-    metrics.energy_consumed,
-    metrics.power_starvations,
-    metrics.deployments,
-    metrics.world_deletions,
     cycle_status,
     host.idle_streak,
     AUTO_ADVANCE_IDLE_TICKS,
     host.completed_scenarios,
+    view.position.x,
+    view.position.y,
+    view.zoom_level,
+    focused,
+    format_items(&metrics.mined),
+    format_items(&metrics.crafted),
+    format_items(&totals),
+    metrics.dispatches_assigned,
+    metrics.idle_ticks,
+    host.snapshot.haulers.len(),
+    host.snapshot.sources.len(),
+    host.snapshot.factories.len(),
+    host.snapshot.structures.len(),
+    power,
+    metrics.energy_consumed,
+    metrics.power_starvations,
   );
   for mut text in &mut hud {
-    *text = Text2d::new(hud_value.clone());
+    *text = Text::new(hud_value.clone());
   }
 
   let event_value = if host.recent_events.is_empty() {
-    "EVENTS\nwaiting for first tick".into()
+    "RECENT ACTIVITY\nwaiting for first tick".into()
   } else {
-    format!(
-      "EVENTS\n{}",
-      host
-        .recent_events
-        .iter()
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n")
-    )
+    let mut visible_events = host
+      .recent_events
+      .iter()
+      .rev()
+      .take(MAX_VISIBLE_EVENTS)
+      .cloned()
+      .collect::<Vec<_>>();
+    visible_events.reverse();
+    format!("RECENT ACTIVITY\n{}", visible_events.join("\n"))
   };
   for mut text in &mut events {
-    *text = Text2d::new(event_value.clone());
+    *text = Text::new(event_value.clone());
   }
 }
 
@@ -1873,7 +1919,7 @@ mod tests {
     app.update();
 
     assert_eq!(Visibility::Hidden, *app.world().get::<Visibility>(annotation).unwrap());
-    assert_eq!(px(112), app.world().get::<Node>(deck).unwrap().width);
+    assert_eq!(px(104), app.world().get::<Node>(deck).unwrap().width);
     assert_eq!(Display::None, app.world().get::<Node>(content).unwrap().display);
     assert_eq!("SHOW UI", app.world().get::<Text>(label).unwrap().as_str());
   }
