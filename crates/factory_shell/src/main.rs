@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
+const RESOURCE_ICON_SIZE: f32 = 18.0;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -174,6 +175,16 @@ impl FromWorld for FactoryArt {
 }
 
 impl FactoryArt {
+  fn resource(&self, item: ItemId) -> Option<&Handle<Image>> {
+    match item {
+      IRON_ORE => Some(&self.iron_ore_deposit),
+      COPPER_ORE => Some(&self.copper_ore_deposit),
+      COAL => Some(&self.coal_deposit),
+      STONE => Some(&self.stone_deposit),
+      _ => None,
+    }
+  }
+
   fn item(&self, item: ItemId) -> Option<&Handle<Image>> {
     match item {
       IRON_ORE => Some(&self.iron_ore),
@@ -408,6 +419,9 @@ enum HudField {
 struct HudValueText(HudField);
 
 #[derive(Component)]
+struct ResourceCountText(ItemId);
+
+#[derive(Component)]
 struct StatusBar;
 
 #[derive(Component)]
@@ -470,7 +484,7 @@ fn setup(
   spawn_projection(&mut commands, &host.snapshot, &art);
   projection_scene.revision = host.scene_revision;
 
-  spawn_status_bar(&mut commands);
+  spawn_status_bar(&mut commands, &art);
   commands.spawn((
     Sprite::from_color(
       Color::srgba(0.95, 0.86, 0.32, 0.28),
@@ -483,7 +497,7 @@ fn setup(
   spawn_control_deck(&mut commands);
 }
 
-fn spawn_status_bar(commands: &mut Commands) {
+fn spawn_status_bar(commands: &mut Commands, art: &FactoryArt) {
   commands
     .spawn((
       Node {
@@ -566,7 +580,7 @@ fn spawn_status_bar(commands: &mut Commands) {
         ))
         .with_children(|stack| {
           for (index, (label, field, accent)) in status_metrics().into_iter().enumerate() {
-            spawn_status_metric(stack, label, field, accent, index > 0);
+            spawn_status_metric(stack, label, field, accent, index > 0, art);
           }
         });
     });
@@ -588,12 +602,17 @@ fn status_metrics() -> [(&'static str, HudField, Color); 3] {
   ]
 }
 
+fn status_resource_items() -> [ItemId; 4] {
+  [IRON_ORE, COPPER_ORE, COAL, STONE]
+}
+
 fn spawn_status_metric(
   parent: &mut ChildSpawnerCommands,
   label: &'static str,
   field: HudField,
   accent: Color,
   divided: bool,
+  art: &FactoryArt,
 ) {
   parent
     .spawn((
@@ -614,23 +633,86 @@ fn spawn_status_metric(
           ..default()
         },
       ));
-      metric.spawn((
-        Text::new(""),
-        TextFont {
-          font_size: FontSize::Px(10.5),
-          ..default()
-        },
-        TextLayout::no_wrap(),
-        TextColor(Color::srgb(0.91, 0.92, 0.94)),
-        Node {
-          flex_grow: 1.0,
-          min_width: px(0),
-          overflow: Overflow::clip_x(),
-          ..default()
-        },
-        HudText,
-        HudValueText(field),
-      ));
+      if field == HudField::Resources {
+        spawn_resource_counts(metric, art);
+      } else {
+        metric.spawn((
+          Text::new(""),
+          TextFont {
+            font_size: FontSize::Px(10.5),
+            ..default()
+          },
+          TextLayout::no_wrap(),
+          TextColor(Color::srgb(0.91, 0.92, 0.94)),
+          Node {
+            flex_grow: 1.0,
+            min_width: px(0),
+            overflow: Overflow::clip_x(),
+            ..default()
+          },
+          HudText,
+          HudValueText(field),
+        ));
+      }
+    });
+}
+
+fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
+  parent
+    .spawn(Node {
+      min_width: px(0),
+      flex_grow: 1.0,
+      flex_direction: FlexDirection::Row,
+      align_items: AlignItems::Center,
+      column_gap: px(8),
+      overflow: Overflow::clip_x(),
+      ..default()
+    })
+    .with_children(|strip| {
+      for (index, item) in status_resource_items().into_iter().enumerate() {
+        if index > 0 {
+          strip.spawn((
+            Text::new("//"),
+            TextFont {
+              font_size: FontSize::Px(9.0),
+              ..default()
+            },
+            TextColor(Color::srgb(0.42, 0.47, 0.55)),
+          ));
+        }
+        let image = art
+          .resource(item)
+          .expect("status resources have accepted art")
+          .clone();
+        strip
+          .spawn(Node {
+            flex_shrink: 0.0,
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            column_gap: px(4),
+            ..default()
+          })
+          .with_children(|entry| {
+            entry.spawn((
+              ImageNode::new(image),
+              Node {
+                width: px(RESOURCE_ICON_SIZE),
+                height: px(RESOURCE_ICON_SIZE),
+                flex_shrink: 0.0,
+                ..default()
+              },
+            ));
+            entry.spawn((
+              Text::new("0"),
+              TextFont {
+                font_size: FontSize::Px(10.5),
+                ..default()
+              },
+              TextColor(Color::srgb(0.91, 0.92, 0.94)),
+              ResourceCountText(item),
+            ));
+          });
+      }
     });
 }
 
@@ -1743,8 +1825,22 @@ fn update_text(
   mut last_snapshot_revision: Local<u64>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), Without<HaulerLabel>>,
   mut hauler_labels: Query<(&HaulerLabel, &mut Text2d), Without<NodeLabel>>,
-  mut hud_title: Query<&mut Text, (With<HudTitleText>, Without<HudValueText>)>,
-  mut hud_values: Query<(&HudValueText, &mut Text), Without<HudTitleText>>,
+  mut hud_title: Query<
+    &mut Text,
+    (
+      With<HudTitleText>,
+      Without<HudValueText>,
+      Without<ResourceCountText>,
+    ),
+  >,
+  mut hud_values: Query<
+    (&HudValueText, &mut Text),
+    (Without<HudTitleText>, Without<ResourceCountText>),
+  >,
+  mut resource_counts: Query<
+    (&ResourceCountText, &mut Text),
+    (Without<HudTitleText>, Without<HudValueText>),
+  >,
 ) {
   if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
@@ -1782,6 +1878,9 @@ fn update_text(
     .unwrap_or_else(|| "off-grid".into());
   for mut text in &mut hud_title {
     *text = Text::new(host.snapshot.scenario.name.to_uppercase());
+  }
+  for (resource, mut text) in &mut resource_counts {
+    *text = Text::new(resource_stockpile_count(&resources, resource.0).to_string());
   }
   for (field, mut text) in &mut hud_values {
     let value = match field.0 {
@@ -1966,6 +2065,10 @@ fn split_stockpile_totals(
   totals
     .into_iter()
     .partition(|(item, _)| resource_items.contains(item.as_str()))
+}
+
+fn resource_stockpile_count(resources: &BTreeMap<String, u32>, item: ItemId) -> u32 {
+  resources.get(item.as_str()).copied().unwrap_or_default()
 }
 
 fn grid_to_world(position: GridPosition) -> Vec2 {
@@ -2673,6 +2776,7 @@ mod tests {
     assert_eq!(percent(100), row.width);
     assert_eq!(FlexDirection::Row, row.flex_direction);
     assert_eq!(1.0, row.flex_grow);
+    assert_eq!([IRON_ORE, COPPER_ORE, COAL, STONE], status_resource_items());
   }
 
   #[test]
@@ -2698,6 +2802,8 @@ mod tests {
       ]),
       materials
     );
+    assert_eq!(12, resource_stockpile_count(&resources, IRON_ORE));
+    assert_eq!(0, resource_stockpile_count(&resources, COPPER_ORE));
   }
 
   #[test]

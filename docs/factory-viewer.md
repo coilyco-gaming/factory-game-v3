@@ -37,12 +37,12 @@ test suite, but do not appear in the player-facing UI. Each world displays:
 
 The scene rebuilds when the scenario changes and interpolates haulers between
 authoritative snapshots. One full-width top bar stacks Resources, Materials,
-and Power as three full-width information rows beside the title. Resources are
-ingredientless catalog items, while Materials are recipe-produced items. Both
-rows count current stockpiles across the world. One compact control panel sits
-at bottom right. Recent activity and focused alert overlays are intentionally
-absent. A presentation offset keeps labels between the two screen-edge
-surfaces. See [factory-art.md](factory-art.md).
+and Power as three full-width rows beside the title. Resources are ingredientless
+catalog items, while Materials are recipe products. Both count current world
+stockpiles. Resources pairs the iron, copper, coal, and stone sprites with live
+counts. One compact control panel sits at bottom right. Recent activity and
+focused alert overlays are absent. A presentation offset keeps labels between
+the screen-edge surfaces. See [factory-art.md](factory-art.md).
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active

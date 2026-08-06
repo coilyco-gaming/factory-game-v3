@@ -37,6 +37,9 @@ Iron-bar factories receive the foundry, while other factories use the general
 factory. Coal-plant generators, radars, and completed storage warehouses use
 their matching sprites. Every hauler receives the truck. Iron ore and iron
 bars in authoritative cargo select the matching item icon.
+The top status bar reuses the four deposit sprites as 18px resource icons next
+to authoritative iron, copper, coal, and stone stockpile counts. The icon
+entities stay fixed while only their adjacent count text updates.
 
 The north-south road sprite is rotated 90 degrees only for a road with east
 and west neighbors and no north or south neighbors. North-south straights use
