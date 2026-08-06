@@ -32,15 +32,15 @@ typed site into an occupied warehouse. Each scene displays:
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
 - independent craft progress and output item for every factory
 - coal-plant fuel, total energy, per-node batteries, consumption, and starvation
-- current tick, run metrics, and a bounded rolling activity feed
-- focused-cell status plus global object and stored-resource totals
+- material-flow metrics and a bounded rolling activity feed
+- global object and stored-resource totals
 
 The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. Screen-space panels align status into columns and keep
-latest four events outside the world projection while the host retains eight
-events across scenarios. A presentation offset keeps labels between those top
-panels and the compact control deck. No presentation depends on retained Unity
-assets or Git LFS objects.
+authoritative snapshots. Screen-space panels align persistent metrics into
+columns and keep ten one-line events outside the world projection. The host
+retains the same ten events across scenarios. A presentation offset keeps
+labels between those top panels and the compact control deck. No presentation
+depends on retained Unity assets or Git LFS objects.
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active

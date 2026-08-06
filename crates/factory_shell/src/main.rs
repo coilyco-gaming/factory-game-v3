@@ -17,8 +17,9 @@ const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
 const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
-const MAX_RECENT_EVENTS: usize = 8;
-const MAX_VISIBLE_EVENTS: usize = 4;
+const MAX_RECENT_EVENTS: usize = 10;
+const HUD_VALUE_MAX_CHARS: usize = 52;
+const ACTIVITY_ENTRY_MAX_CHARS: usize = 52;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -341,9 +342,6 @@ struct HudTitleText;
 
 #[derive(Copy, Clone)]
 enum HudField {
-  Status,
-  Showcase,
-  Focus,
   Flow,
   Stock,
   Logistics,
@@ -457,9 +455,6 @@ fn spawn_status_panels(commands: &mut Commands) {
         HudTitleText,
       ));
       for (label, field) in [
-        ("STATUS", HudField::Status),
-        ("SHOWCASE", HudField::Showcase),
-        ("FOCUS", HudField::Focus),
         ("FLOW", HudField::Flow),
         ("STOCK", HudField::Stock),
         ("LOGISTICS", HudField::Logistics),
@@ -468,22 +463,6 @@ fn spawn_status_panels(commands: &mut Commands) {
       ] {
         spawn_status_row(panel, label, field);
       }
-      panel.spawn((
-        Text::new("WASD/arrows move  |  Q/E zoom  |  Space pause  |  N step"),
-        TextFont {
-          font_size: FontSize::Px(11.0),
-          ..default()
-        },
-        TextColor(Color::srgb(0.72, 0.76, 0.82)),
-        Node {
-          width: percent(100),
-          margin: UiRect {
-            top: px(5),
-            ..default()
-          },
-          ..default()
-        },
-      ));
     });
 
   commands
@@ -509,9 +488,11 @@ fn spawn_status_panels(commands: &mut Commands) {
           font_size: FontSize::Px(12.0),
           ..default()
         },
+        TextLayout::no_wrap(),
         TextColor(Color::srgb(0.72, 0.76, 0.82)),
         Node {
           width: percent(100),
+          overflow: Overflow::clip_x(),
           ..default()
         },
         EventText,
@@ -548,9 +529,12 @@ fn spawn_status_row(parent: &mut ChildSpawnerCommands, label: &'static str, fiel
           font_size: FontSize::Px(12.0),
           ..default()
         },
+        TextLayout::no_wrap(),
         TextColor(Color::srgb(0.91, 0.92, 0.94)),
         Node {
           flex_grow: 1.0,
+          min_width: px(0),
+          overflow: Overflow::clip_x(),
           ..default()
         },
         HudText,
@@ -1405,7 +1389,6 @@ fn sync_annotation_visibility(
 
 fn update_text(
   host: Res<SimHost>,
-  view: Res<PlayerView>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
   mut hauler_labels: Query<
     (&HaulerLabel, &mut Text2d),
@@ -1421,7 +1404,7 @@ fn update_text(
   >,
   mut events: Query<&mut Text, (With<EventText>, Without<HudText>)>,
 ) {
-  if !host.is_changed() && !view.is_changed() {
+  if !host.is_changed() {
     return;
   }
 
@@ -1441,9 +1424,6 @@ fn update_text(
   }
 
   let metrics = host.game.metrics();
-  let status = if host.paused { "paused" } else { "running" };
-  let cycle_status = if host.auto_cycle { "auto" } else { "locked" };
-  let focused = focused_status(&host.snapshot, view.position);
   let totals = snapshot_inventory_totals(&host.snapshot);
   let power = host
     .snapshot
@@ -1456,18 +1436,6 @@ fn update_text(
   }
   for (field, mut text) in &mut hud_values {
     let value = match field.0 {
-      HudField::Status => format!(
-        "{}  |  tick {}  |  {:.0} TPS",
-        status, host.snapshot.tick, host.ticks_per_second
-      ),
-      HudField::Showcase => format!(
-        "{}  |  quiet {}/{}  |  {} complete",
-        cycle_status, host.idle_streak, AUTO_ADVANCE_IDLE_TICKS, host.completed_scenarios
-      ),
-      HudField::Focus => format!(
-        "{},{}  |  zoom {}  |  {}",
-        view.position.x, view.position.y, view.zoom_level, focused
-      ),
       HudField::Flow => format!(
         "mined {}  |  crafted {}",
         format_items(&metrics.mined),
@@ -1491,7 +1459,7 @@ fn update_text(
         power, metrics.energy_consumed, metrics.power_starvations
       ),
     };
-    *text = Text::new(value);
+    *text = Text::new(truncate_for_display(&value, HUD_VALUE_MAX_CHARS));
   }
 
   let event_value = if host.recent_events.is_empty() {
@@ -1501,8 +1469,8 @@ fn update_text(
       .recent_events
       .iter()
       .rev()
-      .take(MAX_VISIBLE_EVENTS)
-      .cloned()
+      .take(MAX_RECENT_EVENTS)
+      .map(|event| truncate_for_display(event, ACTIVITY_ENTRY_MAX_CHARS))
       .collect::<Vec<_>>();
     visible_events.reverse();
     format!("RECENT ACTIVITY\n{}", visible_events.join("\n"))
@@ -1510,6 +1478,18 @@ fn update_text(
   for mut text in &mut events {
     *text = Text::new(event_value.clone());
   }
+}
+
+fn truncate_for_display(value: &str, max_chars: usize) -> String {
+  if value.chars().count() <= max_chars {
+    return value.into();
+  }
+  if max_chars <= 3 {
+    return ".".repeat(max_chars);
+  }
+
+  let visible_chars = max_chars - 3;
+  format!("{}...", value.chars().take(visible_chars).collect::<String>())
 }
 
 fn move_player_focus(
@@ -1529,6 +1509,7 @@ fn player_zoom_scale(level: u8) -> f32 {
   1.0 + f32::from(level.clamp(1, 10) - 1) * 0.18
 }
 
+#[cfg(test)]
 fn focused_status(snapshot: &TickSnapshot, position: GridPosition) -> String {
   let mut details = snapshot
     .topology
@@ -2047,6 +2028,14 @@ mod tests {
       .back()
       .expect("scenario event is recorded")
       .contains("test selected"));
+  }
+
+  #[test]
+  fn display_truncation_uses_three_dots_and_stays_within_the_limit() {
+    assert_eq!("short", truncate_for_display("short", 8));
+    assert_eq!("abcde...", truncate_for_display("abcdefghijk", 8));
+    assert_eq!("..", truncate_for_display("long", 2));
+    assert_eq!(8, truncate_for_display("abcdefghijk", 8).chars().count());
   }
 
   #[test]
