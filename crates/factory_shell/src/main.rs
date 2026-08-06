@@ -13,6 +13,7 @@ const CELL_SIZE: f32 = 100.0;
 const GROUND_SIZE: f32 = 96.0;
 const TOP_BAR_HEIGHT: f32 = 132.0;
 const PANEL_WIDTH: f32 = 380.0;
+const PANEL_HEIGHT: f32 = 326.0;
 const MIN_VISIBLE_CELLS: f32 = 10.0;
 const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
@@ -298,9 +299,10 @@ struct SelectionText;
 #[derive(Component)]
 struct FeedbackText;
 
-fn setup(mut commands: Commands, art: Res<FactoryArt>) {
+fn setup(mut commands: Commands, art: Res<FactoryArt>, host: Res<SimHost>) {
   commands.spawn((Camera2d, MainCamera));
   spawn_ground(&mut commands, &art);
+  spawn_trucks(&mut commands, &host, &art);
   commands.spawn((
     Sprite::from_color(
       Color::srgba(0.35, 0.85, 0.62, 0.24),
@@ -328,6 +330,24 @@ fn spawn_ground(commands: &mut Commands, art: &FactoryArt) {
         Transform::from_xyz(position.x, position.y, 0.0),
       ));
     }
+  }
+}
+
+fn spawn_trucks(commands: &mut Commands, host: &SimHost, art: &FactoryArt) {
+  for truck in &host.snapshot.trucks {
+    let position = grid_to_world(truck.position);
+    commands.spawn((
+      Sprite {
+        image: art.truck.clone(),
+        custom_size: Some(Vec2::splat(66.0)),
+        ..default()
+      },
+      Transform::from_xyz(position.x, position.y, 4.0),
+      TruckVisual {
+        id: truck.id,
+        target: position,
+      },
+    ));
   }
 }
 
@@ -530,6 +550,7 @@ fn spawn_control_panel(commands: &mut Commands) {
         right: px(18),
         bottom: px(18),
         width: px(PANEL_WIDTH),
+        height: px(PANEL_HEIGHT),
         flex_direction: FlexDirection::Column,
         row_gap: px(8),
         padding: UiRect::all(px(12)),
@@ -818,18 +839,26 @@ fn handle_pointer_edits(
   let screen_position = touch
     .map(|touch| touch.position())
     .or_else(|| window.cursor_position());
-  let cell = screen_position.and_then(|position| {
-    camera
-      .0
-      .viewport_to_world_2d(camera.1, position)
-      .ok()
-      .and_then(world_to_grid)
-  });
+  let over_ui = screen_position
+    .is_some_and(|position| pointer_over_ui(position, Vec2::new(window.width(), window.height())));
+  let cell = (!over_ui)
+    .then_some(screen_position)
+    .flatten()
+    .and_then(|position| {
+      camera
+        .0
+        .viewport_to_world_2d(camera.1, position)
+        .ok()
+        .and_then(world_to_grid)
+    });
   hover.0 = cell;
 
   let active = mouse.pressed(MouseButton::Left) || touch.is_some();
   if !active {
     *last_painted = None;
+    return;
+  }
+  if over_ui {
     return;
   }
   if button_interactions
@@ -1016,19 +1045,6 @@ fn spawn_dynamic(commands: &mut Commands, host: &SimHost, art: &FactoryArt) {
       ));
     }
     let position = grid_to_world(truck.position);
-    commands.spawn((
-      Sprite {
-        image: art.truck.clone(),
-        custom_size: Some(Vec2::splat(66.0)),
-        ..default()
-      },
-      Transform::from_xyz(position.x, position.y, 4.0),
-      TruckVisual {
-        id: truck.id,
-        target: position,
-      },
-      DynamicProjection,
-    ));
     if let Some(item) = truck.cargo_item {
       commands.spawn((
         Text2d::new(format!("{} {}", item_name(item), truck.cargo_quantity)),
@@ -1201,6 +1217,12 @@ fn compact_zoom_scale(level: u8, viewport_width: f32, viewport_height: f32) -> f
   detail * (overview / detail).powf(progress)
 }
 
+fn pointer_over_ui(position: Vec2, window_size: Vec2) -> bool {
+  position.y <= TOP_BAR_HEIGHT
+    || (position.x >= window_size.x - PANEL_WIDTH - 18.0
+      && position.y >= window_size.y - PANEL_HEIGHT - 18.0)
+}
+
 fn inspect_cell(snapshot: &CompactSnapshot, cell: GridPosition) -> String {
   if cell == snapshot.warehouse_position {
     return format!(
@@ -1363,6 +1385,15 @@ mod tests {
     let host = SimHost::new();
     assert!(selected_building_text(&host).contains(" // "));
     assert!(inspect_cell(&host.snapshot, host.snapshot.warehouse_position).contains(" // "));
+  }
+
+  #[test]
+  fn pointer_edits_do_not_leak_through_the_two_ui_surfaces() {
+    let window = Vec2::new(1180.0, 720.0);
+
+    assert!(pointer_over_ui(Vec2::new(400.0, 60.0), window));
+    assert!(pointer_over_ui(Vec2::new(1000.0, 600.0), window));
+    assert!(!pointer_over_ui(Vec2::new(400.0, 400.0), window));
   }
 
   #[test]

@@ -117,6 +117,7 @@ pub struct CompactSnapshot {
 pub enum CompactEditError {
   OutOfBounds(GridPosition),
   CellOccupied(GridPosition),
+  RoadInUse(GridPosition),
   RoadRequired(GridPosition),
   BuildingAllowanceExhausted { used: u16, limit: u16 },
   UnknownBuilding(u16),
@@ -133,6 +134,9 @@ impl fmt::Display for CompactEditError {
         )
       }
       Self::CellOccupied(position) => write!(f, "cell {},{} is occupied", position.x, position.y),
+      Self::RoadInUse(position) => {
+        write!(f, "road {},{} is in use by a truck", position.x, position.y)
+      }
       Self::RoadRequired(position) => write!(
         f,
         "building at {},{} needs road frontage",
@@ -275,17 +279,15 @@ impl CompactGame {
 
   pub fn remove_road(&mut self, position: GridPosition) -> Result<bool, CompactEditError> {
     self.validate_cell(position)?;
-    if self.trucks.iter().any(|truck| truck.position == position) {
-      return Err(CompactEditError::CellOccupied(position));
+    if self
+      .trucks
+      .iter()
+      .any(|truck| truck.position == position || truck.route.contains(&position))
+    {
+      return Err(CompactEditError::RoadInUse(position));
     }
     let removed = self.roads.remove(&position);
     if removed {
-      for truck in &mut self.trucks {
-        if truck.route.contains(&position) {
-          truck.route.clear();
-          truck.task = CompactTruckTask::Idle;
-        }
-      }
       self
         .events
         .push(format!("road removed {},{}", position.x, position.y));
@@ -869,6 +871,40 @@ mod tests {
         .iter()
         .all(|truck| snapshot.roads.contains(&truck.position)));
     }
+  }
+
+  #[test]
+  fn active_truck_routes_cannot_be_erased_out_from_under_cargo() {
+    let mut game = CompactGame::new();
+    road_line(
+      &mut game,
+      (2..=9)
+        .map(|y| GridPosition { x: 7, y })
+        .chain((3..=7).map(|x| GridPosition { x, y: 2 }))
+        .chain([GridPosition { x: 2, y: 3 }]),
+    );
+    let building = game
+      .place_building(GridPosition { x: 6, y: 3 })
+      .expect("building fronts the route");
+    game
+      .configure_building(building, CompactRecipe::IronBars)
+      .unwrap();
+
+    let route_cell = (0..40)
+      .find_map(|_| {
+        game
+          .step()
+          .trucks
+          .into_iter()
+          .find_map(|truck| truck.route.first().copied())
+      })
+      .expect("a truck receives an active route");
+
+    assert_eq!(
+      Err(CompactEditError::RoadInUse(route_cell)),
+      game.remove_road(route_cell)
+    );
+    assert!(game.snapshot().roads.contains(&route_cell));
   }
 
   #[test]
