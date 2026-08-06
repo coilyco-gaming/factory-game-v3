@@ -21,6 +21,7 @@ const STATUS_LABEL_FONT_SIZE: f32 = 15.0;
 const STATUS_VALUE_FONT_SIZE: f32 = 15.75;
 const STATUS_SEPARATOR_FONT_SIZE: f32 = 13.5;
 const STATUS_LABEL_WIDTH: f32 = 96.0;
+const STATUS_POWER_LABEL_WIDTH: f32 = 24.0;
 const ROUTE_DASH_COUNT: usize = 5;
 const ROUTE_DASH_SPEED: f32 = 0.42;
 const CRAFT_GAUGE_WIDTH: f32 = 96.0;
@@ -604,7 +605,7 @@ fn status_metrics() -> [(&'static str, HudField, Color); 3] {
       HudField::Materials,
       Color::srgb(0.95, 0.78, 0.36),
     ),
-    ("POWER", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
+    ("🔋", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
   ]
 }
 
@@ -634,7 +635,11 @@ fn spawn_status_metric(
         },
         TextColor(accent),
         Node {
-          width: px(STATUS_LABEL_WIDTH),
+          width: px(if field == HudField::Power {
+            STATUS_POWER_LABEL_WIDTH
+          } else {
+            STATUS_LABEL_WIDTH
+          }),
           flex_shrink: 0.0,
           ..default()
         },
@@ -1873,14 +1878,13 @@ fn update_text(
     }
   }
 
-  let metrics = host.game.metrics();
   let totals = snapshot_inventory_totals(&host.snapshot);
   let (resources, materials) = split_stockpile_totals(host.game.content(), totals);
   let power = host
     .snapshot
     .power
     .as_ref()
-    .map(|power| format!("{}/{}", power.energy, power.capacity))
+    .map(|power| format_power_status(power.energy, power.capacity))
     .unwrap_or_else(|| "off-grid".into());
   for mut text in &mut hud_title {
     *text = Text::new(host.snapshot.scenario.name.to_uppercase());
@@ -1892,14 +1896,7 @@ fn update_text(
     let value = match field.0 {
       HudField::Resources => format_items(&resources),
       HudField::Materials => format_items(&materials),
-      HudField::Power => format!(
-        "{}  |  {} made  |  {} moved  |  {} used  |  {} starved",
-        power,
-        metrics.energy_generated,
-        metrics.energy_balanced,
-        metrics.energy_consumed,
-        metrics.power_starvations
-      ),
+      HudField::Power => power.clone(),
     };
     *text = Text::new(value);
   }
@@ -2151,6 +2148,50 @@ fn power_fraction(energy: u32, capacity: u32) -> f32 {
     0.0
   } else {
     (energy as f32 / capacity as f32).clamp(0.0, 1.0)
+  }
+}
+
+fn format_power_status(energy: u32, capacity: u32) -> String {
+  let percent = if capacity == 0 {
+    0
+  } else {
+    ((u64::from(energy) * 100 + u64::from(capacity) / 2) / u64::from(capacity)).min(100)
+  };
+  format!("{percent}%  ·  {}", format_compact_energy(energy))
+}
+
+fn format_compact_energy(value: u32) -> String {
+  const UNITS: [&str; 4] = ["", "K", "M", "B"];
+
+  if value < 1_000 {
+    return value.to_string();
+  }
+
+  let mut scaled = f64::from(value);
+  let mut unit = 0;
+  while scaled >= 1_000.0 && unit < UNITS.len() - 1 {
+    scaled /= 1_000.0;
+    unit += 1;
+  }
+
+  let mut decimal_places = usize::from(scaled < 10.0);
+  let mut rounded = if decimal_places == 1 {
+    (scaled * 10.0).round() / 10.0
+  } else {
+    scaled.round()
+  };
+  if rounded >= 1_000.0 && unit < UNITS.len() - 1 {
+    rounded /= 1_000.0;
+    unit += 1;
+    decimal_places = 1;
+  } else if rounded >= 10.0 {
+    decimal_places = 0;
+  }
+
+  if decimal_places == 1 {
+    format!("{rounded:.1}{}", UNITS[unit])
+  } else {
+    format!("{rounded:.0}{}", UNITS[unit])
   }
 }
 
@@ -2770,7 +2811,7 @@ mod tests {
   #[test]
   fn status_bar_contains_only_resources_materials_and_power() {
     assert_eq!(
-      ["RESOURCES", "MATERIALS", "POWER"],
+      ["RESOURCES", "MATERIALS", "🔋"],
       status_metrics().map(|(label, _, _)| label)
     );
     assert_eq!(
@@ -2789,6 +2830,21 @@ mod tests {
     assert_eq!(15.75, STATUS_VALUE_FONT_SIZE);
     assert_eq!(13.5, STATUS_SEPARATOR_FONT_SIZE);
     assert_eq!(96.0, STATUS_LABEL_WIDTH);
+    assert_eq!(24.0, STATUS_POWER_LABEL_WIDTH);
+  }
+
+  #[test]
+  fn power_status_leads_with_percent_and_humanizes_stored_energy() {
+    assert_eq!("0", format_compact_energy(0));
+    assert_eq!("999", format_compact_energy(999));
+    assert_eq!("1.0K", format_compact_energy(1_000));
+    assert_eq!("1.5K", format_compact_energy(1_512));
+    assert_eq!("10K", format_compact_energy(9_999));
+    assert_eq!("1.0M", format_compact_energy(999_999));
+    assert_eq!("4.3B", format_compact_energy(u32::MAX));
+
+    assert_eq!("76%  ·  1.5K", format_power_status(1_512, 2_000));
+    assert_eq!("0%  ·  0", format_power_status(0, 0));
   }
 
   #[test]
