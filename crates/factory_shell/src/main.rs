@@ -1,10 +1,12 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
-use factory_content::{ContentDatabase, ScenarioId, V2_WORLD_SCENARIO};
+use factory_content::{
+  ContentDatabase, ItemId, ScenarioId, IRON_BARS, IRON_ORE, V2_WORLD_SCENARIO,
+};
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
-  HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
+  HaulerId, HaulerSnapshot, NodeId, TickSnapshot, TopologyNode,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -26,6 +28,9 @@ const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
 const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
 const MIN_VISIBLE_CELLS: f32 = 10.0;
+const NODE_ART_SIZE: f32 = 100.0;
+const TRUCK_ART_SIZE: f32 = 72.0;
+const CARGO_ART_SIZE: f32 = 28.0;
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
@@ -64,6 +69,13 @@ const POWER_GAUGE_BACKGROUND: Color = Color::srgb(0.16, 0.10, 0.08);
 const POWER_GAUGE_FILL: Color = Color::srgb(1.0, 0.72, 0.18);
 const OUTPUT_CHIP_STONE: Color = Color::srgb(0.62, 0.58, 0.48);
 const OUTPUT_CHIP_STEEL: Color = Color::srgb(0.48, 0.55, 0.58);
+const GROUND_ART: &str = "factory/terrain/ground.png";
+const ROAD_ART: &str = "factory/logistics/road-straight-ns.png";
+const TRUCK_ART: &str = "factory/vehicles/truck.png";
+const IRON_DEPOSIT_ART: &str = "factory/resources/iron-ore-deposit.png";
+const FOUNDRY_ART: &str = "factory/machines/foundry.png";
+const IRON_ORE_ART: &str = "factory/items/iron-ore.png";
+const IRON_BARS_ART: &str = "factory/items/iron-bars.png";
 
 fn main() {
   App::new()
@@ -81,6 +93,7 @@ fn main() {
     .init_resource::<PlayerView>()
     .init_resource::<ProjectionScene>()
     .init_resource::<ProductionFeedback>()
+    .init_resource::<FactoryArt>()
     .add_systems(Startup, setup)
     .add_systems(
       Update,
@@ -107,6 +120,54 @@ fn main() {
         .chain(),
     )
     .run();
+}
+
+#[derive(Resource)]
+struct FactoryArt {
+  ground: Handle<Image>,
+  road_straight_ns: Handle<Image>,
+  truck: Handle<Image>,
+  iron_ore_deposit: Handle<Image>,
+  foundry: Handle<Image>,
+  iron_ore: Handle<Image>,
+  iron_bars: Handle<Image>,
+}
+
+impl FromWorld for FactoryArt {
+  fn from_world(world: &mut World) -> Self {
+    let assets = world.resource::<AssetServer>();
+    Self {
+      ground: assets.load(GROUND_ART),
+      road_straight_ns: assets.load(ROAD_ART),
+      truck: assets.load(TRUCK_ART),
+      iron_ore_deposit: assets.load(IRON_DEPOSIT_ART),
+      foundry: assets.load(FOUNDRY_ART),
+      iron_ore: assets.load(IRON_ORE_ART),
+      iron_bars: assets.load(IRON_BARS_ART),
+    }
+  }
+}
+
+impl FactoryArt {
+  fn item(&self, item: ItemId) -> Option<&Handle<Image>> {
+    match item {
+      IRON_ORE => Some(&self.iron_ore),
+      IRON_BARS => Some(&self.iron_bars),
+      _ => None,
+    }
+  }
+
+  fn node(&self, kind: NodeArtKind) -> (&Handle<Image>, Quat) {
+    match kind {
+      NodeArtKind::IronOreDeposit => (&self.iron_ore_deposit, Quat::IDENTITY),
+      NodeArtKind::Foundry => (&self.foundry, Quat::IDENTITY),
+      NodeArtKind::Road(RoadOrientation::NorthSouth) => (&self.road_straight_ns, Quat::IDENTITY),
+      NodeArtKind::Road(RoadOrientation::EastWest) => (
+        &self.road_straight_ns,
+        Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+      ),
+    }
+  }
 }
 
 #[derive(Resource)]
@@ -272,6 +333,9 @@ struct NodeLabel(NodeId);
 struct HaulerVisual(HaulerId);
 
 #[derive(Component)]
+struct HaulerArt(HaulerId);
+
+#[derive(Component)]
 struct RouteVisual(NodeId);
 
 #[derive(Component)]
@@ -290,6 +354,9 @@ struct HaulerTarget(Vec2);
 
 #[derive(Component)]
 struct CargoBadge(HaulerId);
+
+#[derive(Component)]
+struct CargoArt(HaulerId);
 
 #[derive(Component)]
 struct CraftGaugeFill {
@@ -384,11 +451,12 @@ struct ControlButton(ControlAction);
 fn setup(
   mut commands: Commands,
   host: Res<SimHost>,
+  art: Res<FactoryArt>,
   mut projection_scene: ResMut<ProjectionScene>,
 ) {
   commands.spawn((Camera2d, MainCamera));
 
-  spawn_projection(&mut commands, &host.snapshot);
+  spawn_projection(&mut commands, &host.snapshot, &art);
   projection_scene.revision = host.scene_revision;
 
   spawn_status_panels(&mut commands);
@@ -665,7 +733,8 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
     });
 }
 
-fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
+fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &FactoryArt) {
+  spawn_ground(commands, snapshot, art);
   spawn_connections(commands, snapshot);
   for power_line in &snapshot.topology.power_lines {
     let position = grid_to_world(*power_line);
@@ -727,6 +796,16 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeActivityVisual(node_activity(snapshot, node.id)),
       ProjectionEntity,
     ));
+    if let Some(kind) = node_art_kind(snapshot, node) {
+      let (image, rotation) = art.node(kind);
+      let mut sprite = Sprite::from_image(image.clone());
+      sprite.custom_size = Some(Vec2::splat(NODE_ART_SIZE));
+      commands.spawn((
+        sprite,
+        Transform::from_xyz(position.x, position.y, 1.2).with_rotation(rotation),
+        ProjectionEntity,
+      ));
+    }
     let label_anchor = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
       Anchor::BOTTOM_CENTER
     } else {
@@ -767,6 +846,15 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       HaulerTarget(position),
       ProjectionEntity,
     ));
+    let mut truck = Sprite::from_image(art.truck.clone());
+    truck.custom_size = Some(Vec2::splat(TRUCK_ART_SIZE));
+    commands.spawn((
+      truck,
+      Transform::from_xyz(position.x, position.y, 2.2),
+      HaulerArt(hauler.id),
+      HaulerTarget(position),
+      ProjectionEntity,
+    ));
     commands.spawn((
       Sprite::from_color(
         cargo_badge_color(hauler),
@@ -774,6 +862,15 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       ),
       Transform::from_xyz(position.x, position.y, 2.5),
       CargoBadge(hauler.id),
+      Annotation,
+      WorldDetail,
+      HaulerTarget(position),
+      ProjectionEntity,
+    ));
+    commands.spawn((
+      cargo_art_sprite(art, hauler),
+      Transform::from_xyz(position.x, position.y, 2.7),
+      CargoArt(hauler.id),
       Annotation,
       WorldDetail,
       HaulerTarget(position),
@@ -794,6 +891,20 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       ProjectionEntity,
     ));
   }
+}
+
+fn spawn_ground(commands: &mut Commands, snapshot: &TickSnapshot, art: &FactoryArt) {
+  let mut ground = Sprite::from_image(art.ground.clone());
+  ground.custom_size = Some(world_art_size(
+    snapshot.topology.width,
+    snapshot.topology.height,
+  ));
+  let center = world_center(snapshot.topology.width, snapshot.topology.height);
+  commands.spawn((
+    ground,
+    Transform::from_xyz(center.x, center.y, -2.0),
+    ProjectionEntity,
+  ));
 }
 
 fn spawn_craft_gauge(
@@ -1065,6 +1176,7 @@ fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
 fn rebuild_projection(
   mut commands: Commands,
   host: Res<SimHost>,
+  art: Res<FactoryArt>,
   mut projection_scene: ResMut<ProjectionScene>,
   entities: Query<Entity, With<ProjectionEntity>>,
 ) {
@@ -1075,7 +1187,7 @@ fn rebuild_projection(
   for entity in &entities {
     commands.entity(entity).despawn();
   }
-  spawn_projection(&mut commands, &host.snapshot);
+  spawn_projection(&mut commands, &host.snapshot, &art);
   projection_scene.revision = host.scene_revision;
 }
 
@@ -1084,15 +1196,48 @@ fn project_snapshot(
   mut last_snapshot_revision: Local<u64>,
   mut hauler_visuals: Query<
     (&HaulerVisual, &mut HaulerTarget),
-    (Without<HaulerLabel>, Without<CargoBadge>),
+    (
+      Without<HaulerArt>,
+      Without<HaulerLabel>,
+      Without<CargoBadge>,
+      Without<CargoArt>,
+    ),
+  >,
+  mut hauler_art: Query<
+    (&HaulerArt, &mut HaulerTarget),
+    (
+      Without<HaulerVisual>,
+      Without<HaulerLabel>,
+      Without<CargoBadge>,
+      Without<CargoArt>,
+    ),
   >,
   mut hauler_labels: Query<
     (&HaulerLabel, &mut HaulerTarget),
-    (Without<HaulerVisual>, Without<CargoBadge>),
+    (
+      Without<HaulerVisual>,
+      Without<HaulerArt>,
+      Without<CargoBadge>,
+      Without<CargoArt>,
+    ),
   >,
   mut cargo_badges: Query<
     (&CargoBadge, &mut HaulerTarget),
-    (Without<HaulerVisual>, Without<HaulerLabel>),
+    (
+      Without<HaulerVisual>,
+      Without<HaulerArt>,
+      Without<HaulerLabel>,
+      Without<CargoArt>,
+    ),
+  >,
+  mut cargo_art: Query<
+    (&CargoArt, &mut HaulerTarget),
+    (
+      Without<HaulerVisual>,
+      Without<HaulerArt>,
+      Without<HaulerLabel>,
+      Without<CargoBadge>,
+    ),
   >,
 ) {
   if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
@@ -1100,6 +1245,17 @@ fn project_snapshot(
   }
 
   for (visual, mut target) in &mut hauler_visuals {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == visual.0)
+    {
+      target.0 = hauler_world_position(&host.snapshot, hauler);
+    }
+  }
+
+  for (visual, mut target) in &mut hauler_art {
     if let Some(hauler) = host
       .snapshot
       .haulers
@@ -1132,10 +1288,22 @@ fn project_snapshot(
       target.0 = hauler_world_position(&host.snapshot, hauler);
     }
   }
+
+  for (cargo, mut target) in &mut cargo_art {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == cargo.0)
+    {
+      target.0 = hauler_world_position(&host.snapshot, hauler);
+    }
+  }
 }
 
 fn project_activity(
   host: Res<SimHost>,
+  art: Res<FactoryArt>,
   mut last_snapshot_revision: Local<u64>,
   mut nodes: Query<
     (&NodeVisual, &mut NodeActivityVisual, &mut Sprite),
@@ -1143,6 +1311,7 @@ fn project_activity(
       Without<HaulerVisual>,
       Without<RouteVisual>,
       Without<CargoBadge>,
+      Without<CargoArt>,
     ),
   >,
   mut routes: Query<
@@ -1151,6 +1320,7 @@ fn project_activity(
       Without<NodeVisual>,
       Without<HaulerVisual>,
       Without<CargoBadge>,
+      Without<CargoArt>,
     ),
   >,
   mut haulers: Query<
@@ -1159,6 +1329,7 @@ fn project_activity(
       Without<NodeVisual>,
       Without<RouteVisual>,
       Without<CargoBadge>,
+      Without<CargoArt>,
     ),
   >,
   mut cargo_badges: Query<
@@ -1167,6 +1338,16 @@ fn project_activity(
       Without<NodeVisual>,
       Without<RouteVisual>,
       Without<HaulerVisual>,
+      Without<CargoArt>,
+    ),
+  >,
+  mut cargo_art: Query<
+    (&CargoArt, &mut Sprite),
+    (
+      Without<NodeVisual>,
+      Without<RouteVisual>,
+      Without<HaulerVisual>,
+      Without<CargoBadge>,
     ),
   >,
 ) {
@@ -1204,6 +1385,16 @@ fn project_activity(
     {
       sprite.color = cargo_badge_color(hauler);
       sprite.custom_size = Some(Vec2::splat(cargo_badge_size(hauler)));
+    }
+  }
+  for (cargo, mut sprite) in &mut cargo_art {
+    if let Some(hauler) = host
+      .snapshot
+      .haulers
+      .iter()
+      .find(|hauler| hauler.id == cargo.0)
+    {
+      configure_cargo_art(&mut sprite, &art, hauler);
     }
   }
 }
@@ -1678,6 +1869,10 @@ fn world_center(width: i32, height: i32) -> Vec2 {
   )
 }
 
+fn world_art_size(width: i32, height: i32) -> Vec2 {
+  Vec2::new(width.max(1) as f32 * GRID_X, height.max(1) as f32 * GRID_Y)
+}
+
 fn player_zoom_scale(
   level: u8,
   width: i32,
@@ -1853,6 +2048,19 @@ enum HaulerActivity {
 enum RouteDirection {
   TowardRoad,
   AwayFromRoad,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RoadOrientation {
+  NorthSouth,
+  EastWest,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum NodeArtKind {
+  IronOreDeposit,
+  Foundry,
+  Road(RoadOrientation),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -2036,6 +2244,82 @@ fn cargo_badge_size(hauler: &HaulerSnapshot) -> f32 {
   match cargo_badge_state(hauler) {
     CargoBadgeState::Empty => 7.0,
     CargoBadgeState::Loaded(units) => 9.0 + units.min(4) as f32,
+  }
+}
+
+fn cargo_art_item(hauler: &HaulerSnapshot) -> Option<ItemId> {
+  [IRON_ORE, IRON_BARS].into_iter().find(|item| {
+    hauler
+      .cargo
+      .items
+      .get(item.as_str())
+      .is_some_and(|quantity| *quantity > 0)
+  })
+}
+
+fn cargo_art_sprite(art: &FactoryArt, hauler: &HaulerSnapshot) -> Sprite {
+  let mut sprite = Sprite::default();
+  configure_cargo_art(&mut sprite, art, hauler);
+  sprite
+}
+
+fn configure_cargo_art(sprite: &mut Sprite, art: &FactoryArt, hauler: &HaulerSnapshot) {
+  if let Some(image) = cargo_art_item(hauler).and_then(|item| art.item(item)) {
+    sprite.image = image.clone();
+    sprite.custom_size = Some(Vec2::splat(CARGO_ART_SIZE));
+  } else {
+    sprite.image = Handle::default();
+    sprite.custom_size = Some(Vec2::ZERO);
+  }
+  sprite.color = Color::WHITE;
+}
+
+fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArtKind> {
+  match node.id {
+    NodeId::Source(_) => snapshot
+      .sources
+      .iter()
+      .find(|source| source.node == node.id && source.item == IRON_ORE)
+      .map(|_| NodeArtKind::IronOreDeposit),
+    NodeId::Factory(_) => snapshot
+      .factories
+      .iter()
+      .find(|factory| factory.node == node.id && factory.craft.output_item == IRON_BARS)
+      .map(|_| NodeArtKind::Foundry),
+    NodeId::Road => straight_road_orientation(snapshot, node.position).map(NodeArtKind::Road),
+    _ => None,
+  }
+}
+
+fn straight_road_orientation(
+  snapshot: &TickSnapshot,
+  position: GridPosition,
+) -> Option<RoadOrientation> {
+  if snapshot
+    .topology
+    .nodes
+    .iter()
+    .any(|node| node.position == position && node.id != NodeId::Road)
+  {
+    return None;
+  }
+
+  let occupied = |x: i32, y: i32| {
+    snapshot
+      .topology
+      .nodes
+      .iter()
+      .any(|node| node.position == GridPosition { x, y })
+  };
+  let north = occupied(position.x, position.y + 1);
+  let south = occupied(position.x, position.y - 1);
+  let east = occupied(position.x + 1, position.y);
+  let west = occupied(position.x - 1, position.y);
+
+  match (north, south, east, west) {
+    (true, true, false, false) => Some(RoadOrientation::NorthSouth),
+    (false, false, true, true) => Some(RoadOrientation::EastWest),
+    _ => None,
   }
 }
 
@@ -2240,7 +2524,7 @@ mod tests {
   use super::*;
   use factory_content::{
     BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, COAL_PLANT,
-    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
+    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO, STONE,
   };
   use factory_sim::GeneratorPowerLine;
 
@@ -2608,6 +2892,89 @@ mod tests {
   }
 
   #[test]
+  fn accepted_art_maps_only_to_matching_simulation_identities() {
+    let starter = scenario_game(IRON_BARS_SCENARIO).snapshot(Vec::new());
+    let source = starter
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Source(0))
+      .unwrap();
+    let road = starter
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Road)
+      .unwrap();
+    let factory = starter
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Factory(0))
+      .unwrap();
+
+    assert_eq!(
+      Some(NodeArtKind::IronOreDeposit),
+      node_art_kind(&starter, source)
+    );
+    assert_eq!(
+      Some(NodeArtKind::Road(RoadOrientation::EastWest)),
+      node_art_kind(&starter, road)
+    );
+    assert_eq!(Some(NodeArtKind::Foundry), node_art_kind(&starter, factory));
+
+    let v2 = scenario_game(V2_WORLD_SCENARIO).snapshot(Vec::new());
+    let junction = v2
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Road)
+      .unwrap();
+    assert_eq!(None, node_art_kind(&v2, junction));
+
+    let materials = scenario_game(BUILDING_MATERIALS_SCENARIO).snapshot(Vec::new());
+    let stone = materials
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Source(1))
+      .unwrap();
+    assert_eq!(STONE, materials.sources[1].item);
+    assert_eq!(None, node_art_kind(&materials, stone));
+  }
+
+  #[test]
+  fn cargo_art_tracks_supported_authoritative_items() {
+    let mut hauler = scenario_game(IRON_BARS_SCENARIO)
+      .snapshot(Vec::new())
+      .haulers[0]
+      .clone();
+    assert_eq!(None, cargo_art_item(&hauler));
+
+    hauler.cargo.items.insert(IRON_ORE.as_str().into(), 2);
+    assert_eq!(Some(IRON_ORE), cargo_art_item(&hauler));
+
+    hauler.cargo.items.clear();
+    hauler.cargo.items.insert(IRON_BARS.as_str().into(), 1);
+    assert_eq!(Some(IRON_BARS), cargo_art_item(&hauler));
+
+    hauler.cargo.items.clear();
+    hauler.cargo.items.insert(STONE.as_str().into(), 3);
+    assert_eq!(None, cargo_art_item(&hauler));
+  }
+
+  #[test]
+  fn runtime_art_paths_are_stable_and_relative_to_the_asset_root() {
+    assert_eq!("factory/terrain/ground.png", GROUND_ART);
+    assert_eq!("factory/logistics/road-straight-ns.png", ROAD_ART);
+    assert_eq!("factory/vehicles/truck.png", TRUCK_ART);
+    assert_eq!("factory/resources/iron-ore-deposit.png", IRON_DEPOSIT_ART);
+    assert_eq!("factory/machines/foundry.png", FOUNDRY_ART);
+    assert_eq!("factory/items/iron-ore.png", IRON_ORE_ART);
+    assert_eq!("factory/items/iron-bars.png", IRON_BARS_ART);
+  }
+
+  #[test]
   fn craft_progress_fraction_is_bounded() {
     assert_eq!(0.0, craft_progress_fraction(0, 0));
     assert_eq!(0.0, craft_progress_fraction(0, 4));
@@ -2638,6 +3005,7 @@ mod tests {
     assert_eq!(detail, player_zoom_scale(0, 50, 50, 1180.0, 720.0));
     assert_eq!(overview, player_zoom_scale(11, 50, 50, 1180.0, 720.0));
     assert_eq!(Vec2::new(4_000.0, 2_940.0), world_center(50, 50));
+    assert_eq!(Vec2::new(9_000.0, 6_000.0), world_art_size(50, 50));
   }
 
   #[test]

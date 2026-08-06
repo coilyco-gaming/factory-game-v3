@@ -40,8 +40,9 @@ The scene rebuilds when the scenario changes and interpolates haulers between
 authoritative snapshots. Screen-space panels align persistent metrics into
 columns and keep ten one-line events outside the world projection. The host
 retains the same ten events across scenarios. A presentation offset keeps
-labels between those top panels and the compact control deck. No presentation
-depends on Unity assets or Git LFS objects. Cursor focus shows the selected object's latest alert in a compact bottom-left overlay.
+labels between those top panels and the control deck. Local sprites overlay
+matching identities without LFS. See [factory-art.md](factory-art.md). Cursor
+focus shows the selected object's latest alert in a bottom-left overlay.
 
 Material-flow telemetry brightens stocked sources and active factories. Gauges
 track craft and grid progress, completed output ejects product chips, active
