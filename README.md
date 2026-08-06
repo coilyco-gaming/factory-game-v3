@@ -44,7 +44,8 @@ See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and m
 See [docs/unity-parity.md](docs/unity-parity.md) for the source-level gameplay
 audit, [docs/v2-world.md](docs/v2-world.md) for the game-scale proof, and
 [docs/deployment-radar.md](docs/deployment-radar.md) for autonomous target
-claims.
+claims. Remote power expansion is covered in
+[docs/remote-coal-plants.md](docs/remote-coal-plants.md).
 
 ## See also
 

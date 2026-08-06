@@ -15,6 +15,7 @@ pub struct RunMetrics {
   pub energy_consumed: u32,
   pub power_starvations: u32,
   pub deployments: u32,
+  pub generators_deployed: u32,
   pub world_deletions: u32,
   pub idle_ticks: u64,
 }
@@ -53,6 +54,7 @@ impl RunMetrics {
       energy_consumed: self.energy_consumed,
       power_starvations: self.power_starvations,
       deployments: self.deployments,
+      generators_deployed: self.generators_deployed,
       world_deletions: self.world_deletions,
       idle_ticks: self.idle_ticks,
     }
@@ -72,6 +74,7 @@ pub struct RunMetricsSnapshot {
   pub energy_consumed: u32,
   pub power_starvations: u32,
   pub deployments: u32,
+  pub generators_deployed: u32,
   pub world_deletions: u32,
   pub idle_ticks: u64,
 }

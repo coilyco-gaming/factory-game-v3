@@ -28,15 +28,15 @@ reopened when the final Unity tests exposed narrower component contracts.
   clamped charge, overdraw rejection, capacity-weighted adjacent balancing,
   owner-specific system costs, and starvation.
 * **Generation** - working - Rust owns fueled and fuel-free generators,
-  per-generator inventory, dispatch, batteries, links, and alerts, generation
-  before balancing, overcharge clamping without wasted fuel, and combined
-  output from multiple generators.
+  deployed coal plants, per-generator inventory, dispatch, batteries, links,
+  and alerts, generation before balancing, overcharge clamping without wasted
+  fuel, and combined output from multiple generators.
 * **Automatic power lines** - working - Rust owns one-time nearest-target
   selection, greedy eight-neighbor construction, pass-through line cells,
   1,000-capacity line batteries, snapshots, and viewer projection.
 * **World mutation** - working - Rust owns scenario creation, spawnable
-  factory-output retrieval, build-site deployment, topology replacement,
-  spawned-structure occupancy, source activation, queued movement, and every
+  factory-output retrieval, distinct drill, structure, and generator
+  deployment, topology and source occupancy, queued movement, and every
   retained automatic deletion path.
 * **Player controls and UI** - working - Rust owns playback, reset, scenario
   selection, bounded grid navigation, camera following, keyboard and wheel

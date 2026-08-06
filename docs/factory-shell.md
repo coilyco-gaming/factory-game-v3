@@ -7,8 +7,8 @@ then replaced the placeholder scene with the snapshot projection described in
 
 The crate depends on `factory_sim` and `factory_content`, but Bevy remains a
 client of the simulation. `GameState` owns every rule and deterministic tick,
-including deployment-radar claims. The application renders immutable
-`TickSnapshot` values and never mutates `WorldState` directly.
+including radar claims and remote-generator mutations. The application renders
+immutable `TickSnapshot` values and never mutates `WorldState` directly.
 
 ## Run
 

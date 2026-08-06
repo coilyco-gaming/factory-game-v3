@@ -39,15 +39,16 @@ and [v2-world.md](v2-world.md).
 * **Battery and power** - substantial - Rust owns a finite power grid,
   node and hauler batteries, minimum capacity, capacity clamping,
   capacity-weighted adjacent balancing, owner-specific energy consumption,
-  fueled and fuel-free generation, multiple generators, starvation, fuel
-  demand, and energy metrics. Generators build battery-backed lines toward the
-  nearest disconnected battery, and the viewer projects each line cell.
+  fueled and fuel-free generation, deployed coal plants, multiple generators,
+  starvation, fuel demand, and energy metrics. Generators build battery-backed
+  lines toward the nearest disconnected battery, and the viewer projects each
+  line cell.
 * **World mutation and deployment** - substantial - Rust owns scenario-starting
-  objects, retrieval into hauler cargo, deployment at a target, queued movement,
-  source activation, general spawnable-item construction at build sites,
-  topology replacement, structure occupancy, depleted-ore deletion, drill
-  teardown, and occupancy release at a deterministic tick boundary. These
-  cover every retained caller of Unity's generic spawn, move, and delete queue.
+  objects, retrieval into hauler cargo, queued movement, distinct drill,
+  structure, and generator deployment, topology and source occupancy,
+  depleted-ore deletion, drill teardown, and occupancy release at a
+  deterministic tick boundary. These cover every retained caller of Unity's
+  generic spawn, move, and delete queue.
 * **Player and UI interaction** - substantial - Bevy owns playback, reset,
   scenario selection, bounded and accelerated grid navigation, camera following,
   detail-through-overview zoom, focused-cell inspection, object and inventory

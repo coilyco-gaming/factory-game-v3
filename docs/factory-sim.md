@@ -7,8 +7,8 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 - `factory_content` - typed items and scenarios for sources, factories, radars,
   build sites, fleets, power, starting objects, and grid layouts.
 - `factory_sim` - deterministic gameplay, exclusive radar claims, typed fleet
-  dispatch, indexed topology, cached A-star routes, power, alerts, metrics, and
-  tick stepping.
+  dispatch, queued drill, structure, and generator mutations, indexed topology,
+  cached A-star routes, power, alerts, metrics, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -40,6 +40,9 @@ The world generalizes to N sources, factories, haulers, and generators:
   generation
 - deployment radars claim compatible dormant sources before factories and
   haulers supply drills. See [deployment-radar.md](deployment-radar.md)
+- coal-plant radar claims use the same transport phases but create a typed
+  generator and source occupancy instead of activating a drill. See
+  [remote-coal-plants.md](remote-coal-plants.md)
 - construction scenarios advertise spawnable factory inventory, retrieve it
   into a physically capable hauler, and replace the destination build-site node
   with an occupied structure at the world-mutation boundary
@@ -58,7 +61,7 @@ ward exec cargo-run -- run --scenario iron-bars --ticks 6
 The CLI prints JSON lines. Each tick contains topology, object snapshots,
 typed dispatch, per-object alert histories, and that tick's global events.
 
-After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, material flow, dispatch, energy, deployments, world deletions, and idle ticks. The `summary` key keeps tick lines and the summary mechanically separable.
+After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, material flow, dispatch, energy, deployments, deployed generators, world deletions, and idle ticks. The `summary` key keeps tick lines and the summary mechanically separable.
 
 The migration and C# deletion gates are tracked in
 [unity-parity.md](unity-parity.md).

@@ -8,7 +8,10 @@ mod radar;
 mod resources;
 mod world;
 
-use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO};
+use factory_content::{
+  ContentDatabase, GeneratorSpec, ItemId, ScenarioId, COAL, COAL_PLANT, IRON_BARS_SCENARIO,
+  MINING_DRILL,
+};
 use std::fmt;
 
 pub use alerts::{AlertEntry, AlertHistory, MAX_OBJECT_ALERTS};
@@ -321,7 +324,12 @@ impl GameState {
       .world
       .sources
       .iter()
-      .filter(|source| !source.deployed && !source.exhausted && !source.mining.is_depleted())
+      .filter(|source| {
+        !source.deployed
+          && source.occupied_by.is_none()
+          && !source.exhausted
+          && !source.mining.is_depleted()
+      })
       .map(|source| (source.node, source.item))
       .collect::<std::collections::BTreeMap<_, _>>();
     let mut claimed = std::collections::BTreeSet::new();
@@ -864,34 +872,40 @@ impl GameState {
           );
           if moved > 0 {
             events.push(format!(
-              "dispatch retrieve {} from factory by hauler-{}",
-              moved, self.world.haulers[hauler_index].id
+              "dispatch retrieve {} {} from factory by hauler-{}",
+              moved, assignment.item, self.world.haulers[hauler_index].id
             ));
           }
         }
         DispatchPhase::Deploy if self.nodes_in_transfer_range(position, assignment.destination) => {
+          let mutation = match assignment.destination {
+            NodeId::Source(source_index) if assignment.item == MINING_DRILL => {
+              WorldMutation::DeploySource(source_index)
+            }
+            NodeId::Source(source_index) if assignment.item == COAL_PLANT => {
+              WorldMutation::SpawnGenerator {
+                source_index,
+                item: assignment.item,
+                hauler_id: self.world.haulers[hauler_index].id,
+              }
+            }
+            NodeId::BuildSite(site_index)
+              if assignment.item != MINING_DRILL && assignment.item != COAL_PLANT =>
+            {
+              WorldMutation::SpawnStructure {
+                site_index,
+                item: assignment.item,
+                hauler_id: self.world.haulers[hauler_index].id,
+              }
+            }
+            _ => continue,
+          };
           if self.world.haulers[hauler_index]
             .cargo
             .remove_exact(assignment.item, 1)
             .is_ok()
           {
-            match assignment.destination {
-              NodeId::Source(source_index) => self
-                .world
-                .queued_mutations
-                .push(WorldMutation::DeploySource(source_index)),
-              NodeId::BuildSite(site_index) => {
-                self
-                  .world
-                  .queued_mutations
-                  .push(WorldMutation::SpawnStructure {
-                    site_index,
-                    item: assignment.item,
-                    hauler_id: self.world.haulers[hauler_index].id,
-                  });
-              }
-              _ => continue,
-            }
+            self.world.queued_mutations.push(mutation);
             events.push(format!(
               "dispatch deploy {} queued at {} by hauler-{}",
               assignment.item, assignment.destination, self.world.haulers[hauler_index].id
@@ -915,9 +929,81 @@ impl GameState {
           else {
             continue;
           };
+          if source.deployed
+            || source.occupied_by.is_some()
+            || source.exhausted
+            || source.mining.is_depleted()
+          {
+            continue;
+          }
           source.deployed = true;
           self.metrics.deployments += 1;
           events.push(format!("world deploy mining drill at {}", source.node));
+        }
+        WorldMutation::SpawnGenerator {
+          source_index,
+          item,
+          hauler_id,
+        } => {
+          let source_node = NodeId::Source(source_index);
+          let Some(source) = self
+            .world
+            .sources
+            .iter()
+            .find(|source| source.node == source_node)
+          else {
+            continue;
+          };
+          if item != COAL_PLANT
+            || source.item != COAL
+            || source.deployed
+            || source.occupied_by.is_some()
+            || source.exhausted
+            || source.mining.is_depleted()
+          {
+            continue;
+          }
+          let position = self.world.topology.position(source_node);
+          let Some(power) = &mut self.world.power else {
+            continue;
+          };
+          let spec = GeneratorSpec::coal_plant(0);
+          let battery_capacity = spec.grid_capacity;
+          let generator = power.deploy_generator(&self.content, spec);
+          assert!(
+            self.world.topology.insert_node(generator, position),
+            "deployed generator identity is unique"
+          );
+          let owner = BatteryOwner::Node(generator);
+          self
+            .world
+            .batteries
+            .remove(&BatteryOwner::Node(source_node));
+          self
+            .world
+            .batteries
+            .insert(owner, Battery::new(owner, 0, battery_capacity));
+          self
+            .world
+            .sources
+            .iter_mut()
+            .find(|source| source.node == source_node)
+            .expect("validated source still exists")
+            .occupied_by = Some(generator);
+          if let Some(hauler) = self
+            .world
+            .haulers
+            .iter_mut()
+            .find(|hauler| hauler.id == hauler_id)
+          {
+            hauler.target = generator;
+            hauler.clear_assignment();
+          }
+          self.metrics.deployments += 1;
+          self.metrics.generators_deployed += 1;
+          events.push(format!(
+            "world deploy {item} as {generator} at {source_node}"
+          ));
         }
         WorldMutation::DeleteDepletedDeposit(source_index) => {
           let Some(source) = self
@@ -958,6 +1044,9 @@ impl GameState {
           item,
           hauler_id,
         } => {
+          if item == MINING_DRILL || item == COAL_PLANT {
+            continue;
+          }
           let build_site = NodeId::BuildSite(site_index);
           let structure = NodeId::Structure(site_index);
           let Some(position) = self.world.topology.replace_node_id(build_site, structure) else {
@@ -1526,6 +1615,7 @@ impl GameState {
           mining: source.mining.clone(),
           dispatch: source.dispatch.clone(),
           deployed: source.deployed,
+          occupied_by: source.occupied_by,
           exhausted: source.exhausted,
           alerts: source.alerts.clone(),
         })
@@ -1685,8 +1775,8 @@ mod tests {
         "{metrics:?}"
       );
     }
-    assert_eq!(2_218, metrics.units_collected, "{metrics:?}");
-    assert_eq!(1_588, metrics.units_delivered, "{metrics:?}");
+    assert_eq!(2_147, metrics.units_collected, "{metrics:?}");
+    assert_eq!(1_552, metrics.units_delivered, "{metrics:?}");
     for item in [IRON_BARS, FRAMES, BUILDING_MATERIALS] {
       assert!(
         metrics.crafted.get(item.as_str()).copied().unwrap_or(0) > 0,
@@ -2228,13 +2318,13 @@ mod tests {
     let first_snapshot = first.step();
     let second_snapshot = second.step();
     assert_eq!(first_snapshot, second_snapshot);
-    assert_eq!(4, first_snapshot.radars.len());
+    assert_eq!(5, first_snapshot.radars.len());
     let claims = first_snapshot
       .radars
       .iter()
       .map(|radar| radar.claimed_target.expect("radar claims a target"))
       .collect::<std::collections::BTreeSet<_>>();
-    assert_eq!(4, claims.len());
+    assert_eq!(5, claims.len());
     assert!(claims.is_disjoint(&std::collections::BTreeSet::from([
       NodeId::Source(0),
       NodeId::Source(1),
@@ -2272,6 +2362,143 @@ mod tests {
       .alerts
       .latest()
       .is_some_and(|alert| alert.message == "released source-0"));
+  }
+
+  #[test]
+  fn v2_world_produces_hauls_and_deploys_a_remote_coal_plant() {
+    let mut content = ContentDatabase::starter();
+    let recipe_inputs = content.item(COAL_PLANT).ingredients.clone();
+    let scenario = content
+      .scenarios
+      .get_mut(&V2_WORLD_SCENARIO)
+      .expect("v2 scenario exists");
+    for factory in &mut scenario.factories {
+      factory.input_buffer = 0;
+    }
+    scenario.factories[10].starting_items = recipe_inputs;
+    let mut state = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
+    let initial = state.snapshot(Vec::new());
+    assert_eq!((100, 100), (initial.topology.width, initial.topology.height));
+    let initial_power = initial.power.as_ref().expect("v2 has a power grid");
+    assert_eq!(1, initial_power.generators.len());
+    assert_eq!(NodeId::Generator(0), initial_power.generators[0].node);
+    assert_eq!(Some(COAL_PLANT), initial_power.generators[0].item);
+    assert_eq!(
+      None,
+      initial.factories[10]
+        .inventory
+        .items
+        .get(COAL_PLANT.as_str())
+    );
+
+    let first = state.step();
+    let coal_drill_target = first.radars[2].claimed_target.expect("coal drill claim");
+    let coal_plant_target = first.radars[3].claimed_target.expect("coal plant claim");
+    assert_ne!(coal_drill_target, coal_plant_target);
+    assert_eq!(NodeId::Source(367), coal_plant_target);
+    assert_eq!(COAL_PLANT, first.radars[3].deployment_item);
+    assert_eq!(COAL, first.radars[3].target_item);
+
+    let mut saw_assignment = false;
+    let mut saw_retrieval = false;
+    let mut saw_queued_deployment = false;
+    let mut deployed = None;
+    let deployed_event = format!("world deploy coal_plant as generator-1 at {coal_plant_target}");
+    for _ in 1..=150 {
+      let snapshot = state.step();
+      saw_assignment |= snapshot
+        .events
+        .iter()
+        .any(|event| event.contains("dispatch assigned retrieve coal_plant"));
+      saw_retrieval |= snapshot
+        .events
+        .iter()
+        .any(|event| event.contains("dispatch retrieve 1 coal_plant"));
+      saw_queued_deployment |= snapshot
+        .events
+        .iter()
+        .any(|event| event.contains("dispatch deploy coal_plant queued"));
+      if snapshot.events.iter().any(|event| event == &deployed_event) {
+        deployed = Some(snapshot);
+        break;
+      }
+    }
+    let deployed = deployed.unwrap_or_else(|| {
+      panic!(
+        "v2 did not deploy a remote coal plant: {:?}",
+        state.metrics()
+      )
+    });
+    assert!(saw_assignment && saw_retrieval && saw_queued_deployment);
+    assert!(state
+      .metrics()
+      .crafted
+      .get(COAL_PLANT.as_str())
+      .is_some_and(|quantity| *quantity > 0));
+    assert_eq!(1, state.metrics().generators_deployed);
+
+    let power = deployed.power.as_ref().expect("v2 retains its power grid");
+    assert_eq!(2, power.generators.len());
+    let generator = &power.generators[1];
+    assert_eq!(NodeId::Generator(1), generator.node);
+    assert_eq!(Some(COAL_PLANT), generator.item);
+    assert_eq!(Some(COAL), generator.fuel_item);
+    assert!(generator.fuel.items.is_empty());
+    assert_eq!(
+      Some(&4_000),
+      generator.fuel.reserved_capacity.get(COAL.as_str())
+    );
+    let battery = power
+      .batteries
+      .iter()
+      .find(|battery| battery.owner == BatteryOwner::Node(generator.node))
+      .expect("deployed generator has a battery");
+    assert_eq!((0, 10_000), (battery.energy, battery.capacity));
+    assert!(power
+      .batteries
+      .iter()
+      .all(|battery| battery.owner != BatteryOwner::Node(coal_plant_target)));
+
+    let source = deployed
+      .sources
+      .iter()
+      .find(|source| source.node == coal_plant_target)
+      .expect("claimed coal source remains observable");
+    assert_eq!(COAL, source.item);
+    assert!(
+      !source.deployed,
+      "coal-plant placement is not drill activation"
+    );
+    assert_eq!(Some(generator.node), source.occupied_by);
+    assert_eq!(
+      deployed
+        .topology
+        .nodes
+        .iter()
+        .find(|node| node.id == generator.node)
+        .map(|node| node.position),
+      deployed
+        .topology
+        .nodes
+        .iter()
+        .find(|node| node.id == source.node)
+        .map(|node| node.position)
+    );
+
+    let after = state.step();
+    assert!(after
+      .events
+      .iter()
+      .any(|event| event == &format!("radar radar-3 released {coal_plant_target}")));
+    assert!(after
+      .radars
+      .iter()
+      .filter_map(|radar| radar.claimed_target)
+      .all(|target| target != coal_plant_target));
+    assert!(after
+      .events
+      .iter()
+      .any(|event| event.starts_with("power line generator-1 built")));
   }
 
   #[test]
@@ -2463,6 +2690,7 @@ mod tests {
   fn fuel_free_generation_requires_no_inventory_or_dispatch() {
     let content = ContentDatabase::starter();
     let spec = GeneratorSpec {
+      item: None,
       fuel_item: None,
       initial_fuel: 0,
       fuel_buffer: 0,
@@ -2486,6 +2714,7 @@ mod tests {
   fn zero_output_generation_does_not_consume_or_request_fuel() {
     let content = ContentDatabase::starter();
     let spec = GeneratorSpec {
+      item: None,
       fuel_item: Some(COAL),
       initial_fuel: 4,
       fuel_buffer: 8,
@@ -2507,6 +2736,7 @@ mod tests {
   fn a_full_generator_battery_does_not_consume_fuel() {
     let content = ContentDatabase::starter();
     let spec = GeneratorSpec {
+      item: None,
       fuel_item: Some(COAL),
       initial_fuel: 4,
       fuel_buffer: 4,
@@ -2527,6 +2757,7 @@ mod tests {
   fn generator_output_clamps_to_remaining_battery_capacity() {
     let content = ContentDatabase::starter();
     let spec = GeneratorSpec {
+      item: None,
       fuel_item: None,
       initial_fuel: 0,
       fuel_buffer: 0,

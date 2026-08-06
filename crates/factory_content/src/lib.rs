@@ -236,12 +236,27 @@ impl Default for ObjectBatterySpec {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct GeneratorSpec {
+  pub item: Option<ItemId>,
   pub fuel_item: Option<ItemId>,
   pub initial_fuel: u32,
   pub fuel_buffer: u32,
   pub burn_rate: u32,
   pub gain_rate: u32,
   pub grid_capacity: u32,
+}
+
+impl GeneratorSpec {
+  pub fn coal_plant(initial_fuel: u32) -> Self {
+    Self {
+      item: Some(COAL_PLANT),
+      fuel_item: Some(COAL),
+      initial_fuel,
+      fuel_buffer: 4_000,
+      burn_rate: 4,
+      gain_rate: 160,
+      grid_capacity: 10_000,
+    }
+  }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -369,20 +384,18 @@ fn v2_world_scenario() -> ScenarioDefinition {
         target_item: COAL,
         position: GridPoint { x: 50, y: 52 },
       },
+      RadarSpec {
+        deployment_item: COAL_PLANT,
+        target_item: COAL,
+        position: GridPoint { x: 50, y: 53 },
+      },
     ],
     hauler_count: 15,
     hauler_capacity: 500,
     hauler_weight_capacity: 500,
     hauler_volume_capacity: 500,
     power: Some(PowerSpec {
-      generators: vec![GeneratorSpec {
-        fuel_item: Some(COAL),
-        initial_fuel: 4_000,
-        fuel_buffer: 4_000,
-        burn_rate: 4,
-        gain_rate: 160,
-        grid_capacity: 10_000,
-      }],
+      generators: vec![GeneratorSpec::coal_plant(4_000)],
       mining_cost: 2,
       dispatch_cost: 1,
       production_cost: 2,
@@ -726,6 +739,7 @@ impl ContentDatabase {
         hauler_volume_capacity: 32,
         power: Some(PowerSpec {
           generators: vec![GeneratorSpec {
+            item: None,
             fuel_item: Some(COAL),
             initial_fuel: 8,
             fuel_buffer: 20,
@@ -904,6 +918,7 @@ impl ContentDatabase {
         hauler_volume_capacity: 32,
         power: Some(PowerSpec {
           generators: vec![GeneratorSpec {
+            item: None,
             fuel_item: Some(COAL),
             initial_fuel: 40,
             fuel_buffer: 40,
@@ -987,6 +1002,7 @@ impl ContentDatabase {
         power: Some(PowerSpec {
           generators: vec![
             GeneratorSpec {
+              item: None,
               fuel_item: Some(COAL),
               initial_fuel: 4,
               fuel_buffer: 20,
@@ -995,6 +1011,7 @@ impl ContentDatabase {
               grid_capacity: 1_000,
             },
             GeneratorSpec {
+              item: None,
               fuel_item: None,
               initial_fuel: 0,
               fuel_buffer: 0,
@@ -1223,14 +1240,19 @@ mod tests {
     assert_eq!(15, scenario.factories.len());
     assert_eq!(15, scenario.hauler_count);
     assert_eq!(15, scenario.layout.hauler_positions.len());
-    assert_eq!(3, scenario.radars.len());
+    assert_eq!(4, scenario.radars.len());
     assert_eq!(IRON_ORE, scenario.radars[0].target_item);
     assert_eq!(COPPER_ORE, scenario.radars[1].target_item);
     assert_eq!(COAL, scenario.radars[2].target_item);
-    assert!(scenario
-      .radars
+    assert_eq!(COAL, scenario.radars[3].target_item);
+    assert!(scenario.radars[..3]
       .iter()
       .all(|radar| radar.deployment_item == MINING_DRILL));
+    assert_eq!(COAL_PLANT, scenario.radars[3].deployment_item);
+    assert_eq!(
+      Some(COAL_PLANT),
+      scenario.power.as_ref().unwrap().generators[0].item
+    );
     assert_eq!(10, scenario.factories[9].starting_items[&MINING_DRILL]);
     assert_eq!(
       GridPoint { x: 52, y: 52 },

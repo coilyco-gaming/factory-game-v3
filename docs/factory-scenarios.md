@@ -23,9 +23,9 @@ The deterministic showcase covers twelve layouts:
 - **Hybrid generator grid** - fueled and fuel-free generators produce together,
   build independent links, and balance their combined output across the grid.
 - **V2 100x100 factory world** - 423 generated ore deposits, one manifest stone
-  source, three mining-drill radars, 15 haulers, seven foundries, eight
-  factories, and the central coal plant run deployment, mining, freight, and
-  upper-tier production together.
+  source, three mining-drill radars, one coal-plant radar, 15 haulers, seven
+  foundries, eight factories, and the central coal plant run deployment,
+  mining, freight, production, and remote power expansion together.
 
 Every scenario is available through the headless CLI and the Bevy/Wasm control
 deck. The viewer cycles through them automatically after quiet completion.

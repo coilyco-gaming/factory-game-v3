@@ -1547,10 +1547,15 @@ fn update_text(
         host.snapshot.haulers.len()
       ),
       HudField::World => format!(
-        "{} sources  |  {} factories  |  {} radars  |  {} built",
+        "{} sources  |  {} factories  |  {} radars  |  {} generators  |  {} built",
         host.snapshot.sources.len(),
         host.snapshot.factories.len(),
         host.snapshot.radars.len(),
+        host
+          .snapshot
+          .power
+          .as_ref()
+          .map_or(0, |power| power.generators.len()),
         host.snapshot.structures.len()
       ),
       HudField::Power => format!(
@@ -1850,8 +1855,9 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
       .iter()
       .find(|source| source.node == node)
       .filter(|source| {
-        source.deployed
-          && (!source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty())
+        source.occupied_by.is_some()
+          || (source.deployed
+            && (!source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty()))
       })
       .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
     NodeId::Road => NodeActivity::Idle,
@@ -2027,7 +2033,9 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       .iter()
       .find(|source| source.node == node)
       .map(|source| {
-        if source.exhausted && !source.deployed {
+        if let Some(occupant) = source.occupied_by {
+          format!("{}\nore site: occupied by {}", source.node, occupant)
+        } else if source.exhausted && !source.deployed {
           format!("{}\nore site: exhausted", source.node)
         } else if source.exhausted {
           format!(
@@ -2078,8 +2086,9 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
       })
       .map(|generator| {
         format!(
-          "{}\nmode: {}\nfuel: {}",
+          "{}\ntype: {}\nmode: {}\nfuel: {}",
           generator.node,
+          generator.item.map_or("generator", |item| item.as_str()),
           if generator.fuel_item.is_some() {
             "fuel"
           } else {
@@ -2163,6 +2172,7 @@ fn dispatch_text(state: &DispatchReceiverState) -> String {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use factory_content::COAL_PLANT;
 
   #[test]
   fn sim_host_steps_match_direct_simulation_bytes() {
@@ -2409,6 +2419,43 @@ mod tests {
     assert!(label.contains("deploy: mining_drill"));
     assert!(label.contains("target: iron_ore"));
     assert!(label.contains("claim: source-"));
+  }
+
+  #[test]
+  fn v2_remote_coal_plant_projection_exposes_generator_and_occupied_source() {
+    let mut content = ContentDatabase::starter();
+    let recipe_inputs = content.item(COAL_PLANT).ingredients.clone();
+    let scenario = content
+      .scenarios
+      .get_mut(&V2_WORLD_SCENARIO)
+      .expect("v2 scenario exists");
+    for factory in &mut scenario.factories {
+      factory.input_buffer = 0;
+    }
+    scenario.factories[10].starting_items = recipe_inputs;
+    let mut game = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
+
+    let snapshot = (0..150)
+      .find_map(|_| {
+        let snapshot = game.step();
+        snapshot
+          .power
+          .as_ref()
+          .is_some_and(|power| power.generators.len() == 2)
+          .then_some(snapshot)
+      })
+      .expect("remote coal plant deploys");
+    let generator = NodeId::Generator(1);
+    let source = snapshot
+      .sources
+      .iter()
+      .find(|source| source.occupied_by == Some(generator))
+      .expect("deployed generator occupies its coal source");
+
+    assert_eq!(NodeActivity::Demanding, node_activity(&snapshot, generator));
+    assert!(node_label_value(&snapshot, generator).contains("type: coal_plant"));
+    assert_eq!(NodeActivity::Ready, node_activity(&snapshot, source.node));
+    assert!(node_label_value(&snapshot, source.node).contains("occupied by generator-1"));
   }
 
   #[test]

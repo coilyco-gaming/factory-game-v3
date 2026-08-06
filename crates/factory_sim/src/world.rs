@@ -204,6 +204,15 @@ impl Topology {
     Some(position)
   }
 
+  pub(crate) fn insert_node(&mut self, id: NodeId, position: GridPosition) -> bool {
+    if self.positions.contains_key(&id) {
+      return false;
+    }
+    self.positions.insert(id, position);
+    self.nodes.push(TopologyNode { id, position });
+    true
+  }
+
   fn in_bounds(&self, position: GridPosition) -> bool {
     position.x >= 0 && position.y >= 0 && position.x < self.width && position.y < self.height
   }
@@ -344,6 +353,7 @@ pub struct SourceNode {
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
   pub deployed: bool,
+  pub occupied_by: Option<NodeId>,
   pub exhausted: bool,
   pub alerts: AlertHistory,
 }
@@ -363,6 +373,7 @@ impl SourceNode {
       mining,
       dispatch: DispatchBoard::new(),
       deployed,
+      occupied_by: None,
       exhausted: false,
       alerts: AlertHistory::default(),
     }
@@ -470,6 +481,8 @@ pub struct SourceSnapshot {
   pub mining: MiningExtractor,
   pub dispatch: DispatchBoard,
   pub deployed: bool,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub occupied_by: Option<NodeId>,
   pub exhausted: bool,
   pub alerts: AlertHistory,
 }
@@ -536,6 +549,11 @@ pub struct TickSnapshot {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WorldMutation {
   DeploySource(NodeIndex),
+  SpawnGenerator {
+    source_index: NodeIndex,
+    item: ItemId,
+    hauler_id: HaulerId,
+  },
   DeleteDepletedDeposit(NodeIndex),
   TeardownSource(NodeIndex),
   SpawnStructure {

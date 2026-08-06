@@ -49,6 +49,7 @@ impl Battery {
 #[derive(Clone, Debug)]
 pub struct PowerGenerator {
   pub node: NodeId,
+  pub item: Option<ItemId>,
   pub fuel: Inventory,
   pub dispatch: DispatchBoard,
   pub spec: GeneratorSpec,
@@ -70,6 +71,7 @@ impl PowerGenerator {
     }
     Self {
       node,
+      item: spec.item,
       fuel,
       dispatch: DispatchBoard::new(),
       spec,
@@ -115,6 +117,7 @@ impl PowerGenerator {
   fn snapshot(&self, battery: &Battery) -> GeneratorSnapshot {
     GeneratorSnapshot {
       node: self.node,
+      item: self.item,
       fuel_item: self.spec.fuel_item,
       fuel: self.fuel.snapshot(),
       energy: battery.energy,
@@ -141,26 +144,27 @@ impl PowerGrid {
       .cloned()
       .enumerate()
       .map(|(index, generator)| {
-        let fuel_capacity = generator.fuel_buffer.max(generator.initial_fuel).max(64);
-        let (weight_capacity, volume_capacity) = generator
-          .fuel_item
-          .map(|item| {
-            let definition = content.item(item);
-            (
-              fuel_capacity.saturating_mul(definition.weight),
-              fuel_capacity.saturating_mul(definition.volume),
-            )
-          })
-          .unwrap_or((64, 64));
+        let fuel = generator_inventory(content, &generator);
         PowerGenerator::new(
           content,
           NodeId::Generator(NodeIndex::try_from(index).expect("generator index fits NodeIndex")),
           generator,
-          Inventory::new(weight_capacity, volume_capacity),
+          fuel,
         )
       })
       .collect();
     Self { generators, spec }
+  }
+
+  pub fn deploy_generator(&mut self, content: &ContentDatabase, spec: GeneratorSpec) -> NodeId {
+    let node = NodeId::Generator(
+      NodeIndex::try_from(self.generators.len()).expect("generator index fits NodeIndex"),
+    );
+    let fuel = generator_inventory(content, &spec);
+    self
+      .generators
+      .push(PowerGenerator::new(content, node, spec, fuel));
+    node
   }
 
   pub fn refresh_dispatch(&mut self) {
@@ -212,6 +216,8 @@ impl PowerGrid {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct GeneratorSnapshot {
   pub node: NodeId,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub item: Option<ItemId>,
   pub fuel_item: Option<ItemId>,
   pub fuel: InventorySnapshot,
   pub energy: u32,
@@ -228,4 +234,19 @@ pub struct PowerSnapshot {
   pub capacity: u32,
   pub generators: Vec<GeneratorSnapshot>,
   pub batteries: Vec<Battery>,
+}
+
+fn generator_inventory(content: &ContentDatabase, spec: &GeneratorSpec) -> Inventory {
+  let fuel_capacity = spec.fuel_buffer.max(spec.initial_fuel).max(64);
+  let (weight_capacity, volume_capacity) = spec
+    .fuel_item
+    .map(|item| {
+      let definition = content.item(item);
+      (
+        fuel_capacity.saturating_mul(definition.weight),
+        fuel_capacity.saturating_mul(definition.volume),
+      )
+    })
+    .unwrap_or((64, 64));
+  Inventory::new(weight_capacity, volume_capacity)
 }

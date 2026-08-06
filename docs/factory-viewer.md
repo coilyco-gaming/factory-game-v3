@@ -27,6 +27,7 @@ power, building, and production to the 100x100 v2 world. Each scene displays:
 - source, road, factory, radar, build-site, structure, generator, and blocked cells
 - hauler position, cargo, and dispatch phase
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
+- remote generator type plus coal-site occupancy without false drill activation
 - independent craft progress and output item for every factory
 - generator mode and fuel, total energy, node batteries, use, and starvation
 - radar deployment item, target resource, current claim, and claim activity
