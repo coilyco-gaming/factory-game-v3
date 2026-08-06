@@ -4,10 +4,11 @@ mod metrics;
 mod mining;
 mod power;
 mod production;
+mod radar;
 mod resources;
 mod world;
 
-use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, MINING_DRILL};
+use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO};
 use std::fmt;
 
 pub use alerts::{AlertEntry, AlertHistory, MAX_OBJECT_ALERTS};
@@ -21,6 +22,7 @@ pub use power::{
   Battery, BatteryOwner, GeneratorSnapshot, PowerGenerator, PowerGrid, PowerSnapshot,
 };
 pub use production::{CraftSnapshot, FactoryProduction, ProductionBlockReason, RecipeRuntime};
+pub use radar::{DeploymentRadar, RadarSnapshot};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
   FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerId, HaulerSnapshot, NodeId, NodeIndex,
@@ -176,6 +178,12 @@ impl GameState {
         )
       })
       .collect();
+    let radars = scenario
+      .radars
+      .iter()
+      .enumerate()
+      .map(|(index, spec)| DeploymentRadar::new(NodeId::Radar(node_index(index)), spec))
+      .collect();
 
     let power = scenario
       .power
@@ -230,6 +238,7 @@ impl GameState {
         sources,
         haulers,
         factories,
+        radars,
         structures: Vec::new(),
         power,
         batteries,
@@ -307,7 +316,66 @@ impl GameState {
     }
   }
 
-  fn refresh_dispatch_intents(&mut self) {
+  fn refresh_radar_claims(&mut self, events: &mut Vec<String>) {
+    let eligible_sources = self
+      .world
+      .sources
+      .iter()
+      .filter(|source| !source.deployed && !source.exhausted && !source.mining.is_depleted())
+      .map(|source| (source.node, source.item))
+      .collect::<std::collections::BTreeMap<_, _>>();
+    let mut claimed = std::collections::BTreeSet::new();
+
+    for radar_index in 0..self.world.radars.len() {
+      let current = self.world.radars[radar_index].claimed_target;
+      let target_item = self.world.radars[radar_index].target_item;
+      let keep = current.filter(|target| {
+        eligible_sources.get(target) == Some(&target_item) && !claimed.contains(target)
+      });
+      if let Some(target) = keep {
+        claimed.insert(target);
+      } else if let Some(target) = current {
+        let radar = &mut self.world.radars[radar_index];
+        radar.claimed_target = None;
+        radar
+          .alerts
+          .record(self.world.tick, format!("released {target}"));
+        events.push(format!("radar {} released {target}", radar.node));
+      }
+    }
+
+    for radar_index in 0..self.world.radars.len() {
+      if self.world.radars[radar_index].claimed_target.is_some() {
+        continue;
+      }
+      let radar_node = self.world.radars[radar_index].node;
+      let target_item = self.world.radars[radar_index].target_item;
+      let target = eligible_sources
+        .iter()
+        .filter(|(node, item)| **item == target_item && !claimed.contains(node))
+        .min_by_key(|(node, _)| self.dispatch_distance(radar_node, **node))
+        .map(|(node, _)| *node);
+      let Some(target) = target else {
+        continue;
+      };
+      claimed.insert(target);
+      let radar = &mut self.world.radars[radar_index];
+      radar.claimed_target = Some(target);
+      radar
+        .alerts
+        .record(self.world.tick, format!("claimed {target}"));
+      events.push(format!(
+        "radar {} claimed {target} for {}",
+        radar.node, radar.deployment_item
+      ));
+    }
+
+    for radar in &mut self.world.radars {
+      radar.refresh_dispatch();
+    }
+  }
+
+  fn refresh_dispatch_intents(&mut self, events: &mut Vec<String>) {
     for source in &mut self.world.sources {
       let generator = self.world.power.as_ref().and_then(|power| {
         power
@@ -334,33 +402,49 @@ impl GameState {
         }
       }
     }
-    let mut claimed_targets = std::collections::BTreeSet::new();
-    for factory_index in 0..self.world.factories.len() {
-      let factory_node = self.world.factories[factory_index].node;
-      if self.world.factories[factory_index]
-        .production
-        .inventory
-        .count(MINING_DRILL)
-        == 0
-      {
-        continue;
-      }
-      let target = self
-        .world
-        .sources
-        .iter()
-        .filter(|source| {
-          !source.deployed && !source.exhausted && !claimed_targets.contains(&source.node)
+    self.refresh_radar_claims(events);
+    let radar_claims = self
+      .world
+      .radars
+      .iter()
+      .filter_map(|radar| {
+        radar
+          .claimed_target
+          .map(|target| (radar.deployment_item, target))
+      })
+      .collect::<Vec<_>>();
+    let mut available = self
+      .world
+      .factories
+      .iter()
+      .enumerate()
+      .flat_map(|(factory_index, factory)| {
+        self.content.items.keys().filter_map(move |item| {
+          let count = factory.production.inventory.count(*item);
+          (count > 0).then_some(((factory_index, *item), count))
         })
-        .min_by_key(|source| self.dispatch_distance(factory_node, source.node))
-        .map(|source| source.node);
-      if let Some(target) = target {
-        claimed_targets.insert(target);
-        self.world.factories[factory_index]
-          .dispatch
-          .intents
-          .push(DispatchIntent::retrieve(MINING_DRILL, factory_node, target));
-      }
+      })
+      .collect::<std::collections::BTreeMap<_, _>>();
+    for (item, target) in radar_claims {
+      let factory_index = self
+        .world
+        .factories
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| available.get(&(*index, item)).copied().unwrap_or(0) > 0)
+        .min_by_key(|(_, factory)| self.dispatch_distance(factory.node, target))
+        .map(|(index, _)| index);
+      let Some(factory_index) = factory_index else {
+        continue;
+      };
+      let factory = &mut self.world.factories[factory_index];
+      factory
+        .dispatch
+        .intents
+        .push(DispatchIntent::retrieve(item, factory.node, target));
+      available
+        .entry((factory_index, item))
+        .and_modify(|count| *count = count.saturating_sub(1));
     }
     for (site_index, site) in self.world.scenario.build_sites.iter().enumerate() {
       if self
@@ -679,6 +763,7 @@ impl GameState {
         }
         NodeId::Road
         | NodeId::Generator(_)
+        | NodeId::Radar(_)
         | NodeId::BuildSite(_)
         | NodeId::Structure(_)
         | NodeId::Transit(_) => 0,
@@ -739,6 +824,7 @@ impl GameState {
         }
         NodeId::Source(_)
         | NodeId::Road
+        | NodeId::Radar(_)
         | NodeId::BuildSite(_)
         | NodeId::Structure(_)
         | NodeId::Transit(_) => 0,
@@ -874,17 +960,10 @@ impl GameState {
         } => {
           let build_site = NodeId::BuildSite(site_index);
           let structure = NodeId::Structure(site_index);
-          let Some(node) = self
-            .world
-            .topology
-            .nodes
-            .iter_mut()
-            .find(|node| node.id == build_site)
-          else {
+          let Some(position) = self.world.topology.replace_node_id(build_site, structure) else {
             continue;
           };
-          node.id = structure;
-          self.world.topology.blocked.insert(node.position);
+          self.world.topology.blocked.insert(position);
           self.world.structures.push(StructureSnapshot {
             node: structure,
             item,
@@ -1308,6 +1387,11 @@ impl GameState {
           }
         }
       }
+      NodeId::Radar(index) => {
+        if let Some(radar) = self.world.radars.get_mut(usize::from(index)) {
+          radar.alerts.record(self.world.tick, message);
+        }
+      }
       NodeId::Structure(index) => {
         if let Some(structure) = self
           .world
@@ -1395,7 +1479,7 @@ impl GameState {
     self.advance_receiver_phases(&mut events);
     self.advance_power(&mut events);
     self.advance_mining(&mut events);
-    self.refresh_dispatch_intents();
+    self.refresh_dispatch_intents(&mut events);
     self.assign_dispatch(&mut events);
     self.collect(&mut events);
     self.deliver(&mut events);
@@ -1474,6 +1558,12 @@ impl GameState {
           alerts: factory.alerts.clone(),
         })
         .collect(),
+      radars: self
+        .world
+        .radars
+        .iter()
+        .map(DeploymentRadar::snapshot)
+        .collect(),
       structures: self.world.structures.clone(),
       power: self
         .world
@@ -1516,11 +1606,12 @@ pub fn sample_game_state() -> GameState {
 mod tests {
   use super::*;
   use factory_content::{
-    ContentDatabase, GeneratorSpec, GridPoint, BUILDING_MATERIALS, BUILDING_MATERIALS_SCENARIO,
-    COAL, COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, FRAMES,
-    HYBRID_GRID_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, IRON_ORE,
-    MINING_DRILL, MOTORS, PATHFINDING_DEMO_SCENARIO, POWERED_IRONWORKS_SCENARIO,
-    POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE, V2_WORLD_SCENARIO,
+    ContentDatabase, GeneratorSpec, GridPoint, RadarSpec, BUILDING_MATERIALS,
+    BUILDING_MATERIALS_SCENARIO, COAL, COPPER_BARS, COPPER_ORE, DEPLOYMENT_DEMO_SCENARIO,
+    DISTRIBUTED_CHAIN_SCENARIO, FRAMES, HYBRID_GRID_SCENARIO, IRON_BARS, IRON_BARS_FLEET_SCENARIO,
+    IRON_BARS_SCENARIO, IRON_ORE, MINING_DRILL, MOTORS, PATHFINDING_DEMO_SCENARIO,
+    POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, STONE,
+    V2_WORLD_SCENARIO,
   };
 
   #[test]
@@ -1587,15 +1678,15 @@ mod tests {
     }
     let metrics = state.metrics();
     assert_eq!(50, metrics.ticks);
-    assert_eq!(3, metrics.deployments, "{metrics:?}");
+    assert_eq!(6, metrics.deployments, "{metrics:?}");
     for item in [IRON_ORE, COPPER_ORE, COAL, STONE] {
       assert!(
         metrics.mined.get(item.as_str()).copied().unwrap_or(0) > 0,
         "{metrics:?}"
       );
     }
-    assert_eq!(996, metrics.units_collected, "{metrics:?}");
-    assert_eq!(776, metrics.units_delivered, "{metrics:?}");
+    assert_eq!(2_218, metrics.units_collected, "{metrics:?}");
+    assert_eq!(1_588, metrics.units_delivered, "{metrics:?}");
     for item in [IRON_BARS, FRAMES, BUILDING_MATERIALS] {
       assert!(
         metrics.crafted.get(item.as_str()).copied().unwrap_or(0) > 0,
@@ -2090,7 +2181,7 @@ mod tests {
   }
 
   #[test]
-  fn deployment_targets_the_nearest_unoccupied_matching_source() {
+  fn deployment_radar_targets_its_nearest_unoccupied_matching_source() {
     let mut content = ContentDatabase::starter();
     let scenario = content
       .scenarios
@@ -2110,7 +2201,77 @@ mod tests {
     };
 
     assert_eq!(MINING_DRILL, assignment.item);
-    assert_eq!(NodeId::Source(1), assignment.destination);
+    assert_eq!(NodeId::Source(0), assignment.destination);
+  }
+
+  #[test]
+  fn competing_radars_claim_distinct_eligible_targets_deterministically() {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&V2_WORLD_SCENARIO)
+      .expect("v2 scenario exists");
+    scenario.radars.push(RadarSpec {
+      deployment_item: MINING_DRILL,
+      target_item: IRON_ORE,
+      position: GridPoint { x: 50, y: 53 },
+    });
+    let mut first = GameState::new(content.clone(), V2_WORLD_SCENARIO).unwrap();
+    let mut second = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
+    first.world.sources[0].deployed = true;
+    first.world.sources[1].exhausted = true;
+    first.world.sources[2].mining.deposit = Deposit::Finite(0);
+    second.world.sources[0].deployed = true;
+    second.world.sources[1].exhausted = true;
+    second.world.sources[2].mining.deposit = Deposit::Finite(0);
+
+    let first_snapshot = first.step();
+    let second_snapshot = second.step();
+    assert_eq!(first_snapshot, second_snapshot);
+    assert_eq!(4, first_snapshot.radars.len());
+    let claims = first_snapshot
+      .radars
+      .iter()
+      .map(|radar| radar.claimed_target.expect("radar claims a target"))
+      .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(4, claims.len());
+    assert!(claims.is_disjoint(&std::collections::BTreeSet::from([
+      NodeId::Source(0),
+      NodeId::Source(1),
+      NodeId::Source(2),
+    ])));
+    for radar in &first_snapshot.radars {
+      let NodeId::Source(source_index) = radar.claimed_target.unwrap() else {
+        panic!("radar target is a source");
+      };
+      assert_eq!(
+        radar.target_item,
+        first.world.sources[usize::from(source_index)].item
+      );
+      assert_eq!(DispatchVerb::Deploy, radar.dispatch.intents[0].verb);
+    }
+  }
+
+  #[test]
+  fn deployment_radar_releases_a_completed_claim() {
+    let mut state = GameState::new(ContentDatabase::starter(), DEPLOYMENT_DEMO_SCENARIO).unwrap();
+    let first = state.step();
+    assert_eq!(Some(NodeId::Source(0)), first.radars[0].claimed_target);
+
+    let released = (0..32).find_map(|_| {
+      let snapshot = state.step();
+      snapshot
+        .events
+        .iter()
+        .any(|event| event == "radar radar-0 released source-0")
+        .then_some(snapshot)
+    });
+    let released = released.expect("deployment completes and releases its radar claim");
+    assert_eq!(None, released.radars[0].claimed_target);
+    assert!(released.radars[0]
+      .alerts
+      .latest()
+      .is_some_and(|alert| alert.message == "released source-0"));
   }
 
   #[test]

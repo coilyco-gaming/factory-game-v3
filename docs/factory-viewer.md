@@ -24,11 +24,12 @@ through Bevy entities.
 The viewer rotates through twelve scenarios, from focused fixtures for freight,
 power, building, and production to the 100x100 v2 world. Each scene displays:
 
-- source, road, factory, build-site, structure, generator, and blocked cells
+- source, road, factory, radar, build-site, structure, generator, and blocked cells
 - hauler position, cargo, and dispatch phase
 - source and per-factory inventory plus dormant, draining, and exhausted lifecycle
 - independent craft progress and output item for every factory
 - generator mode and fuel, total energy, node batteries, use, and starvation
+- radar deployment item, target resource, current claim, and claim activity
 - material-flow metrics, per-object alerts, and a bounded rolling activity feed
 - global object and stored-resource totals
 

@@ -3,6 +3,7 @@ use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, Dispatc
 use crate::mining::MiningExtractor;
 use crate::power::{Battery, BatteryOwner, PowerGrid, PowerSnapshot};
 use crate::production::{CraftSnapshot, FactoryProduction};
+use crate::radar::{DeploymentRadar, RadarSnapshot};
 use crate::resources::Inventory;
 use factory_content::{ContentDatabase, ItemId, LayoutSpec, ScenarioDefinition};
 use serde::{Serialize, Serializer};
@@ -19,6 +20,7 @@ pub enum NodeId {
   Road,
   Factory(NodeIndex),
   Generator(NodeIndex),
+  Radar(NodeIndex),
   BuildSite(NodeIndex),
   Structure(NodeIndex),
   Transit(GridPosition),
@@ -31,6 +33,7 @@ impl fmt::Display for NodeId {
       Self::Road => f.write_str("road"),
       Self::Factory(index) => write!(f, "factory-{index}"),
       Self::Generator(index) => write!(f, "generator-{index}"),
+      Self::Radar(index) => write!(f, "radar-{index}"),
       Self::BuildSite(index) => write!(f, "build-site-{index}"),
       Self::Structure(index) => write!(f, "structure-{index}"),
       Self::Transit(position) => write!(f, "transit-{}-{}", position.x, position.y),
@@ -63,6 +66,8 @@ pub struct Topology {
   pub nodes: Vec<TopologyNode>,
   pub blocked: BTreeSet<GridPosition>,
   pub obstacles: BTreeSet<GridPosition>,
+  #[serde(skip)]
+  positions: BTreeMap<NodeId, GridPosition>,
 }
 
 impl Topology {
@@ -121,30 +126,50 @@ impl Topology {
       .map(|node| node.position)
       .collect::<BTreeSet<_>>();
     blocked.extend(obstacles.iter().copied());
+    // Position lookup sits on several 100x100 hot paths. Keep the ordered node
+    // vector for stable snapshots while avoiding a full scan for every query.
+    let positions = nodes.iter().map(|node| (node.id, node.position)).collect();
     Self {
       width: layout.width,
       height: layout.height,
       nodes,
       blocked,
       obstacles,
+      positions,
     }
   }
 
   pub fn from_scenario(scenario: &ScenarioDefinition) -> Self {
     let mut topology = Self::from_layout(&scenario.layout);
-    topology.nodes.extend(
-      scenario
-        .build_sites
-        .iter()
-        .enumerate()
-        .map(|(index, site)| TopologyNode {
-          id: NodeId::BuildSite(node_index(index)),
-          position: GridPosition {
-            x: site.position.x,
-            y: site.position.y,
-          },
-        }),
-    );
+    let scenario_nodes = scenario
+      .radars
+      .iter()
+      .enumerate()
+      .map(|(index, radar)| TopologyNode {
+        id: NodeId::Radar(node_index(index)),
+        position: GridPosition {
+          x: radar.position.x,
+          y: radar.position.y,
+        },
+      })
+      .chain(
+        scenario
+          .build_sites
+          .iter()
+          .enumerate()
+          .map(|(index, site)| TopologyNode {
+            id: NodeId::BuildSite(node_index(index)),
+            position: GridPosition {
+              x: site.position.x,
+              y: site.position.y,
+            },
+          }),
+      )
+      .collect::<Vec<_>>();
+    topology
+      .positions
+      .extend(scenario_nodes.iter().map(|node| (node.id, node.position)));
+    topology.nodes.extend(scenario_nodes);
     topology
   }
 
@@ -160,11 +185,23 @@ impl Topology {
       return position;
     }
     self
-      .nodes
-      .iter()
-      .find(|candidate| candidate.id == node)
-      .map(|node| node.position)
+      .positions
+      .get(&node)
+      .copied()
       .expect("topology contains requested node")
+  }
+
+  pub(crate) fn replace_node_id(
+    &mut self,
+    current: NodeId,
+    replacement: NodeId,
+  ) -> Option<GridPosition> {
+    let node = self.nodes.iter_mut().find(|node| node.id == current)?;
+    let position = node.position;
+    node.id = replacement;
+    self.positions.remove(&current);
+    self.positions.insert(replacement, position);
+    Some(position)
   }
 
   fn in_bounds(&self, position: GridPosition) -> bool {
@@ -490,6 +527,7 @@ pub struct TickSnapshot {
   pub sources: Vec<SourceSnapshot>,
   pub haulers: Vec<HaulerSnapshot>,
   pub factories: Vec<FactorySnapshot>,
+  pub radars: Vec<RadarSnapshot>,
   pub structures: Vec<StructureSnapshot>,
   pub power: Option<PowerSnapshot>,
   pub events: Vec<String>,
@@ -524,6 +562,7 @@ pub struct WorldState {
   pub sources: Vec<SourceNode>,
   pub haulers: Vec<Hauler>,
   pub factories: Vec<FactoryNode>,
+  pub radars: Vec<DeploymentRadar>,
   pub structures: Vec<StructureSnapshot>,
   pub power: Option<PowerGrid>,
   pub batteries: BTreeMap<BatteryOwner, Battery>,

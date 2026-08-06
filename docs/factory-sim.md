@@ -4,8 +4,11 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 
 ## Crates
 
-- `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, build sites, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining, insertion and retrieval, wide indexed factories and sources, typed multi-hauler dispatch, queued deployment, construction and movement, cached occupied-grid A-star routes, transit arbitration, per-object batteries and alerts, spatial power balancing, automatic power lines, multi-generator power, and tick stepping.
+- `factory_content` - typed items and scenarios for sources, factories, radars,
+  build sites, fleets, power, starting objects, and grid layouts.
+- `factory_sim` - deterministic gameplay, exclusive radar claims, typed fleet
+  dispatch, indexed topology, cached A-star routes, power, alerts, metrics, and
+  tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -35,9 +38,8 @@ The world generalizes to N sources, factories, haulers, and generators:
 - powered scenarios use the node-owned battery and automatic-line model in
   [factory-power.md](factory-power.md), including fueled, fuel-free, and mixed
   generation
-- deployment scenarios start with a spawnable drill in factory inventory,
-  retrieve it into a capable hauler, carry it to a dormant source, and queue
-  source activation for the deterministic world-mutation boundary
+- deployment radars claim compatible dormant sources before factories and
+  haulers supply drills. See [deployment-radar.md](deployment-radar.md)
 - construction scenarios advertise spawnable factory inventory, retrieve it
   into a physically capable hauler, and replace the destination build-site node
   with an occupied structure at the world-mutation boundary

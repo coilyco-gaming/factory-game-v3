@@ -65,5 +65,9 @@ fn cli_retains_every_v2_world_object_and_wide_source_id() {
   assert_eq!(Some(424), tick["sources"].as_array().map(Vec::len));
   assert_eq!(Some(15), tick["factories"].as_array().map(Vec::len));
   assert_eq!(Some(15), tick["haulers"].as_array().map(Vec::len));
+  assert_eq!(Some(3), tick["radars"].as_array().map(Vec::len));
+  assert!(tick["radars"][0]["claimed_target"]
+    .as_str()
+    .is_some_and(|target| target.starts_with("source-")));
   assert_eq!(Some("source-423"), tick["sources"][423]["node"].as_str());
 }

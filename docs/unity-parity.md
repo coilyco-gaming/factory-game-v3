@@ -27,9 +27,9 @@ and [v2-world.md](v2-world.md).
 * **Dispatch and receivers** - substantial - Rust owns typed collect, deliver,
   retrieve, and deploy intents, deterministic multi-hauler arbitration,
   in-flight demand accounting, receiver assignment, coal delivery,
-  factory-output supply, lifecycle transitions, adjacent
-  transfers, nearest matching provider and deployment-target selection,
-  duplicate-target exclusion, and occupied-target avoidance.
+  factory-output supply, adjacent transfers, nearest providers, radar-owned
+  deployment claims and release, duplicate exclusion, and occupied-target
+  avoidance.
 * **Movement and pathfinding** - substantial - Rust owns scenario-defined grid
   bounds and layouts, occupied static cells, deterministic A-star search,
   cardinal and diagonal movement with corner rules, blocked-target arrival,

@@ -42,7 +42,9 @@ ward exec image-build
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
 See [docs/unity-parity.md](docs/unity-parity.md) for the source-level gameplay
-audit and [docs/v2-world.md](docs/v2-world.md) for the game-scale proof.
+audit, [docs/v2-world.md](docs/v2-world.md) for the game-scale proof, and
+[docs/deployment-radar.md](docs/deployment-radar.md) for autonomous target
+claims.
 
 ## See also
 

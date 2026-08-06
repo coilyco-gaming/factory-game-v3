@@ -15,6 +15,8 @@ startup population in the deterministic Rust simulation.
   capacity values.
 * Fifteen 500-weight, 500-volume haulers at their distinct startup offsets.
 * Ten starting mining drills in the drill factory.
+* Three mining-drill radars at the historical central offsets, targeting iron,
+  copper, and coal deposits independently.
 
 Rust uses a stable local generator with the v2 seed, count, range, exclusion,
 and collision rules. It does not claim bit-for-bit compatibility with .NET's
@@ -23,16 +25,16 @@ historical random-number stream.
 ## Active proof
 
 The workspace gate advances the full world for 50 deterministic ticks. That
-run keeps source IDs unique through `source-423`, deploys three drills, mines
-iron, copper, coal, and manifest stone, collects 996 units, delivers 776 units,
-and crafts iron bars, frames, and building materials. These fixed assertions
-exercise deployment, long-distance pathfinding, freight arbitration, power,
-inserters, production, snapshots, and metrics in one populated world.
+run keeps source IDs unique through `source-423`, deploys six drills, mines
+iron, copper, coal, and manifest stone, collects 2,218 units, delivers 1,588
+units, and crafts iron bars, frames, and building materials. These fixed
+assertions exercise deployment, long-distance pathfinding, freight arbitration,
+power, inserters, production, snapshots, and metrics in one populated world.
 
-The CLI test serializes all 424 sources, 15 factories, and 15 haulers in one
-snapshot. The browser viewer exposes the same scenario in its control deck.
-`O` switches between local detail and a whole-map overview, while shifted grid
-movement crosses ten cells per keypress.
+The CLI test serializes all 424 sources, 15 factories, 15 haulers, and three
+radars in one snapshot. The browser viewer exposes the same scenario in its
+control deck. `O` switches between local detail and a whole-map overview, while
+shifted grid movement crosses ten cells per keypress.
 
 ## Parity boundary
 
@@ -41,8 +43,8 @@ This scenario is the separate integration and scale proof. Neither kind of test
 is presented as a substitute for the other.
 
 The current game-scale gate does not prove bit-for-bit .NET random coordinates,
-separate deployment-radar world objects, autonomous remote coal-plant
-expansion, or an indefinitely powered full-map steady state. Drill deployment
-uses the Rust dispatcher, and the bounded run starts from the v2 battery
-capacities and central fueled generator. Those remaining behaviors require a
-longer expansion scenario rather than another component fixture.
+autonomous remote coal-plant expansion, or an indefinitely powered full-map
+steady state. Radar authority owns mining-drill targeting, while the bounded
+run starts from the v2 battery capacities and central fueled generator. Those
+remaining behaviors require a longer expansion scenario rather than another
+component fixture. See [deployment-radar.md](deployment-radar.md).

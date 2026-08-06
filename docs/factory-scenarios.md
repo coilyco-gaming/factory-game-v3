@@ -7,7 +7,7 @@ The deterministic showcase covers twelve layouts:
 - **Building materials** - two source types satisfy a multi-input recipe.
 - **Powered ironworks** - coal logistics charge an energy-gated factory grid.
 - **Drill deployment** - a hauler retrieves a spawnable drill, deploys it at a
-  dormant source, and drains the source before teardown.
+  radar-claimed dormant source, and drains the source before teardown.
 - **Obstacle convoy** - two haulers route around an occupied cell and arbitrate
   a shared transit cell.
 - **Drill production chain** - adjacent inserters convert iron and copper ore
@@ -23,8 +23,9 @@ The deterministic showcase covers twelve layouts:
 - **Hybrid generator grid** - fueled and fuel-free generators produce together,
   build independent links, and balance their combined output across the grid.
 - **V2 100x100 factory world** - 423 generated ore deposits, one manifest stone
-  source, 15 haulers, seven foundries, eight factories, and the central coal
-  plant run deployment, mining, freight, and upper-tier production together.
+  source, three mining-drill radars, 15 haulers, seven foundries, eight
+  factories, and the central coal plant run deployment, mining, freight, and
+  upper-tier production together.
 
 Every scenario is available through the headless CLI and the Bevy/Wasm control
 deck. The viewer cycles through them automatically after quiet completion.

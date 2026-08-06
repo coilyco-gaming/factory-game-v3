@@ -139,6 +139,16 @@ impl DispatchIntent {
     }
   }
 
+  pub fn deploy(item: ItemId, from: NodeId, to: NodeId) -> Self {
+    Self {
+      verb: DispatchVerb::Deploy,
+      item,
+      from,
+      to,
+      priority: DispatchPriority::NORMAL,
+    }
+  }
+
   pub fn with_priority(mut self, priority: DispatchPriority) -> Self {
     self.priority = priority;
     self

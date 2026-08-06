@@ -59,6 +59,8 @@ const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
 const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
 const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
 const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
+const NODE_RADAR_IDLE: Color = Color::srgb(0.28, 0.31, 0.48);
+const NODE_RADAR_CLAIMED: Color = Color::srgb(0.58, 0.49, 0.92);
 const NODE_BUILD_SITE: Color = Color::srgb(0.42, 0.35, 0.56);
 const NODE_STRUCTURE: Color = Color::srgb(0.64, 0.38, 0.72);
 const GRID_OBSTACLE: Color = Color::srgb(0.42, 0.24, 0.18);
@@ -761,6 +763,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot) {
       NodeId::Road => Vec2::new(100.0, 34.0),
       NodeId::Factory(_) => Vec2::new(132.0, 82.0),
       NodeId::Generator(_) => Vec2::new(132.0, 82.0),
+      NodeId::Radar(_) => Vec2::new(132.0, 82.0),
       NodeId::BuildSite(_) => Vec2::new(124.0, 74.0),
       NodeId::Structure(_) => Vec2::new(132.0, 82.0),
       NodeId::Transit(_) => Vec2::new(28.0, 28.0),
@@ -1544,9 +1547,10 @@ fn update_text(
         host.snapshot.haulers.len()
       ),
       HudField::World => format!(
-        "{} sources  |  {} factories  |  {} built",
+        "{} sources  |  {} factories  |  {} radars  |  {} built",
         host.snapshot.sources.len(),
         host.snapshot.factories.len(),
+        host.snapshot.radars.len(),
         host.snapshot.structures.len()
       ),
       HudField::Power => format!(
@@ -1661,6 +1665,11 @@ fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
         .find(|generator| generator.node == node)
         .map(|generator| &generator.alerts)
     }),
+    NodeId::Radar(_) => snapshot
+      .radars
+      .iter()
+      .find(|radar| radar.node == node)
+      .map(|radar| &radar.alerts),
     NodeId::Structure(_) => snapshot
       .structures
       .iter()
@@ -1881,6 +1890,17 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
           NodeActivity::Demanding
         }
       }),
+    NodeId::Radar(_) => snapshot
+      .radars
+      .iter()
+      .find(|radar| radar.node == node)
+      .map_or(NodeActivity::Idle, |radar| {
+        if radar.claimed_target.is_some() {
+          NodeActivity::Ready
+        } else {
+          NodeActivity::Idle
+        }
+      }),
     NodeId::BuildSite(_) => NodeActivity::Demanding,
     NodeId::Structure(_) => NodeActivity::Ready,
     NodeId::Transit(_) => NodeActivity::Idle,
@@ -1916,6 +1936,8 @@ fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
     (NodeId::Generator(_), NodeActivity::Powering) => NODE_POWER_ACTIVE,
     (NodeId::Generator(_), NodeActivity::Ready) => NODE_POWER_CHARGED,
     (NodeId::Generator(_), _) => NODE_POWER_IDLE,
+    (NodeId::Radar(_), NodeActivity::Ready) => NODE_RADAR_CLAIMED,
+    (NodeId::Radar(_), _) => NODE_RADAR_IDLE,
     (NodeId::BuildSite(_), _) => NODE_BUILD_SITE,
     (NodeId::Structure(_), _) => NODE_STRUCTURE,
     (NodeId::Transit(_), _) => NODE_ROAD,
@@ -2064,6 +2086,22 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
             "fuel-free"
           },
           format_items(&generator.fuel.items)
+        )
+      })
+      .unwrap_or_else(|| node.to_string()),
+    NodeId::Radar(_) => snapshot
+      .radars
+      .iter()
+      .find(|radar| radar.node == node)
+      .map(|radar| {
+        format!(
+          "{}\ndeploy: {}\ntarget: {}\nclaim: {}",
+          radar.node,
+          radar.deployment_item,
+          radar.target_item,
+          radar
+            .claimed_target
+            .map_or_else(|| "none".into(), |target| target.to_string())
         )
       })
       .unwrap_or_else(|| node.to_string()),
@@ -2350,6 +2388,27 @@ mod tests {
         route_direction(&host.snapshot, source) == Some(RouteDirection::AwayFromRoad);
     }
     assert!(saw_deploy_route);
+  }
+
+  #[test]
+  fn v2_radar_projection_exposes_claimed_targets() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    host.select_scenario(11, "test selected");
+    host.step_once();
+
+    let radar = NodeId::Radar(0);
+    assert!(host
+      .snapshot
+      .topology
+      .nodes
+      .iter()
+      .any(|node| node.id == radar));
+    assert_eq!(NodeActivity::Ready, node_activity(&host.snapshot, radar));
+    let label = node_label_value(&host.snapshot, radar);
+    assert!(label.contains("deploy: mining_drill"));
+    assert!(label.contains("target: iron_ore"));
+    assert!(label.contains("claim: source-"));
   }
 
   #[test]

@@ -134,6 +134,13 @@ pub struct BuildSiteSpec {
   pub position: GridPoint,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct RadarSpec {
+  pub deployment_item: ItemId,
+  pub target_item: ItemId,
+  pub position: GridPoint,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct GridPoint {
   pub x: i32,
@@ -244,6 +251,7 @@ pub struct ScenarioDefinition {
   pub sources: Vec<SourceSpec>,
   pub factories: Vec<FactorySpec>,
   pub build_sites: Vec<BuildSiteSpec>,
+  pub radars: Vec<RadarSpec>,
   pub hauler_count: u32,
   pub hauler_capacity: u32,
   pub hauler_weight_capacity: u32,
@@ -345,6 +353,23 @@ fn v2_world_scenario() -> ScenarioDefinition {
     sources,
     factories,
     build_sites: Vec::new(),
+    radars: vec![
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: IRON_ORE,
+        position: GridPoint { x: 50, y: 50 },
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COPPER_ORE,
+        position: GridPoint { x: 50, y: 51 },
+      },
+      RadarSpec {
+        deployment_item: MINING_DRILL,
+        target_item: COAL,
+        position: GridPoint { x: 50, y: 52 },
+      },
+    ],
     hauler_count: 15,
     hauler_capacity: 500,
     hauler_weight_capacity: 500,
@@ -612,6 +637,7 @@ impl ContentDatabase {
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -633,6 +659,7 @@ impl ContentDatabase {
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 3,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -662,6 +689,7 @@ impl ContentDatabase {
         ],
         factories: vec![FactorySpec::new(BUILDING_MATERIALS, 4, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 2,
         hauler_weight_capacity: 32,
@@ -691,6 +719,7 @@ impl ContentDatabase {
         ],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -726,6 +755,11 @@ impl ContentDatabase {
         factories: vec![FactorySpec::new(IRON_BARS, 6, 100)
           .with_starting_items(BTreeMap::from([(MINING_DRILL, 1)]))],
         build_sites: Vec::new(),
+        radars: vec![RadarSpec {
+          deployment_item: MINING_DRILL,
+          target_item: IRON_ORE,
+          position: GridPoint { x: 1, y: 1 },
+        }],
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 100,
@@ -747,6 +781,7 @@ impl ContentDatabase {
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -791,6 +826,7 @@ impl ContentDatabase {
           FactorySpec::new(MINING_DRILL, 20, 5),
         ],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 0,
         hauler_capacity: 5,
         hauler_weight_capacity: 100,
@@ -830,6 +866,7 @@ impl ContentDatabase {
           FactorySpec::new(FRAMES, 20, 10),
         ],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 5,
         hauler_weight_capacity: 100,
@@ -860,6 +897,7 @@ impl ContentDatabase {
         }],
         factories: vec![FactorySpec::new(IRON_BARS, 12, 40)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -902,6 +940,7 @@ impl ContentDatabase {
           item: STORAGE_WAREHOUSE,
           position: GridPoint { x: 4, y: 1 },
         }],
+        radars: Vec::new(),
         hauler_count: 1,
         hauler_capacity: 1,
         hauler_weight_capacity: 500,
@@ -940,6 +979,7 @@ impl ContentDatabase {
         ],
         factories: vec![FactorySpec::new(IRON_BARS, 6, 20)],
         build_sites: Vec::new(),
+        radars: Vec::new(),
         hauler_count: 2,
         hauler_capacity: 3,
         hauler_weight_capacity: 32,
@@ -1183,6 +1223,14 @@ mod tests {
     assert_eq!(15, scenario.factories.len());
     assert_eq!(15, scenario.hauler_count);
     assert_eq!(15, scenario.layout.hauler_positions.len());
+    assert_eq!(3, scenario.radars.len());
+    assert_eq!(IRON_ORE, scenario.radars[0].target_item);
+    assert_eq!(COPPER_ORE, scenario.radars[1].target_item);
+    assert_eq!(COAL, scenario.radars[2].target_item);
+    assert!(scenario
+      .radars
+      .iter()
+      .all(|radar| radar.deployment_item == MINING_DRILL));
     assert_eq!(10, scenario.factories[9].starting_items[&MINING_DRILL]);
     assert_eq!(
       GridPoint { x: 52, y: 52 },

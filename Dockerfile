@@ -5,13 +5,19 @@
 FROM rust:1.97-bookworm AS builder
 
 ARG TRUNK_VERSION=0.21.14
+ARG TARGETARCH
 
 # trunk from the upstream prebuilt release (matches the aos dev-base pin), and
 # the wasm target for the shell build. No binaryen/wasm-opt in the shell yet -
 # index.html pins data-wasm-opt="0", so nothing here can trip the Debian
 # browser-side binaryen instantiation failure.
-RUN rustup target add wasm32-unknown-unknown \
- && curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" \
+RUN case "${TARGETARCH}" in \
+      amd64) trunk_arch=x86_64 ;; \
+      arm64) trunk_arch=aarch64 ;; \
+      *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+ && rustup target add wasm32-unknown-unknown \
+ && curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-${trunk_arch}-unknown-linux-gnu.tar.gz" \
       -o /tmp/trunk.tar.gz \
  && tar -xzf /tmp/trunk.tar.gz -C /usr/local/bin trunk \
  && chmod 0755 /usr/local/bin/trunk \
