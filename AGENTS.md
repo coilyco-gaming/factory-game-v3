@@ -1,25 +1,24 @@
 # Agent instructions
 
-This repo is the factory-game-v3 migration baseline. The current surface is still Unity/C#, but the end state is Rust/Bevy. Treat the Unity code and assets as migration references, not as the final product.
+This repo is the factory-game-v3 Rust/Bevy factory game. The Unity-to-Rust migration is complete and the C# surface is gone, recorded in [docs/csharp-decommission.md](docs/csharp-decommission.md). What remains of the Unity era is an inert art library under `Assets/`, kept as raw material for presentation work.
 
 ## Scope
 
-- Keep the repo aligned to the Unity-to-Rust/Bevy transition.
-- Preserve the current `Assets/` tree unless an issue explicitly says to remove or rewrite it.
-- Do not touch `.gitattributes` or binary asset policy here unless the work explicitly includes the LFS migration from issue #4.
+- The Rust workspace under `crates/` is the product. Build features there.
+- Preserve the `Assets/` tree unless an issue explicitly says to remove or rewrite it. It is inert input, not dead weight to tidy.
+- `.gitattributes` encodes settled binary-asset policy: the Unity image library is LFS-managed, and the small Bevy runtime sprites are a narrow ordinary-Git exception. Change it only when an issue says to.
 
 ## Project shape
 
-- `Assets/` holds the retained Unity-era source, scenes, materials, plugins, and `.meta` files.
-- `tests.csproj` is a retained Unity-era reference project, not the active validation surface.
-- `crates/` holds the active Rust workspace for the first migration slices, while Unity code remains as reference material.
+- `crates/` holds the Rust workspace: `factory_content` (catalog), `factory_sim` (authority), `factory_cli` (headless runner), `factory_shell` (Bevy viewer, native and Wasm).
+- `Assets/` holds the retained Unity-era art: materials, scenes, textures, TextMesh Pro, resources, and their `.meta` files. No source, no test project.
+- `scripts/` holds the test gate, the Trunk web build, and the trusted image publisher. `Dockerfile` and `nginx.conf` build and serve the browser bundle.
 - `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and `.ward/ward.yaml` are the repo-local baseline trio plus command surface.
 
 ## Repo boundaries
 
-- Keep the repo aligned to the Unity-to-Rust/Bevy transition.
-- Preserve the current `Assets/` tree unless an issue explicitly says to remove or rewrite it.
-- Do not touch `.gitattributes` or binary asset policy here unless the work explicitly includes the LFS migration from issue #4.
+- Keep gameplay in `crates/`. The `Assets/` tree is inert and stays that way until an issue says otherwise.
+- `coilyco-bridge/deploy` owns rollout, the pull credential, and public exposure. This repo owns the image and the workflow that publishes it.
 
 ### The simulation owns logic
 
@@ -42,9 +41,9 @@ repo keeps its proofs.
 ## Commands
 
 - Route dev commands through ward.
-- `ward exec test` is the current repo verb. It runs the repo's pre-commit baseline with a bounded timeout. CI calls `bash scripts/test-gate.sh` directly because repo verbs require a tracked branch.
-- Add new verbs to [`.ward/ward.yaml`](.ward/ward.yaml) before using them.
-- Do not route work through bare `dotnet` in docs or agent instructions.
+- `ward exec test` is the gate: the pre-commit baseline plus the Rust workspace tests, under a bounded timeout. CI calls `bash scripts/test-gate.sh` directly because repo verbs require a tracked branch.
+- `ward exec cargo-run` runs a headless scenario, `shell-run` the native viewer, `shell-serve` and `shell-build-web` the browser bundle, `image-build` and `check-publish` the deploy surface, `v2-liveness` the sustained-operation proof.
+- Enumerate the full set in [`.ward/ward.yaml`](.ward/ward.yaml), and add a verb there before invoking it.
 
 ## Validation
 
@@ -58,12 +57,12 @@ repo keeps its proofs.
 
 - Keep tracked text public-safe.
 - Keep repo-local baseline exceptions narrow and documented in the lowest config layer that can express them.
-- Treat Unity asset retention as a migration constraint, not a license to normalize the tree wholesale.
+- Treat Unity asset retention as a deliberate boundary, not a license to normalize the tree wholesale.
 
 ## Cross-repo contracts
 
 - Keep baseline exclusions narrow and documented.
-- Coordinate binary asset policy changes with issue #4.
+- The catalog pre-commit hooks are authored in `coilyco-flight-deck/agentic-os`. Fix a validator there rather than working around it here.
 - Use the shared agentic-os conventions when the repo adopts a new managed-repo surface.
 
 ## Release
@@ -78,9 +77,9 @@ repo keeps its proofs.
 
 ## Agent rules
 
-- Use the current Unity-era surface as migration reference material, not as a target to clean up speculatively.
+- Treat the retained Unity art as reference material, not as a target to clean up speculatively.
 - Prefer the smallest local exclusion that makes the managed hooks reflect the real repo surface.
-- Do not route work through bare `dotnet` in docs or agent instructions.
+- Bump `COMPACT_SAVE_VERSION` in the same commit that changes the compact save shape. See [docs/compact-persistence.md](docs/compact-persistence.md).
 
 ## See also
 
