@@ -1,9 +1,9 @@
-# V3 world roster
+# V3 simulation fixtures
 
-The player-facing viewer exposes four deterministic 50x50 worlds. The scenario
-picker displays the active world and opens the complete roster for direct
-selection. Keyboard cycling wraps back to the first setup. Reset restarts the
-selected world without changing the selection.
+The four deterministic 50x50 worlds remain headless integration fixtures. The
+player-facing app now uses the compact planning scenario described in
+[compact-first-playable.md](compact-first-playable.md). These worlds preserve
+large-scale migration evidence without appearing in the game UI.
 
 ## V3 50x50 factory world
 
@@ -31,6 +31,5 @@ copper across the eastern corners. Coal lines the north and south edges. The
 central works distributes six foundries, six downstream factories, two coal
 plants, four radars, and sixteen haulers across a wider footprint.
 
-The smaller catalog scenarios remain available to the headless runner and test
-suite as focused component fixtures. They are intentionally absent from the
-viewer roster.
+The smaller catalog scenarios also remain available to the headless runner and
+test suite as focused component fixtures.

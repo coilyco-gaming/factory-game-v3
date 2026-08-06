@@ -6,9 +6,9 @@ then replaced the placeholder scene with the snapshot projection described in
 [factory-viewer.md](factory-viewer.md).
 
 The crate depends on `factory_sim` and `factory_content`, but Bevy remains a
-client of the simulation. `GameState` owns every rule and deterministic tick,
-including radar claims and remote-generator mutations. The application renders
-immutable `TickSnapshot` values and never mutates `WorldState` directly.
+client of the simulation. `CompactGame` owns every player-loop rule and
+deterministic tick. The application renders immutable `CompactSnapshot` values
+and sends typed planning commands back to the simulation.
 
 ## Run
 

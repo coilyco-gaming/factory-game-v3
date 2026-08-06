@@ -573,7 +573,8 @@ impl CompactGame {
       }
       CompactTruckTask::DeliverToWarehouse => {
         if let Some(item) = self.trucks[truck_index].cargo_item {
-          *self.warehouse_stock.entry(item).or_default() += self.trucks[truck_index].cargo_quantity;
+          *self.warehouse_stock.entry(item).or_default() +=
+            self.trucks[truck_index].cargo_quantity;
         }
         self.trucks[truck_index].cargo_item = None;
         self.trucks[truck_index].cargo_quantity = 0;

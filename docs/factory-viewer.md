@@ -1,78 +1,51 @@
-# Factory simulation viewer
+# Factory planning surface
 
-The Bevy viewer makes the deterministic Rust simulation visible without
-moving any simulation authority into Bevy. It lives in `crates/factory_shell`
-so the repository keeps one native and web application surface.
+The Bevy native and Wasm app is the player-facing compact freight yard. It
+projects immutable `CompactSnapshot` values and sends explicit edit commands
+to `CompactGame`. Simulation rules remain Bevy-free.
 
-## Authority boundary
+## World
 
-`factory_sim::GameState` owns mining, dispatch, movement, inventory,
-production, metrics, and tick ordering. The viewer owns only:
+The app opens paused and fitted to the full provisional 16x16 map. The map has
+one warehouse/export hub, four visible iron and copper deposits, three trucks,
+and a small starter road apron. The former 50x50 worlds remain headless
+simulation fixtures and are no longer player-facing scenarios.
 
-- playback cadence and controls
-- projection of immutable `TickSnapshot` values
-- node, route, hauler, and text presentation
-- native-window and Wasm runtime behavior
+The world projection shows:
 
-Bevy frames and simulation ticks use separate clocks. Snapshot revisions gate
-world and HUD projection, while hauler interpolation and cached node activity
-animate between ticks without rescanning simulation collections. Overview hides
-unreadable object text, badges, and gauges. The three closest zoom levels
-restore them, while geometry, focus, and screen status remain visible throughout.
+- every ground and authored road cell
+- deposit stock and remaining ore
+- placed factories, recipes, input, output, and selection
+- warehouse position plus market state in the status bar
+- truck cargo and upcoming road route
 
-## World roster
+The top status bar and bottom-right planner are the only screen-space UI
+surfaces. Resource rows use available tiny local sprites and literal `//`
+separators. The market row shows current demand, cumulative sales, and revenue.
 
-The viewer opens in the V3 50x50 factory world. Its picker lists the four full
-worlds, while focused fixtures remain CLI and test-only. Each world displays:
+## Planning controls
 
-- source, road, factory, radar, build-site, structure, generator, and blocked cells
-- hauler position, cargo, and dispatch phase
-- source and per-factory inventory plus dormant, draining, and exhausted lifecycle
-- remote generator type plus coal-site occupancy without false drill activation
-- independent craft progress and output item for every factory
-- generator mode and fuel, total energy, node batteries, use, and starvation
-- radar deployment item, target resource, current claim, and claim activity
-- resource stockpiles, material stockpiles, and power metrics
+The planner exposes four unambiguous pointer modes:
 
-The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. One full-width top bar stacks Resources, Materials,
-and Power as three full-width rows beside the title. Resources are ingredientless
-catalog items, while Materials are recipe products. Both count current world
-stockpiles. Resources pairs the iron, copper, coal, and stone sprites with live
-counts. One compact control panel sits at bottom right. Recent activity and
-focused alert overlays are absent. A presentation offset keeps labels between
-the screen-edge surfaces. See [factory-art.md](factory-art.md).
+- Inspect selects a factory or reports the clicked cell.
+- Road paints free road cells while the mouse or touch is held.
+- Erase removes free road cells while the mouse or touch is held.
+- Factory places one building against the current allowance and selects it.
 
-Material-flow telemetry brightens stocked sources and active factories. Gauges
-track craft and grid progress, completed output ejects product chips, active
-nodes pulse, route dashes show direction, and loaded cargo badges brighten. The
-generators reflect fuel and charge state. Frame-time effects never write back
-into simulation state.
+After selecting a factory, Iron Bars and Copper Bars assign its recipe. The
+same panel provides play/pause, one tick, reset, speed, and zoom buttons. This
+makes the complete planning loop usable by mouse or touch without keyboard
+requirements. Invalid edits return an actionable message in the panel.
 
-## Controls
+Keyboard mirrors the pointer controls: `1` through `4` select tools, `I` and
+`C` assign recipes, `Space` plays or pauses, `N` steps, `R` resets, and `F`
+changes speed. `WASD` or arrows pan while held. `Q`, `E`, and the wheel zoom.
+The closest view shows about 10x10 cells, while the maximum zoom-out remains
+the complete world extent.
 
-The bottom-right control panel works with mouse or touch in native and web
-builds. It provides play or pause, single-step, reset, speed, and a scenario
-picker that shows the active world and closes after selection. `HIDE UI` hides
-the top bar, labels, focus cursor, badges, and gauges, then collapses the panel
-to a `SHOW UI` restore button. Active toggles stay highlighted.
+## Projection performance
 
-The keyboard mirrors the same typed actions:
-
-- `Space` toggles play and pause.
-- `N` pauses and advances one deterministic tick.
-- `R` resets the scenario.
-- `F` toggles between 2 and 8 ticks per second.
-- `C` advances to the next world when the roster contains more than one.
-- `WASD` or arrows move focus and repeat while held. `Shift` moves ten cells.
-- `Q`/`E` zoom and repeat while held. The wheel steps once. `O` toggles the
-  approximately 10x10-cell detail and full-world views. Startup fits the world
-  and cannot zoom farther out.
-
-## Development
-
-- `ward exec shell-run` starts the native viewer with an interactive profile
-  that optimizes Bevy and its graphics dependencies.
-- `ward exec shell-serve` starts the browser viewer with Trunk hot reload.
-- `ward exec shell-build-web` builds the static Wasm bundle.
-- `ward exec cargo-test` proves hosted ticks match direct ticks.
+The 256-cell ground is static. Snapshot revisions rebuild only the compact
+dynamic layer of roads, deposits, factories, routes, labels, and three trucks.
+Truck transforms interpolate between authoritative cells. No presentation
+system writes simulation state directly.

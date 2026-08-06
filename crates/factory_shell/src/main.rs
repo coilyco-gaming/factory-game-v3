@@ -1,105 +1,46 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
-use bevy::sprite::Anchor;
-use factory_content::{
-  ContentDatabase, ItemId, ScenarioId, COAL, COAL_PLANT, COPPER_ORE, FOUR_CORNERS_WORKS_SCENARIO,
-  IRON_BARS, IRON_ORE, LEGACY_ASSEMBLY_YARD_SCENARIO, MINING_DRILL, STONE, STORAGE_WAREHOUSE,
-  TWIN_PLANT_BASIN_SCENARIO, V2_WORLD_SCENARIO,
-};
+use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
 use factory_sim::{
-  BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerId,
-  HaulerSnapshot, NodeId, TickSnapshot, TopologyNode,
+  CompactGame, CompactRecipe, CompactSnapshot, GridPosition, COMPACT_SCENARIO_NAME,
+  COMPACT_WORLD_HEIGHT, COMPACT_WORLD_WIDTH,
 };
-use std::collections::{BTreeMap, BTreeSet};
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
-const RESOURCE_ICON_SIZE: f32 = 18.0;
-const STATUS_TITLE_FONT_SIZE: f32 = 24.0;
-const STATUS_SUBTITLE_FONT_SIZE: f32 = 15.0;
-const STATUS_LABEL_FONT_SIZE: f32 = 15.0;
-const STATUS_VALUE_FONT_SIZE: f32 = 15.75;
-const STATUS_SEPARATOR_FONT_SIZE: f32 = 13.5;
-const STATUS_LABEL_WIDTH: f32 = 96.0;
-const STATUS_POWER_LABEL_WIDTH: f32 = 28.0;
-const INLINE_SEPARATOR: &str = " // ";
-const ROUTE_DASH_COUNT: usize = 5;
-const ROUTE_DASH_SPEED: f32 = 0.42;
-const CRAFT_GAUGE_WIDTH: f32 = 96.0;
-const POWER_GAUGE_WIDTH: f32 = 96.0;
-const OUTPUT_CHIP_COUNT: usize = 5;
-const MAX_OUTPUT_CHIPS: usize = 15;
-const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const WORLD_SCENARIOS: [ScenarioId; 4] = [
-  V2_WORLD_SCENARIO,
-  LEGACY_ASSEMBLY_YARD_SCENARIO,
-  TWIN_PLANT_BASIN_SCENARIO,
-  FOUR_CORNERS_WORKS_SCENARIO,
-];
+const CELL_SIZE: f32 = 100.0;
+const GROUND_SIZE: f32 = 96.0;
+const TOP_BAR_HEIGHT: f32 = 132.0;
+const PANEL_WIDTH: f32 = 380.0;
+const MIN_VISIBLE_CELLS: f32 = 10.0;
 const MIN_ZOOM_LEVEL: u8 = 1;
 const MAX_ZOOM_LEVEL: u8 = 10;
-const MAX_DETAIL_ZOOM_LEVEL: u8 = 3;
-const MIN_VISIBLE_CELLS: f32 = 10.0;
-const INPUT_REPEAT_DELAY_SECONDS: f32 = 0.25;
-const INPUT_REPEAT_INTERVAL_SECONDS: f32 = 0.08;
-const MAX_INPUT_REPEATS_PER_FRAME: u8 = 4;
-const NODE_ART_SIZE: f32 = 100.0;
-const DRILL_ART_SIZE: f32 = 76.0;
-const TRUCK_ART_SIZE: f32 = 72.0;
-const CARGO_ART_SIZE: f32 = 28.0;
-const GRID_X: f32 = 180.0;
-const GRID_Y: f32 = 120.0;
-const WORLD_LEFT: f32 = -410.0;
-const CAMERA_UI_OFFSET_Y: f32 = 64.0;
-const CONTROL_DECK_WIDTH: f32 = 360.0;
-const COLLAPSED_CONTROL_DECK_WIDTH: f32 = 104.0;
-const BUTTON_NORMAL: Color = Color::srgb(0.14, 0.17, 0.22);
-const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
-const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
-const BUTTON_PRESSED: Color = Color::srgb(0.85, 0.52, 0.25);
-const BUTTON_BORDER: Color = Color::srgb(0.34, 0.39, 0.48);
-const NODE_SOURCE_IDLE: Color = Color::srgb(0.56, 0.36, 0.22);
-const NODE_SOURCE_READY: Color = Color::srgb(0.96, 0.64, 0.24);
-const NODE_ROAD: Color = Color::srgb(0.30, 0.34, 0.40);
-const NODE_FACTORY_IDLE: Color = Color::srgb(0.23, 0.47, 0.36);
-const NODE_FACTORY_DEMAND: Color = Color::srgb(0.24, 0.69, 0.65);
-const NODE_FACTORY_CRAFTING: Color = Color::srgb(0.34, 0.83, 0.48);
-const NODE_POWER_IDLE: Color = Color::srgb(0.35, 0.24, 0.25);
-const NODE_POWER_ACTIVE: Color = Color::srgb(0.92, 0.43, 0.18);
-const NODE_POWER_CHARGED: Color = Color::srgb(0.96, 0.76, 0.22);
-const NODE_RADAR_IDLE: Color = Color::srgb(0.28, 0.31, 0.48);
-const NODE_RADAR_CLAIMED: Color = Color::srgb(0.58, 0.49, 0.92);
-const NODE_BUILD_SITE: Color = Color::srgb(0.42, 0.35, 0.56);
-const NODE_STRUCTURE: Color = Color::srgb(0.64, 0.38, 0.72);
-const GRID_OBSTACLE: Color = Color::srgb(0.42, 0.24, 0.18);
-const GRID_POWER_LINE: Color = Color::srgb(0.26, 0.78, 0.92);
-const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
-const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
-const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
-const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
-const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
-const CRAFT_GAUGE_BACKGROUND: Color = Color::srgb(0.10, 0.16, 0.14);
-const CRAFT_GAUGE_FILL: Color = Color::srgb(0.58, 0.96, 0.62);
-const POWER_GAUGE_BACKGROUND: Color = Color::srgb(0.16, 0.10, 0.08);
-const POWER_GAUGE_FILL: Color = Color::srgb(1.0, 0.72, 0.18);
-const OUTPUT_CHIP_STONE: Color = Color::srgb(0.62, 0.58, 0.48);
-const OUTPUT_CHIP_STEEL: Color = Color::srgb(0.48, 0.55, 0.58);
+const INLINE_SEPARATOR: &str = " // ";
+
 const GROUND_ART: &str = "factory/terrain/ground.png";
 const ROAD_ART: &str = "factory/logistics/road-straight-ns.png";
 const TRUCK_ART: &str = "factory/vehicles/truck.png";
 const IRON_DEPOSIT_ART: &str = "factory/resources/iron-ore-deposit.png";
 const COPPER_DEPOSIT_ART: &str = "factory/resources/copper-ore-deposit.png";
-const COAL_DEPOSIT_ART: &str = "factory/resources/coal-deposit.png";
-const STONE_DEPOSIT_ART: &str = "factory/resources/stone-deposit.png";
 const FOUNDRY_ART: &str = "factory/machines/foundry.png";
 const FACTORY_ART: &str = "factory/machines/factory.png";
-const COAL_PLANT_ART: &str = "factory/machines/coal-plant.png";
-const RADAR_ART: &str = "factory/machines/radar.png";
-const MINING_DRILL_ART: &str = "factory/machines/mining-drill.png";
 const WAREHOUSE_ART: &str = "factory/structures/warehouse.png";
 const IRON_ORE_ART: &str = "factory/items/iron-ore.png";
 const IRON_BARS_ART: &str = "factory/items/iron-bars.png";
+
+const PANEL_BACKGROUND: Color = Color::srgba(0.035, 0.045, 0.065, 0.97);
+const TOP_BACKGROUND: Color = Color::srgba(0.025, 0.032, 0.047, 0.98);
+const BUTTON_NORMAL: Color = Color::srgb(0.14, 0.17, 0.22);
+const BUTTON_HOVERED: Color = Color::srgb(0.24, 0.29, 0.36);
+const BUTTON_ACTIVE: Color = Color::srgb(0.30, 0.66, 0.47);
+const BUTTON_PRESSED: Color = Color::srgb(0.85, 0.52, 0.25);
+const BUTTON_BORDER: Color = Color::srgb(0.34, 0.39, 0.48);
+const TEXT_PRIMARY: Color = Color::srgb(0.92, 0.94, 0.97);
+const TEXT_MUTED: Color = Color::srgb(0.56, 0.61, 0.69);
+const ACCENT_ORANGE: Color = Color::srgb(0.96, 0.58, 0.28);
+const ACCENT_GOLD: Color = Color::srgb(0.95, 0.78, 0.36);
+const ACCENT_GREEN: Color = Color::srgb(0.48, 0.88, 0.62);
 
 fn main() {
   App::new()
@@ -112,34 +53,24 @@ fn main() {
       }),
       ..default()
     }))
-    .insert_resource(ClearColor(Color::srgb(0.06, 0.07, 0.09)))
+    .insert_resource(ClearColor(Color::srgb(0.055, 0.063, 0.075)))
     .insert_resource(SimHost::new())
     .init_resource::<PlayerView>()
-    .init_resource::<ProjectionScene>()
-    .init_resource::<ProductionFeedback>()
+    .init_resource::<HoverCell>()
     .init_resource::<FactoryArt>()
     .add_systems(Startup, setup)
     .add_systems(
       Update,
       (
-        handle_controls,
-        handle_player_view,
+        handle_keyboard,
         handle_control_buttons,
+        update_camera,
+        handle_pointer_edits,
         advance_simulation,
-        rebuild_projection,
-        project_snapshot,
-        project_activity,
-        project_deployed_art,
-        project_craft_gauge,
-        project_power_gauge,
-        emit_output_chips,
-        animate_activity,
-        animate_output_chips,
-        animate_haulers,
-        update_text,
-        sync_annotation_visibility,
-        sync_scenario_picker,
-        sync_world_detail_visibility,
+        rebuild_dynamic_projection,
+        animate_trucks,
+        update_ui_text,
+        update_hover_cursor,
         style_control_buttons,
       )
         .chain(),
@@ -150,17 +81,12 @@ fn main() {
 #[derive(Resource)]
 struct FactoryArt {
   ground: Handle<Image>,
-  road_straight_ns: Handle<Image>,
+  road: Handle<Image>,
   truck: Handle<Image>,
-  iron_ore_deposit: Handle<Image>,
-  copper_ore_deposit: Handle<Image>,
-  coal_deposit: Handle<Image>,
-  stone_deposit: Handle<Image>,
+  iron_deposit: Handle<Image>,
+  copper_deposit: Handle<Image>,
   foundry: Handle<Image>,
   factory: Handle<Image>,
-  coal_plant: Handle<Image>,
-  radar: Handle<Image>,
-  mining_drill: Handle<Image>,
   warehouse: Handle<Image>,
   iron_ore: Handle<Image>,
   iron_bars: Handle<Image>,
@@ -171,17 +97,12 @@ impl FromWorld for FactoryArt {
     let assets = world.resource::<AssetServer>();
     Self {
       ground: assets.load(GROUND_ART),
-      road_straight_ns: assets.load(ROAD_ART),
+      road: assets.load(ROAD_ART),
       truck: assets.load(TRUCK_ART),
-      iron_ore_deposit: assets.load(IRON_DEPOSIT_ART),
-      copper_ore_deposit: assets.load(COPPER_DEPOSIT_ART),
-      coal_deposit: assets.load(COAL_DEPOSIT_ART),
-      stone_deposit: assets.load(STONE_DEPOSIT_ART),
+      iron_deposit: assets.load(IRON_DEPOSIT_ART),
+      copper_deposit: assets.load(COPPER_DEPOSIT_ART),
       foundry: assets.load(FOUNDRY_ART),
       factory: assets.load(FACTORY_ART),
-      coal_plant: assets.load(COAL_PLANT_ART),
-      radar: assets.load(RADAR_ART),
-      mining_drill: assets.load(MINING_DRILL_ART),
       warehouse: assets.load(WAREHOUSE_ART),
       iron_ore: assets.load(IRON_ORE_ART),
       iron_bars: assets.load(IRON_BARS_ART),
@@ -189,806 +110,530 @@ impl FromWorld for FactoryArt {
   }
 }
 
-impl FactoryArt {
-  fn resource(&self, item: ItemId) -> Option<&Handle<Image>> {
-    match item {
-      IRON_ORE => Some(&self.iron_ore_deposit),
-      COPPER_ORE => Some(&self.copper_ore_deposit),
-      COAL => Some(&self.coal_deposit),
-      STONE => Some(&self.stone_deposit),
-      _ => None,
-    }
-  }
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+enum ToolMode {
+  #[default]
+  Inspect,
+  Road,
+  Erase,
+  Building,
+}
 
-  fn item(&self, item: ItemId) -> Option<&Handle<Image>> {
-    match item {
-      IRON_ORE => Some(&self.iron_ore),
-      IRON_BARS => Some(&self.iron_bars),
-      _ => None,
-    }
-  }
-
-  fn node(&self, kind: NodeArtKind) -> (&Handle<Image>, Quat) {
-    match kind {
-      NodeArtKind::Deposit(IRON_ORE) => (&self.iron_ore_deposit, Quat::IDENTITY),
-      NodeArtKind::Deposit(COPPER_ORE) => (&self.copper_ore_deposit, Quat::IDENTITY),
-      NodeArtKind::Deposit(COAL) => (&self.coal_deposit, Quat::IDENTITY),
-      NodeArtKind::Deposit(STONE) => (&self.stone_deposit, Quat::IDENTITY),
-      NodeArtKind::Deposit(_) => unreachable!("node art selects only accepted deposit items"),
-      NodeArtKind::Foundry => (&self.foundry, Quat::IDENTITY),
-      NodeArtKind::Factory => (&self.factory, Quat::IDENTITY),
-      NodeArtKind::CoalPlant => (&self.coal_plant, Quat::IDENTITY),
-      NodeArtKind::Radar => (&self.radar, Quat::IDENTITY),
-      NodeArtKind::Warehouse => (&self.warehouse, Quat::IDENTITY),
-      NodeArtKind::Road(RoadOrientation::NorthSouth) => (&self.road_straight_ns, Quat::IDENTITY),
-      NodeArtKind::Road(RoadOrientation::EastWest) => (
-        &self.road_straight_ns,
-        Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
-      ),
+impl ToolMode {
+  const fn label(self) -> &'static str {
+    match self {
+      Self::Inspect => "INSPECT",
+      Self::Road => "DRAW ROAD",
+      Self::Erase => "ERASE ROAD",
+      Self::Building => "PLACE FACTORY",
     }
   }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum ControlAction {
+  SetTool(ToolMode),
+  Configure(CompactRecipe),
+  TogglePause,
+  Step,
+  Reset,
+  ToggleSpeed,
+  ZoomIn,
+  ZoomOut,
+}
+
 #[derive(Resource)]
 struct SimHost {
-  game: GameState,
-  snapshot: TickSnapshot,
+  game: CompactGame,
+  snapshot: CompactSnapshot,
   paused: bool,
   ticks_per_second: f32,
   accumulated_seconds: f32,
-  world_index: usize,
-  scenario_picker_open: bool,
-  annotations_visible: bool,
-  scene_revision: u64,
+  tool: ToolMode,
+  selected_building: Option<u16>,
+  feedback: String,
   snapshot_revision: u64,
 }
 
 impl SimHost {
   fn new() -> Self {
-    Self::for_scenario(WORLD_SCENARIOS[0])
-  }
-
-  fn for_scenario(scenario: ScenarioId) -> Self {
-    let game = scenario_game(scenario);
-    let snapshot = game.snapshot(Vec::new());
+    let mut game = CompactGame::new();
+    let snapshot = game.snapshot();
     Self {
       game,
       snapshot,
-      paused: false,
+      paused: true,
       ticks_per_second: NORMAL_TICKS_PER_SECOND,
       accumulated_seconds: 0.0,
-      world_index: 0,
-      scenario_picker_open: false,
-      annotations_visible: true,
-      scene_revision: 0,
+      tool: ToolMode::Inspect,
+      selected_building: None,
+      feedback: "Draw a road from the warehouse apron toward a deposit.".into(),
       snapshot_revision: 1,
     }
   }
 
+  fn refresh(&mut self) {
+    self.snapshot = self.game.snapshot();
+    if let Some(event) = self.snapshot.events.last() {
+      self.feedback = event.clone();
+    }
+    self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
+  }
+
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
+    if let Some(event) = self.snapshot.events.last() {
+      self.feedback = event.clone();
+    }
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
   }
 
   fn reset(&mut self) {
-    self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
-    self.snapshot = self.game.snapshot(Vec::new());
+    self.game = CompactGame::new();
+    self.snapshot = self.game.snapshot();
+    self.paused = true;
+    self.accumulated_seconds = 0.0;
+    self.tool = ToolMode::Inspect;
+    self.selected_building = None;
+    self.feedback = "World reset. Draw a road from the warehouse apron.".into();
     self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
-    self.accumulated_seconds = 0.0;
   }
 
-  fn toggle_speed(&mut self) {
-    self.ticks_per_second = if self.ticks_per_second == NORMAL_TICKS_PER_SECOND {
-      FAST_TICKS_PER_SECOND
-    } else {
-      NORMAL_TICKS_PER_SECOND
-    };
-    self.accumulated_seconds = 0.0;
-  }
-
-  fn apply_control(&mut self, action: ControlAction) {
-    match action {
-      ControlAction::TogglePause => {
-        self.paused = !self.paused;
-        self.accumulated_seconds = 0.0;
-      }
-      ControlAction::Step => {
-        self.paused = true;
-        self.step_once();
-        self.accumulated_seconds = 0.0;
-      }
-      ControlAction::Reset => self.reset(),
-      ControlAction::ToggleSpeed => self.toggle_speed(),
-      ControlAction::ToggleAnnotations => {
-        self.annotations_visible = !self.annotations_visible;
-        if !self.annotations_visible {
-          self.scenario_picker_open = false;
+  fn edit_cell(&mut self, cell: GridPosition) {
+    match self.tool {
+      ToolMode::Road => match self.game.place_road(cell) {
+        Ok(true) => self.refresh(),
+        Ok(false) => self.feedback = "Road already exists here.".into(),
+        Err(error) => self.feedback = error.to_string(),
+      },
+      ToolMode::Erase => match self.game.remove_road(cell) {
+        Ok(true) => self.refresh(),
+        Ok(false) => self.feedback = "There is no road here.".into(),
+        Err(error) => self.feedback = error.to_string(),
+      },
+      ToolMode::Building => match self.game.place_building(cell) {
+        Ok(building) => {
+          self.selected_building = Some(building);
+          self.tool = ToolMode::Inspect;
+          self.refresh();
+          self.feedback = format!("Factory {building} placed. Choose its recipe.");
         }
-      }
-      ControlAction::ToggleScenarioPicker => {
-        self.scenario_picker_open = !self.scenario_picker_open;
-      }
-      ControlAction::SelectWorld(index) => {
-        self.select_world(index);
-        self.scenario_picker_open = false;
+        Err(error) => self.feedback = error.to_string(),
+      },
+      ToolMode::Inspect => {
+        self.selected_building = self
+          .snapshot
+          .buildings
+          .iter()
+          .find(|building| building.position == cell)
+          .map(|building| building.id);
+        self.feedback = inspect_cell(&self.snapshot, cell);
       }
     }
   }
 
-  fn select_world(&mut self, index: usize) {
-    self.world_index = index % WORLD_SCENARIOS.len();
-    self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
-    self.snapshot = self.game.snapshot(Vec::new());
-    self.snapshot_revision = self.snapshot_revision.wrapping_add(1);
-    self.accumulated_seconds = 0.0;
-    self.scene_revision += 1;
+  fn configure_selected(&mut self, recipe: CompactRecipe) {
+    let Some(building) = self.selected_building else {
+      self.feedback = "Select a factory before assigning a recipe.".into();
+      return;
+    };
+    match self.game.configure_building(building, recipe) {
+      Ok(()) => {
+        self.refresh();
+        self.feedback = format!("Factory {building} now makes {}.", recipe.name());
+      }
+      Err(error) => self.feedback = error.to_string(),
+    }
   }
-}
-
-fn scenario_game(scenario: ScenarioId) -> GameState {
-  GameState::new(ContentDatabase::starter(), scenario).expect("viewer scenario is valid")
-}
-
-#[derive(Resource, Default)]
-struct ProjectionScene {
-  revision: u64,
-}
-
-#[derive(Resource, Default)]
-struct ProductionFeedback {
-  scene_revision: u64,
-  crafted: BTreeMap<String, u32>,
 }
 
 #[derive(Resource)]
 struct PlayerView {
-  position: GridPosition,
+  center: Vec2,
   zoom_level: u8,
-  scene_revision: u64,
 }
 
 impl Default for PlayerView {
   fn default() -> Self {
     Self {
-      position: GridPosition { x: 0, y: 0 },
+      center: Vec2::ZERO,
       zoom_level: MAX_ZOOM_LEVEL,
-      scene_revision: u64::MAX,
     }
   }
 }
 
-#[derive(Default)]
-struct InputRepeatState<T> {
-  direction: T,
-  held_seconds: f32,
-  next_repeat_seconds: f32,
-}
-
-#[derive(Component)]
-struct ProjectionEntity;
-
-#[derive(Component)]
-struct NodeVisual(NodeId);
-
-#[derive(Component)]
-struct NodeActivityVisual(NodeActivity);
-
-#[derive(Component)]
-struct NodeFallback;
-
-#[derive(Component)]
-struct NodeLabel(NodeId);
-
-#[derive(Component)]
-struct DrillArt(NodeId);
-
-#[derive(Component)]
-struct HaulerArt(HaulerId);
-
-#[derive(Component)]
-struct RouteVisual(NodeId);
-
-#[derive(Component)]
-struct RouteDash {
-  node: NodeId,
-  outer: Vec2,
-  road: Vec2,
-  offset: f32,
-}
-
-#[derive(Component)]
-struct HaulerLabel(HaulerId);
-
-#[derive(Component)]
-struct HaulerTarget(Vec2);
-
-#[derive(Component)]
-struct CargoBadge(HaulerId);
-
-#[derive(Component)]
-struct CargoArt(HaulerId);
-
-#[derive(Component)]
-struct CraftGaugeFill {
-  node: NodeId,
-  left: f32,
-  max_width: f32,
-}
-
-#[derive(Component)]
-struct PowerGaugeFill {
-  node: NodeId,
-  left: f32,
-  max_width: f32,
-}
-
-#[derive(Component)]
-struct OutputChip {
-  velocity: Vec2,
-  remaining: f32,
-}
-
-#[derive(Component)]
-struct HudText;
-
-#[derive(Component)]
-struct HudTitleText;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum HudField {
-  Resources,
-  Materials,
-  Power,
-}
-
-#[derive(Component)]
-struct HudValueText(HudField);
-
-#[derive(Component)]
-struct ResourceCountText(ItemId);
-
-#[derive(Component)]
-struct StatusBatteryFill;
-
-#[derive(Component)]
-struct StatusBar;
+#[derive(Resource, Default)]
+struct HoverCell(Option<GridPosition>);
 
 #[derive(Component)]
 struct MainCamera;
 
 #[derive(Component)]
-struct PlayerCursor;
+struct DynamicProjection;
 
 #[derive(Component)]
-struct Annotation;
-
-#[derive(Component)]
-struct WorldDetail;
-
-#[derive(Component)]
-struct ControlDeckContent;
-
-#[derive(Component)]
-struct ControlDeck;
-
-#[derive(Component)]
-struct DeckToggleLabel;
-
-#[derive(Component)]
-struct DeckTitle;
-
-#[derive(Component)]
-struct ScenarioPickerLabel;
-
-#[derive(Component)]
-struct ScenarioPickerOptions;
-
-#[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
-enum ControlAction {
-  TogglePause,
-  Step,
-  Reset,
-  ToggleSpeed,
-  ToggleAnnotations,
-  ToggleScenarioPicker,
-  SelectWorld(usize),
+struct TruckVisual {
+  id: u16,
+  target: Vec2,
 }
 
-impl ControlAction {
-  fn is_selected(self, host: &SimHost) -> bool {
-    match self {
-      Self::TogglePause => host.paused,
-      Self::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
-      Self::ToggleAnnotations => !host.annotations_visible,
-      Self::ToggleScenarioPicker => host.scenario_picker_open,
-      Self::SelectWorld(index) => host.world_index == index,
-      Self::Step | Self::Reset => false,
-    }
-  }
-}
+#[derive(Component)]
+struct HoverCursor;
 
 #[derive(Component)]
 struct ControlButton(ControlAction);
 
-fn setup(
-  mut commands: Commands,
-  host: Res<SimHost>,
-  art: Res<FactoryArt>,
-  mut projection_scene: ResMut<ProjectionScene>,
-) {
+#[derive(Component)]
+struct StatusCount(ItemId);
+
+#[derive(Component)]
+struct MarketStatusText;
+
+#[derive(Component)]
+struct PermitText;
+
+#[derive(Component)]
+struct SelectionText;
+
+#[derive(Component)]
+struct FeedbackText;
+
+fn setup(mut commands: Commands, art: Res<FactoryArt>) {
   commands.spawn((Camera2d, MainCamera));
-
-  spawn_projection(&mut commands, &host.snapshot, &art);
-  projection_scene.revision = host.scene_revision;
-
-  spawn_status_bar(&mut commands, &art);
+  spawn_ground(&mut commands, &art);
   commands.spawn((
     Sprite::from_color(
-      Color::srgba(0.95, 0.86, 0.32, 0.28),
-      Vec2::new(150.0, 100.0),
+      Color::srgba(0.35, 0.85, 0.62, 0.24),
+      Vec2::splat(GROUND_SIZE),
     ),
-    Transform::from_xyz(0.0, 0.0, 2.7),
-    PlayerCursor,
-    Annotation,
+    Transform::from_xyz(0.0, 0.0, 8.0),
+    Visibility::Hidden,
+    HoverCursor,
   ));
-  spawn_control_deck(&mut commands);
+  spawn_top_bar(&mut commands, &art);
+  spawn_control_panel(&mut commands);
 }
 
-fn spawn_status_bar(commands: &mut Commands, art: &FactoryArt) {
+fn spawn_ground(commands: &mut Commands, art: &FactoryArt) {
+  for y in 0..COMPACT_WORLD_HEIGHT {
+    for x in 0..COMPACT_WORLD_WIDTH {
+      let cell = GridPosition { x, y };
+      let position = grid_to_world(cell);
+      commands.spawn((
+        Sprite {
+          image: art.ground.clone(),
+          custom_size: Some(Vec2::splat(GROUND_SIZE)),
+          ..default()
+        },
+        Transform::from_xyz(position.x, position.y, 0.0),
+      ));
+    }
+  }
+}
+
+fn spawn_top_bar(commands: &mut Commands, art: &FactoryArt) {
   commands
     .spawn((
       Node {
         position_type: PositionType::Absolute,
-        left: px(0),
         top: px(0),
-        width: percent(100),
-        height: px(88),
-        flex_direction: FlexDirection::Row,
-        align_items: AlignItems::Stretch,
+        left: px(0),
+        right: px(0),
+        height: px(TOP_BAR_HEIGHT),
         padding: UiRect::axes(px(18), px(10)),
         border: UiRect {
           bottom: px(1),
           ..default()
         },
+        flex_direction: FlexDirection::Row,
+        column_gap: px(18),
         ..default()
       },
-      BackgroundColor(Color::srgba(0.035, 0.045, 0.065, 0.96)),
+      BackgroundColor(TOP_BACKGROUND),
       BorderColor::all(BUTTON_BORDER),
-      GlobalZIndex(90),
-      Annotation,
-      StatusBar,
+      GlobalZIndex(100),
     ))
-    .with_children(|panel| {
-      panel
+    .with_children(|bar| {
+      bar
         .spawn(Node {
-          width: px(220),
-          height: percent(100),
+          width: px(250),
           flex_shrink: 0.0,
           flex_direction: FlexDirection::Column,
           justify_content: JustifyContent::Center,
-          row_gap: px(3),
-          padding: UiRect {
-            right: px(16),
-            ..default()
-          },
+          row_gap: px(4),
           ..default()
         })
         .with_children(|title| {
           title.spawn((
             Text::new("FACTORY GAME"),
             TextFont {
-              font_size: FontSize::Px(STATUS_TITLE_FONT_SIZE),
+              font_size: FontSize::Px(24.0),
               ..default()
             },
-            TextColor(Color::srgb(0.94, 0.96, 0.98)),
+            TextColor(TEXT_PRIMARY),
           ));
           title.spawn((
-            Text::new(""),
+            Text::new(COMPACT_SCENARIO_NAME.to_uppercase()),
             TextFont {
-              font_size: FontSize::Px(STATUS_SUBTITLE_FONT_SIZE),
+              font_size: FontSize::Px(15.0),
               ..default()
             },
-            TextLayout::no_wrap(),
-            TextColor(BUTTON_ACTIVE),
-            Node {
-              width: percent(100),
-              overflow: Overflow::clip_x(),
-              ..default()
-            },
-            HudText,
-            HudTitleText,
+            TextColor(ACCENT_GREEN),
           ));
         });
-      panel
-        .spawn((
-          Node {
-            height: percent(100),
-            min_width: px(0),
-            flex_grow: 1.0,
-            flex_direction: FlexDirection::Column,
-            border: UiRect {
-              left: px(1),
-              ..default()
-            },
-            overflow: Overflow::clip(),
+      bar
+        .spawn(Node {
+          flex_grow: 1.0,
+          min_width: px(0),
+          flex_direction: FlexDirection::Column,
+          justify_content: JustifyContent::Center,
+          border: UiRect {
+            left: px(1),
             ..default()
           },
-          BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
-        ))
-        .with_children(|stack| {
-          for (index, (field, accent)) in status_metrics().into_iter().enumerate() {
-            spawn_status_metric(stack, field, accent, index > 0, art);
-          }
+          ..default()
+        })
+        .with_children(|rows| {
+          spawn_stock_row(
+            rows,
+            "RESOURCES",
+            ACCENT_ORANGE,
+            &[
+              (IRON_ORE, Some(art.iron_ore.clone())),
+              (COPPER_ORE, Some(art.copper_deposit.clone())),
+            ],
+            false,
+          );
+          spawn_stock_row(
+            rows,
+            "MATERIALS",
+            ACCENT_GOLD,
+            &[
+              (IRON_BARS, Some(art.iron_bars.clone())),
+              (COPPER_BARS, None),
+            ],
+            true,
+          );
+          rows
+            .spawn((status_row_node(true), BorderColor::all(BUTTON_BORDER)))
+            .with_children(|row| {
+              spawn_status_label(row, "MARKET", ACCENT_GREEN);
+              row.spawn((
+                Text::new("DEMAND 4 // SOLD 0 // $0"),
+                status_value_font(),
+                TextColor(TEXT_PRIMARY),
+                MarketStatusText,
+              ));
+            });
         });
     });
 }
 
-fn status_metrics() -> [(HudField, Color); 3] {
-  [
-    (HudField::Resources, Color::srgb(0.96, 0.58, 0.28)),
-    (HudField::Materials, Color::srgb(0.95, 0.78, 0.36)),
-    (HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
-  ]
-}
-
-fn status_label(field: HudField) -> &'static str {
-  match field {
-    HudField::Resources => "RESOURCES",
-    HudField::Materials => "MATERIALS",
-    HudField::Power => "POWER",
-  }
-}
-
-fn status_resource_items() -> [ItemId; 4] {
-  [IRON_ORE, COPPER_ORE, COAL, STONE]
-}
-
-fn spawn_status_metric(
+fn spawn_stock_row(
   parent: &mut ChildSpawnerCommands,
-  field: HudField,
+  label: &'static str,
   accent: Color,
+  items: &[(ItemId, Option<Handle<Image>>)],
   divided: bool,
-  art: &FactoryArt,
 ) {
   parent
-    .spawn((
-      status_metric_node(divided),
-      BorderColor::all(Color::srgba(0.34, 0.39, 0.48, 0.58)),
-    ))
-    .with_children(|metric| {
-      metric.spawn((
-        Text::new(status_label(field)),
-        TextFont {
-          font_size: FontSize::Px(STATUS_LABEL_FONT_SIZE),
-          ..default()
-        },
-        TextColor(accent),
-        Node {
-          width: px(STATUS_LABEL_WIDTH),
-          flex_shrink: 0.0,
-          ..default()
-        },
-      ));
-      if field == HudField::Power {
-        spawn_status_battery_icon(metric, accent);
-      }
-      if field == HudField::Resources {
-        spawn_resource_counts(metric, art);
-      } else {
-        metric.spawn((
-          Text::new(""),
-          TextFont {
-            font_size: FontSize::Px(STATUS_VALUE_FONT_SIZE),
-            ..default()
-          },
-          TextLayout::no_wrap(),
-          TextColor(Color::srgb(0.91, 0.92, 0.94)),
-          Node {
-            flex_grow: 1.0,
-            min_width: px(0),
-            overflow: Overflow::clip_x(),
-            ..default()
-          },
-          HudText,
-          HudValueText(field),
+    .spawn((status_row_node(divided), BorderColor::all(BUTTON_BORDER)))
+    .with_children(|row| {
+      spawn_status_label(row, label, accent);
+      for (index, (item, image)) in items.iter().enumerate() {
+        if index > 0 {
+          row.spawn((
+            Text::new(INLINE_SEPARATOR.trim()),
+            TextFont {
+              font_size: FontSize::Px(14.0),
+              ..default()
+            },
+            TextColor(TEXT_MUTED),
+          ));
+        }
+        if let Some(image) = image {
+          row.spawn((
+            ImageNode::new(image.clone()),
+            Node {
+              width: px(19),
+              height: px(19),
+              flex_shrink: 0.0,
+              ..default()
+            },
+          ));
+        } else {
+          row.spawn((
+            Text::new(item_name(*item).to_uppercase()),
+            TextFont {
+              font_size: FontSize::Px(13.0),
+              ..default()
+            },
+            TextColor(TEXT_MUTED),
+          ));
+        }
+        row.spawn((
+          Text::new("0"),
+          status_value_font(),
+          TextColor(TEXT_PRIMARY),
+          StatusCount(*item),
         ));
       }
     });
 }
 
-fn spawn_status_battery_icon(parent: &mut ChildSpawnerCommands, accent: Color) {
-  parent
-    .spawn(Node {
-      width: px(STATUS_POWER_LABEL_WIDTH),
-      height: px(14),
-      flex_shrink: 0.0,
-      flex_direction: FlexDirection::Row,
-      align_items: AlignItems::Center,
-      column_gap: px(2),
-      ..default()
-    })
-    .with_children(|icon| {
-      icon
-        .spawn((
-          Node {
-            width: px(20),
-            height: px(14),
-            padding: UiRect::all(px(2)),
-            border: UiRect::all(px(1.5)),
-            overflow: Overflow::clip(),
-            ..default()
-          },
-          BorderColor::all(accent),
-        ))
-        .with_children(|body| {
-          body.spawn((
-            Node {
-              width: percent(0),
-              height: percent(100),
-              ..default()
-            },
-            BackgroundColor(accent),
-            StatusBatteryFill,
-          ));
-        });
-      icon.spawn((
-        Node {
-          width: px(3),
-          height: px(8),
-          ..default()
-        },
-        BackgroundColor(accent),
-      ));
-    });
-}
-
-fn spawn_resource_counts(parent: &mut ChildSpawnerCommands, art: &FactoryArt) {
-  parent
-    .spawn(Node {
-      min_width: px(0),
-      flex_grow: 1.0,
-      flex_direction: FlexDirection::Row,
-      align_items: AlignItems::Center,
-      column_gap: px(8),
-      overflow: Overflow::clip_x(),
-      ..default()
-    })
-    .with_children(|strip| {
-      for (index, item) in status_resource_items().into_iter().enumerate() {
-        if index > 0 {
-          strip.spawn((
-            Text::new(INLINE_SEPARATOR.trim()),
-            TextFont {
-              font_size: FontSize::Px(STATUS_SEPARATOR_FONT_SIZE),
-              ..default()
-            },
-            TextColor(Color::srgb(0.42, 0.47, 0.55)),
-          ));
-        }
-        let image = art
-          .resource(item)
-          .expect("status resources have accepted art")
-          .clone();
-        strip
-          .spawn(Node {
-            flex_shrink: 0.0,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            column_gap: px(4),
-            ..default()
-          })
-          .with_children(|entry| {
-            entry.spawn((
-              ImageNode::new(image),
-              Node {
-                width: px(RESOURCE_ICON_SIZE),
-                height: px(RESOURCE_ICON_SIZE),
-                flex_shrink: 0.0,
-                ..default()
-              },
-            ));
-            entry.spawn((
-              Text::new("0"),
-              TextFont {
-                font_size: FontSize::Px(STATUS_VALUE_FONT_SIZE),
-                ..default()
-              },
-              TextColor(Color::srgb(0.91, 0.92, 0.94)),
-              ResourceCountText(item),
-            ));
-          });
-      }
-    });
-}
-
-fn status_metric_node(divided: bool) -> Node {
+fn status_row_node(divided: bool) -> Node {
   Node {
     width: percent(100),
-    min_width: px(0),
     min_height: px(0),
     flex_grow: 1.0,
     flex_direction: FlexDirection::Row,
-    justify_content: JustifyContent::Center,
     align_items: AlignItems::Center,
-    column_gap: px(12),
-    padding: UiRect::axes(px(12), px(0)),
+    column_gap: px(7),
+    padding: UiRect::axes(px(14), px(0)),
     border: UiRect {
       top: px(if divided { 1 } else { 0 }),
       ..default()
     },
-    overflow: Overflow::clip(),
+    overflow: Overflow::clip_x(),
     ..default()
   }
 }
 
-fn spawn_control_deck(commands: &mut Commands) {
+fn spawn_status_label(parent: &mut ChildSpawnerCommands, label: &'static str, color: Color) {
+  parent.spawn((
+    Text::new(label),
+    TextFont {
+      font_size: FontSize::Px(15.0),
+      ..default()
+    },
+    TextColor(color),
+    Node {
+      width: px(104),
+      flex_shrink: 0.0,
+      ..default()
+    },
+  ));
+}
+
+fn status_value_font() -> TextFont {
+  TextFont {
+    font_size: FontSize::Px(16.0),
+    ..default()
+  }
+}
+
+fn spawn_control_panel(commands: &mut Commands) {
   commands
     .spawn((
       Node {
         position_type: PositionType::Absolute,
         right: px(18),
         bottom: px(18),
-        width: px(CONTROL_DECK_WIDTH),
+        width: px(PANEL_WIDTH),
         flex_direction: FlexDirection::Column,
         row_gap: px(8),
-        padding: UiRect::all(px(10)),
+        padding: UiRect::all(px(12)),
         border: UiRect::all(px(1)),
         ..default()
       },
-      BackgroundColor(Color::srgba(0.035, 0.045, 0.065, 0.96)),
+      BackgroundColor(PANEL_BACKGROUND),
       BorderColor::all(BUTTON_BORDER),
       GlobalZIndex(100),
-      ControlDeck,
     ))
     .with_children(|panel| {
-      panel
-        .spawn(Node {
-          width: percent(100),
-          height: px(30),
-          flex_direction: FlexDirection::Row,
-          align_items: AlignItems::Center,
-          column_gap: px(8),
+      panel.spawn((
+        Text::new("NETWORK PLANNER"),
+        TextFont {
+          font_size: FontSize::Px(13.0),
           ..default()
-        })
-        .with_children(|header| {
-          header.spawn((
-            Text::new("FACTORY CONTROL"),
-            TextFont {
-              font_size: FontSize::Px(11.0),
-              ..default()
-            },
-            TextColor(BUTTON_ACTIVE),
-            Node {
-              flex_grow: 1.0,
-              ..default()
-            },
-            DeckTitle,
-          ));
-          header.spawn((
-            Button,
-            ControlButton(ControlAction::ToggleAnnotations),
-            Node {
-              width: px(92),
-              height: percent(100),
-              flex_shrink: 0.0,
-              border: UiRect::all(px(1)),
-              justify_content: JustifyContent::Center,
-              align_items: AlignItems::Center,
-              padding: UiRect::axes(px(5), px(2)),
-              ..default()
-            },
-            BackgroundColor(BUTTON_NORMAL),
-            BorderColor::all(BUTTON_BORDER),
-            children![(
-              Text::new("HIDE UI"),
-              TextFont {
-                font_size: FontSize::Px(11.0),
-                ..default()
-              },
-              TextColor(Color::srgb(0.92, 0.94, 0.97)),
-              DeckToggleLabel,
-            )],
-          ));
-        });
-      panel
-        .spawn((
-          Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: px(5),
-            ..default()
-          },
-          ControlDeckContent,
-        ))
-        .with_children(|content| {
-          spawn_scenario_picker(content);
-          spawn_control_row(
-            content,
-            &[
-              (ControlAction::TogglePause, "PLAY / PAUSE"),
-              (ControlAction::Step, "STEP"),
-              (ControlAction::Reset, "RESET"),
-              (ControlAction::ToggleSpeed, "SPEED"),
-            ],
-          );
-        });
+        },
+        TextColor(ACCENT_GREEN),
+      ));
+      panel.spawn((
+        Text::new("BUILDINGS 0 / 2 // NEXT AT 20 SALES"),
+        TextFont {
+          font_size: FontSize::Px(14.0),
+          ..default()
+        },
+        TextColor(TEXT_PRIMARY),
+        PermitText,
+      ));
+      spawn_button_row(
+        panel,
+        &[
+          (ControlAction::SetTool(ToolMode::Inspect), "INSPECT"),
+          (ControlAction::SetTool(ToolMode::Road), "ROAD"),
+          (ControlAction::SetTool(ToolMode::Erase), "ERASE"),
+          (ControlAction::SetTool(ToolMode::Building), "FACTORY"),
+        ],
+      );
+      panel.spawn((
+        Text::new("SELECTED // NONE"),
+        TextFont {
+          font_size: FontSize::Px(13.0),
+          ..default()
+        },
+        TextColor(TEXT_MUTED),
+        SelectionText,
+      ));
+      spawn_button_row(
+        panel,
+        &[
+          (
+            ControlAction::Configure(CompactRecipe::IronBars),
+            "IRON BARS",
+          ),
+          (
+            ControlAction::Configure(CompactRecipe::CopperBars),
+            "COPPER BARS",
+          ),
+        ],
+      );
+      spawn_button_row(
+        panel,
+        &[
+          (ControlAction::TogglePause, "PLAY"),
+          (ControlAction::Step, "STEP"),
+          (ControlAction::ToggleSpeed, "SPEED"),
+          (ControlAction::Reset, "RESET"),
+        ],
+      );
+      spawn_button_row(
+        panel,
+        &[
+          (ControlAction::ZoomIn, "ZOOM +"),
+          (ControlAction::ZoomOut, "ZOOM -"),
+        ],
+      );
+      panel.spawn((
+        Text::new("Draw a road from the warehouse apron toward a deposit."),
+        TextFont {
+          font_size: FontSize::Px(13.0),
+          ..default()
+        },
+        TextColor(ACCENT_GOLD),
+        Node {
+          min_height: px(34),
+          ..default()
+        },
+        FeedbackText,
+      ));
+      panel.spawn((
+        Text::new("1 INSPECT // 2 ROAD // 3 ERASE // 4 FACTORY // WASD PAN // WHEEL ZOOM"),
+        TextFont {
+          font_size: FontSize::Px(10.0),
+          ..default()
+        },
+        TextColor(TEXT_MUTED),
+      ));
     });
 }
 
-fn spawn_scenario_picker(parent: &mut ChildSpawnerCommands) {
-  parent.spawn((
-    Button,
-    ControlButton(ControlAction::ToggleScenarioPicker),
-    Node {
-      width: percent(100),
-      height: px(32),
-      flex_shrink: 0.0,
-      border: UiRect::all(px(1)),
-      justify_content: JustifyContent::FlexStart,
-      align_items: AlignItems::Center,
-      padding: UiRect::axes(px(9), px(2)),
-      ..default()
-    },
-    BackgroundColor(BUTTON_NORMAL),
-    BorderColor::all(BUTTON_BORDER),
-    children![(
-      Text::new("SCENARIO // V3 50X50 FACTORY WORLD  V"),
-      TextFont {
-        font_size: FontSize::Px(11.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.92, 0.94, 0.97)),
-      ScenarioPickerLabel,
-    )],
-  ));
-
-  let content = ContentDatabase::starter();
-  parent
-    .spawn((
-      Node {
-        width: percent(100),
-        display: Display::None,
-        flex_direction: FlexDirection::Column,
-        row_gap: px(3),
-        ..default()
-      },
-      ScenarioPickerOptions,
-    ))
-    .with_children(|options| {
-      for (index, scenario) in WORLD_SCENARIOS.iter().enumerate() {
-        let name = content.scenario(*scenario).name.to_uppercase();
-        options.spawn((
-          Button,
-          ControlButton(ControlAction::SelectWorld(index)),
-          Node {
-            width: percent(100),
-            height: px(28),
-            flex_shrink: 0.0,
-            border: UiRect::all(px(1)),
-            justify_content: JustifyContent::FlexStart,
-            align_items: AlignItems::Center,
-            padding: UiRect::axes(px(9), px(2)),
-            ..default()
-          },
-          BackgroundColor(BUTTON_NORMAL),
-          BorderColor::all(BUTTON_BORDER),
-          children![(
-            Text::new(name),
-            TextFont {
-              font_size: FontSize::Px(10.0),
-              ..default()
-            },
-            TextColor(Color::srgb(0.92, 0.94, 0.97)),
-          )],
-        ));
-      }
-    });
-}
-
-fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlAction, &'static str)]) {
+fn spawn_button_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlAction, &'static str)]) {
   parent
     .spawn(Node {
       width: percent(100),
-      height: px(30),
+      height: px(32),
       column_gap: px(4),
       ..default()
     })
@@ -999,6 +644,7 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
           ControlButton(*action),
           Node {
             height: percent(100),
+            min_width: px(0),
             flex_grow: 1.0,
             border: UiRect::all(px(1)),
             justify_content: JustifyContent::Center,
@@ -1014,863 +660,478 @@ fn spawn_control_row(parent: &mut ChildSpawnerCommands, buttons: &[(ControlActio
               font_size: FontSize::Px(11.0),
               ..default()
             },
-            TextColor(Color::srgb(0.92, 0.94, 0.97)),
+            TextColor(TEXT_PRIMARY),
           )],
         ));
       }
     });
 }
 
-fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &FactoryArt) {
-  spawn_ground(commands, snapshot, art);
-  spawn_connections(commands, snapshot);
-  for power_line in &snapshot.topology.power_lines {
-    let position = grid_to_world(*power_line);
-    commands.spawn((
-      Sprite::from_color(GRID_POWER_LINE, Vec2::new(78.0, 16.0)),
-      Transform::from_xyz(position.x, position.y, 0.9),
-      ProjectionEntity,
-    ));
-    commands.spawn((
-      Text2d::new("POWER"),
-      TextFont {
-        font_size: FontSize::Px(11.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.82, 0.97, 1.0)),
-      Transform::from_xyz(position.x, position.y, 1.0),
-      Annotation,
-      WorldDetail,
-      ProjectionEntity,
-    ));
-  }
-  for obstacle in &snapshot.topology.obstacles {
-    let position = grid_to_world(*obstacle);
-    commands.spawn((
-      Sprite::from_color(GRID_OBSTACLE, Vec2::splat(76.0)),
-      Transform::from_xyz(position.x, position.y, 0.8)
-        .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_4)),
-      ProjectionEntity,
-    ));
-    commands.spawn((
-      Text2d::new("BLOCKED"),
-      TextFont {
-        font_size: FontSize::Px(13.0),
-        ..default()
-      },
-      TextColor(Color::srgb(1.0, 0.76, 0.52)),
-      Transform::from_xyz(position.x, position.y, 1.0),
-      Annotation,
-      WorldDetail,
-      ProjectionEntity,
-    ));
-  }
-  for node in &snapshot.topology.nodes {
-    let position = grid_to_world(node.position);
-    let activity = node_activity(snapshot, node.id);
-    let size = match node.id {
-      NodeId::Source(_) => Vec2::new(124.0, 74.0),
-      NodeId::Road => Vec2::new(100.0, 34.0),
-      NodeId::Factory(_) => Vec2::new(132.0, 82.0),
-      NodeId::Generator(_) => Vec2::new(132.0, 82.0),
-      NodeId::Radar(_) => Vec2::new(132.0, 82.0),
-      NodeId::BuildSite(_) => Vec2::new(124.0, 74.0),
-      NodeId::Structure(_) => Vec2::new(132.0, 82.0),
-      NodeId::Transit(_) => Vec2::new(28.0, 28.0),
-    };
-    match node_presentation(snapshot, node) {
-      NodePresentation::Art(kind) => spawn_node_art(
-        commands,
-        art,
-        node.id,
-        activity,
-        kind,
-        position,
-        NODE_ART_SIZE,
-        1.2,
-      ),
-      NodePresentation::Fallback => {
-        commands.spawn((
-          Sprite::from_color(node_color_for_activity(node.id, activity), size),
-          Transform::from_xyz(position.x, position.y, 1.0),
-          NodeVisual(node.id),
-          NodeActivityVisual(activity),
-          NodeFallback,
-          ProjectionEntity,
-        ));
-      }
-    }
-    if drill_art_candidate(snapshot, node) {
-      spawn_drill_art(commands, art, snapshot, node, position);
-    }
-    let label_anchor = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
-      Anchor::BOTTOM_CENTER
-    } else {
-      Anchor::BOTTOM_LEFT
-    };
-    let label_x = if matches!(node.id, NodeId::Road | NodeId::Transit(_)) {
-      position.x
-    } else {
-      position.x - size.x / 2.0
-    };
-    commands.spawn((
-      Text2d::new(node_label_value(snapshot, node.id)),
-      TextFont {
-        font_size: FontSize::Px(15.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.96, 0.96, 0.94)),
-      Transform::from_xyz(label_x, position.y + size.y / 2.0 + 8.0, 3.0),
-      label_anchor,
-      NodeLabel(node.id),
-      Annotation,
-      WorldDetail,
-      ProjectionEntity,
-    ));
-    if matches!(node.id, NodeId::Factory(_)) {
-      spawn_craft_gauge(commands, snapshot, node.id, position);
-    } else if matches!(node.id, NodeId::Generator(_)) {
-      spawn_power_gauge(commands, snapshot, node.id, position);
-    }
-  }
-
-  for hauler in &snapshot.haulers {
-    let position = hauler_world_position(snapshot, hauler);
-    let mut truck = Sprite::from_image(art.truck.clone());
-    truck.custom_size = Some(Vec2::splat(TRUCK_ART_SIZE));
-    commands.spawn((
-      truck,
-      Transform::from_xyz(position.x, position.y, 2.2),
-      HaulerArt(hauler.id),
-      HaulerTarget(position),
-      ProjectionEntity,
-    ));
-    commands.spawn((
-      Sprite::from_color(
-        cargo_badge_color(hauler),
-        Vec2::splat(cargo_badge_size(hauler)),
-      ),
-      Transform::from_xyz(position.x, position.y, 2.5),
-      CargoBadge(hauler.id),
-      Annotation,
-      WorldDetail,
-      HaulerTarget(position),
-      ProjectionEntity,
-    ));
-    commands.spawn((
-      cargo_art_sprite(art, hauler),
-      Transform::from_xyz(position.x, position.y, 2.7),
-      CargoArt(hauler.id),
-      Annotation,
-      WorldDetail,
-      HaulerTarget(position),
-      ProjectionEntity,
-    ));
-    commands.spawn((
-      Text2d::new(hauler_label_value(hauler)),
-      TextFont {
-        font_size: FontSize::Px(14.0),
-        ..default()
-      },
-      TextColor(Color::srgb(0.72, 0.80, 0.96)),
-      Transform::from_xyz(position.x, position.y - 28.0, 3.0),
-      HaulerLabel(hauler.id),
-      Annotation,
-      WorldDetail,
-      HaulerTarget(Vec2::new(position.x, position.y - 28.0)),
-      ProjectionEntity,
-    ));
-  }
-}
-
-fn spawn_node_art(
-  commands: &mut Commands,
-  art: &FactoryArt,
-  node: NodeId,
-  activity: NodeActivity,
-  kind: NodeArtKind,
-  position: Vec2,
-  size: f32,
-  z: f32,
+fn handle_keyboard(
+  keys: Res<ButtonInput<KeyCode>>,
+  mut host: ResMut<SimHost>,
+  mut view: ResMut<PlayerView>,
 ) {
-  let (image, rotation) = art.node(kind);
-  let mut sprite = Sprite::from_image(image.clone());
-  sprite.custom_size = Some(Vec2::splat(size));
-  commands.spawn((
-    sprite,
-    Transform::from_xyz(position.x, position.y, z).with_rotation(rotation),
-    NodeVisual(node),
-    NodeActivityVisual(activity),
-    ProjectionEntity,
-  ));
-}
-
-fn spawn_drill_art(
-  commands: &mut Commands,
-  art: &FactoryArt,
-  snapshot: &TickSnapshot,
-  node: &TopologyNode,
-  position: Vec2,
-) {
-  let mut sprite = Sprite::from_image(art.mining_drill.clone());
-  configure_drill_art(&mut sprite, snapshot, node.id);
-  commands.spawn((
-    sprite,
-    Transform::from_xyz(position.x, position.y, 1.3),
-    DrillArt(node.id),
-    ProjectionEntity,
-  ));
-}
-
-fn spawn_ground(commands: &mut Commands, snapshot: &TickSnapshot, art: &FactoryArt) {
-  let mut ground = Sprite::from_image(art.ground.clone());
-  ground.custom_size = Some(world_art_size(
-    snapshot.topology.width,
-    snapshot.topology.height,
-  ));
-  let center = world_center(snapshot.topology.width, snapshot.topology.height);
-  commands.spawn((
-    ground,
-    Transform::from_xyz(center.x, center.y, -2.0),
-    ProjectionEntity,
-  ));
-}
-
-fn spawn_craft_gauge(
-  commands: &mut Commands,
-  snapshot: &TickSnapshot,
-  node: NodeId,
-  factory: Vec2,
-) {
-  let Some(factory_snapshot) = snapshot
-    .factories
-    .iter()
-    .find(|factory| factory.node == node)
-  else {
-    return;
-  };
-  let y = factory.y - 28.0;
-  let left = factory.x - CRAFT_GAUGE_WIDTH / 2.0;
-  let progress = craft_progress_fraction(
-    factory_snapshot.craft.craft_progress,
-    factory_snapshot.craft.craft_time,
-  );
-  let width = CRAFT_GAUGE_WIDTH * progress;
-  commands.spawn((
-    Sprite::from_color(
-      CRAFT_GAUGE_BACKGROUND,
-      Vec2::new(CRAFT_GAUGE_WIDTH + 4.0, 10.0),
-    ),
-    Transform::from_xyz(factory.x, y, 1.5),
-    Annotation,
-    WorldDetail,
-    ProjectionEntity,
-  ));
-  commands.spawn((
-    Sprite::from_color(CRAFT_GAUGE_FILL, Vec2::new(width, 6.0)),
-    Transform::from_xyz(left + width / 2.0, y, 1.6),
-    if width > 0.0 {
-      Visibility::Visible
-    } else {
-      Visibility::Hidden
-    },
-    CraftGaugeFill {
-      node,
-      left,
-      max_width: CRAFT_GAUGE_WIDTH,
-    },
-    Annotation,
-    WorldDetail,
-    ProjectionEntity,
-  ));
-}
-
-fn spawn_power_gauge(
-  commands: &mut Commands,
-  snapshot: &TickSnapshot,
-  node: NodeId,
-  generator_position: Vec2,
-) {
-  let Some(generator) = snapshot.power.as_ref().and_then(|power| {
-    power
-      .generators
-      .iter()
-      .find(|generator| generator.node == node)
-  }) else {
-    return;
-  };
-  let y = generator_position.y - 28.0;
-  let left = generator_position.x - POWER_GAUGE_WIDTH / 2.0;
-  let width = POWER_GAUGE_WIDTH * power_fraction(generator.energy, generator.capacity);
-  commands.spawn((
-    Sprite::from_color(
-      POWER_GAUGE_BACKGROUND,
-      Vec2::new(POWER_GAUGE_WIDTH + 4.0, 10.0),
-    ),
-    Transform::from_xyz(generator_position.x, y, 1.5),
-    Annotation,
-    WorldDetail,
-    ProjectionEntity,
-  ));
-  commands.spawn((
-    Sprite::from_color(POWER_GAUGE_FILL, Vec2::new(width, 6.0)),
-    Transform::from_xyz(left + width / 2.0, y, 1.6),
-    if width > 0.0 {
-      Visibility::Visible
-    } else {
-      Visibility::Hidden
-    },
-    PowerGaugeFill {
-      node,
-      left,
-      max_width: POWER_GAUGE_WIDTH,
-    },
-    Annotation,
-    WorldDetail,
-    ProjectionEntity,
-  ));
-}
-
-fn spawn_connections(commands: &mut Commands, snapshot: &TickSnapshot) {
-  if snapshot.topology.width > 20 || snapshot.topology.height > 20 {
-    return;
-  }
-  let road = snapshot
-    .topology
-    .nodes
-    .iter()
-    .find(|node| node.id == NodeId::Road)
-    .expect("starter topology contains a road");
-  let road_position = grid_to_world(road.position);
-
-  for node in snapshot
-    .topology
-    .nodes
-    .iter()
-    .filter(|node| node.id != NodeId::Road)
-  {
-    let position = grid_to_world(node.position);
-    let delta = road_position - position;
-    let midpoint = position + delta / 2.0;
-    commands.spawn((
-      Sprite::from_color(
-        route_color(snapshot, node.id),
-        Vec2::new(delta.length(), 5.0),
-      ),
-      Transform::from_xyz(midpoint.x, midpoint.y, 0.0)
-        .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
-      RouteVisual(node.id),
-      ProjectionEntity,
-    ));
-    for index in 0..ROUTE_DASH_COUNT {
-      let offset = index as f32 / ROUTE_DASH_COUNT as f32;
-      let dash_position = position.lerp(road_position, offset);
-      commands.spawn((
-        Sprite::from_color(ROUTE_DASH, Vec2::new(20.0, 3.0)),
-        Transform::from_xyz(dash_position.x, dash_position.y, 0.5)
-          .with_rotation(Quat::from_rotation_z(delta.y.atan2(delta.x))),
-        Visibility::Hidden,
-        RouteDash {
-          node: node.id,
-          outer: position,
-          road: road_position,
-          offset,
-        },
-        ProjectionEntity,
-      ));
-    }
-  }
-}
-
-fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
   for (key, action) in [
     (KeyCode::Space, ControlAction::TogglePause),
     (KeyCode::KeyN, ControlAction::Step),
     (KeyCode::KeyR, ControlAction::Reset),
     (KeyCode::KeyF, ControlAction::ToggleSpeed),
+    (KeyCode::Digit1, ControlAction::SetTool(ToolMode::Inspect)),
+    (KeyCode::Digit2, ControlAction::SetTool(ToolMode::Road)),
+    (KeyCode::Digit3, ControlAction::SetTool(ToolMode::Erase)),
+    (KeyCode::Digit4, ControlAction::SetTool(ToolMode::Building)),
+    (
+      KeyCode::KeyI,
+      ControlAction::Configure(CompactRecipe::IronBars),
+    ),
     (
       KeyCode::KeyC,
-      ControlAction::SelectWorld((host.world_index + 1) % WORLD_SCENARIOS.len()),
+      ControlAction::Configure(CompactRecipe::CopperBars),
     ),
+    (KeyCode::KeyQ, ControlAction::ZoomIn),
+    (KeyCode::KeyE, ControlAction::ZoomOut),
   ] {
     if keys.just_pressed(key) {
-      host.apply_control(action);
+      apply_control(action, &mut host, &mut view);
     }
   }
-}
-
-fn handle_player_view(
-  keys: Res<ButtonInput<KeyCode>>,
-  time: Res<Time>,
-  mut mouse_wheel: MessageReader<MouseWheel>,
-  host: Res<SimHost>,
-  mut view: ResMut<PlayerView>,
-  mut pan_repeat: Local<InputRepeatState<IVec2>>,
-  mut zoom_repeat: Local<InputRepeatState<i8>>,
-  window: Single<&Window>,
-  mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
-  mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
-) {
-  if view.scene_revision != host.scene_revision {
-    view.position = initial_player_position(&host.snapshot);
-    view.zoom_level = MAX_ZOOM_LEVEL;
-    view.scene_revision = host.scene_revision;
-    *pan_repeat = InputRepeatState::default();
-    *zoom_repeat = InputRepeatState::default();
-  }
-
-  let pan_distance = if keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight) {
-    10
-  } else {
-    1
-  };
-  let move_right = keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight);
-  let move_left = keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft);
-  let move_up = keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp);
-  let move_down = keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown);
-  let direction = IVec2::new(
-    i32::from(move_right) - i32::from(move_left),
-    i32::from(move_up) - i32::from(move_down),
-  );
-  let repeat_steps = repeated_input_steps(&mut pan_repeat, direction, time.delta_secs());
-  let horizontal = pan_distance * direction.x * i32::from(repeat_steps);
-  let vertical = pan_distance * direction.y * i32::from(repeat_steps);
-  let next_position = move_player_focus(
-    view.position,
-    horizontal,
-    vertical,
-    host.snapshot.topology.width,
-    host.snapshot.topology.height,
-  );
-  if next_position != view.position {
-    view.position = next_position;
-  }
-
-  let wheel_delta = mouse_wheel.read().map(|event| event.y).sum::<f32>();
-  let zoom_direction =
-    i8::from(keys.pressed(KeyCode::KeyQ)) - i8::from(keys.pressed(KeyCode::KeyE));
-  let zoom_steps = repeated_input_steps(&mut zoom_repeat, zoom_direction, time.delta_secs());
-  let mut next_zoom = move_zoom_level(view.zoom_level, zoom_direction, zoom_steps);
-  let wheel_direction = i8::from(wheel_delta < 0.0) - i8::from(wheel_delta > 0.0);
-  next_zoom = move_zoom_level(next_zoom, wheel_direction, u8::from(wheel_direction != 0));
-  if keys.just_pressed(KeyCode::KeyO) {
-    next_zoom = if next_zoom == MAX_ZOOM_LEVEL {
-      MIN_ZOOM_LEVEL
-    } else {
-      MAX_ZOOM_LEVEL
-    };
-  }
-  if next_zoom != view.zoom_level {
-    view.zoom_level = next_zoom;
-  }
-
-  let focused_world = grid_to_world(view.position);
-  let camera_world = if view.zoom_level == MAX_ZOOM_LEVEL {
-    world_center(host.snapshot.topology.width, host.snapshot.topology.height)
-  } else {
-    Vec2::new(focused_world.x, focused_world.y - CAMERA_UI_OFFSET_Y)
-  };
-  camera.0.translation.x = camera_world.x;
-  camera.0.translation.y = camera_world.y;
-  cursor.translation.x = focused_world.x;
-  cursor.translation.y = focused_world.y;
-  if let Projection::Orthographic(projection) = &mut *camera.1 {
-    projection.scale = player_zoom_scale(
-      view.zoom_level,
-      host.snapshot.topology.width,
-      host.snapshot.topology.height,
-      window.width(),
-      window.height(),
-    );
+  if keys.just_pressed(KeyCode::Escape) {
+    host.tool = ToolMode::Inspect;
+    host.selected_building = None;
+    host.feedback = "Inspect mode.".into();
   }
 }
 
 fn handle_control_buttons(
   buttons: Query<(&Interaction, &ControlButton), (Changed<Interaction>, With<Button>)>,
   mut host: ResMut<SimHost>,
+  mut view: ResMut<PlayerView>,
 ) {
   for (interaction, button) in &buttons {
     if *interaction == Interaction::Pressed {
-      host.apply_control(button.0);
+      apply_control(button.0, &mut host, &mut view);
     }
   }
+}
+
+fn apply_control(action: ControlAction, host: &mut SimHost, view: &mut PlayerView) {
+  match action {
+    ControlAction::SetTool(tool) => {
+      host.tool = tool;
+      host.feedback = format!("{} mode.", tool.label());
+    }
+    ControlAction::Configure(recipe) => host.configure_selected(recipe),
+    ControlAction::TogglePause => {
+      host.paused = !host.paused;
+      host.accumulated_seconds = 0.0;
+      host.feedback = if host.paused {
+        "Simulation paused. Planning edits remain available.".into()
+      } else {
+        "Simulation running. Trucks dispatch automatically.".into()
+      };
+    }
+    ControlAction::Step => {
+      host.paused = true;
+      host.step_once();
+    }
+    ControlAction::Reset => {
+      host.reset();
+      *view = PlayerView::default();
+    }
+    ControlAction::ToggleSpeed => {
+      host.ticks_per_second = if host.ticks_per_second == NORMAL_TICKS_PER_SECOND {
+        FAST_TICKS_PER_SECOND
+      } else {
+        NORMAL_TICKS_PER_SECOND
+      };
+      host.feedback = format!("Simulation speed {}x.", host.ticks_per_second / 2.0);
+    }
+    ControlAction::ZoomIn => {
+      view.zoom_level = view.zoom_level.saturating_sub(1).max(MIN_ZOOM_LEVEL);
+    }
+    ControlAction::ZoomOut => {
+      view.zoom_level = view.zoom_level.saturating_add(1).min(MAX_ZOOM_LEVEL);
+    }
+  }
+}
+
+fn update_camera(
+  keys: Res<ButtonInput<KeyCode>>,
+  time: Res<Time>,
+  mut wheel: MessageReader<MouseWheel>,
+  window: Single<&Window>,
+  mut view: ResMut<PlayerView>,
+  mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
+) {
+  let wheel_delta = wheel.read().map(|event| event.y).sum::<f32>();
+  if wheel_delta > 0.0 {
+    view.zoom_level = view.zoom_level.saturating_sub(1).max(MIN_ZOOM_LEVEL);
+  } else if wheel_delta < 0.0 {
+    view.zoom_level = view.zoom_level.saturating_add(1).min(MAX_ZOOM_LEVEL);
+  }
+
+  let direction = Vec2::new(
+    f32::from(keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight))
+      - f32::from(keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft)),
+    f32::from(keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp))
+      - f32::from(keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown)),
+  );
+  let scale = compact_zoom_scale(view.zoom_level, window.width(), window.height());
+  if direction != Vec2::ZERO && view.zoom_level < MAX_ZOOM_LEVEL {
+    view.center += direction.normalize() * 620.0 * scale * time.delta_secs();
+  }
+
+  let world_size = Vec2::new(
+    COMPACT_WORLD_WIDTH as f32 * CELL_SIZE,
+    COMPACT_WORLD_HEIGHT as f32 * CELL_SIZE,
+  );
+  let half_view = Vec2::new(
+    window.width() * scale,
+    (window.height() - TOP_BAR_HEIGHT) * scale,
+  ) / 2.0;
+  let limit = (world_size / 2.0 - half_view).max(Vec2::ZERO);
+  view.center.x = view.center.x.clamp(-limit.x, limit.x);
+  view.center.y = view.center.y.clamp(-limit.y, limit.y);
+  if view.zoom_level == MAX_ZOOM_LEVEL {
+    view.center = Vec2::ZERO;
+  }
+
+  camera.0.translation.x = view.center.x;
+  camera.0.translation.y = view.center.y + TOP_BAR_HEIGHT * scale / 2.0;
+  if let Projection::Orthographic(projection) = &mut *camera.1 {
+    projection.scale = scale;
+  }
+}
+
+fn handle_pointer_edits(
+  mouse: Res<ButtonInput<MouseButton>>,
+  touches: Res<Touches>,
+  window: Single<&Window>,
+  camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
+  button_interactions: Query<&Interaction, With<Button>>,
+  mut host: ResMut<SimHost>,
+  mut hover: ResMut<HoverCell>,
+  mut last_painted: Local<Option<GridPosition>>,
+) {
+  let touch = touches.iter().next();
+  let screen_position = touch
+    .map(|touch| touch.position())
+    .or_else(|| window.cursor_position());
+  let cell = screen_position.and_then(|position| {
+    camera
+      .0
+      .viewport_to_world_2d(camera.1, position)
+      .ok()
+      .and_then(world_to_grid)
+  });
+  hover.0 = cell;
+
+  let active = mouse.pressed(MouseButton::Left) || touch.is_some();
+  if !active {
+    *last_painted = None;
+    return;
+  }
+  if button_interactions
+    .iter()
+    .any(|interaction| *interaction != Interaction::None)
+  {
+    return;
+  }
+  let just_pressed =
+    mouse.just_pressed(MouseButton::Left) || touches.iter_just_pressed().next().is_some();
+  let paint_mode = matches!(host.tool, ToolMode::Road | ToolMode::Erase);
+  if !paint_mode && !just_pressed {
+    return;
+  }
+  let Some(cell) = cell else {
+    return;
+  };
+  if *last_painted == Some(cell) {
+    return;
+  }
+  host.edit_cell(cell);
+  *last_painted = Some(cell);
 }
 
 fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
   if host.paused {
     return;
   }
-
   host.accumulated_seconds += time.delta_secs();
-  let tick_interval = 1.0 / host.ticks_per_second;
+  let interval = 1.0 / host.ticks_per_second;
   let mut ticks = 0;
-  while host.accumulated_seconds >= tick_interval && ticks < MAX_TICKS_PER_FRAME {
-    host.accumulated_seconds -= tick_interval;
+  while host.accumulated_seconds >= interval && ticks < MAX_TICKS_PER_FRAME {
+    host.accumulated_seconds -= interval;
     host.step_once();
     ticks += 1;
   }
 }
 
-fn rebuild_projection(
+fn rebuild_dynamic_projection(
   mut commands: Commands,
   host: Res<SimHost>,
   art: Res<FactoryArt>,
-  mut projection_scene: ResMut<ProjectionScene>,
-  entities: Query<Entity, With<ProjectionEntity>>,
+  mut last_revision: Local<u64>,
+  entities: Query<Entity, With<DynamicProjection>>,
 ) {
-  if projection_scene.revision == host.scene_revision {
+  if *last_revision == host.snapshot_revision {
     return;
   }
-
+  *last_revision = host.snapshot_revision;
   for entity in &entities {
     commands.entity(entity).despawn();
   }
-  spawn_projection(&mut commands, &host.snapshot, &art);
-  projection_scene.revision = host.scene_revision;
+  spawn_dynamic(&mut commands, &host, &art);
 }
 
-fn project_snapshot(
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut hauler_art: Query<
-    (&HaulerArt, &mut HaulerTarget),
-    (Without<HaulerLabel>, Without<CargoBadge>, Without<CargoArt>),
-  >,
-  mut hauler_labels: Query<
-    (&HaulerLabel, &mut HaulerTarget),
-    (Without<HaulerArt>, Without<CargoBadge>, Without<CargoArt>),
-  >,
-  mut cargo_badges: Query<
-    (&CargoBadge, &mut HaulerTarget),
-    (Without<HaulerArt>, Without<HaulerLabel>, Without<CargoArt>),
-  >,
-  mut cargo_art: Query<
-    (&CargoArt, &mut HaulerTarget),
-    (
-      Without<HaulerArt>,
-      Without<HaulerLabel>,
-      Without<CargoBadge>,
-    ),
-  >,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  for (visual, mut target) in &mut hauler_art {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == visual.0)
-    {
-      target.0 = hauler_world_position(&host.snapshot, hauler);
-    }
-  }
-
-  for (label, mut target) in &mut hauler_labels {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == label.0)
-    {
-      let position = hauler_world_position(&host.snapshot, hauler);
-      target.0 = Vec2::new(position.x, position.y - 28.0);
-    }
-  }
-
-  for (badge, mut target) in &mut cargo_badges {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == badge.0)
-    {
-      target.0 = hauler_world_position(&host.snapshot, hauler);
-    }
-  }
-
-  for (cargo, mut target) in &mut cargo_art {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == cargo.0)
-    {
-      target.0 = hauler_world_position(&host.snapshot, hauler);
-    }
-  }
-}
-
-fn project_activity(
-  host: Res<SimHost>,
-  art: Res<FactoryArt>,
-  mut last_snapshot_revision: Local<u64>,
-  mut nodes: Query<
-    (
-      &NodeVisual,
-      &mut NodeActivityVisual,
-      &mut Sprite,
-      Option<&NodeFallback>,
-    ),
-    (Without<RouteVisual>, Without<CargoBadge>, Without<CargoArt>),
-  >,
-  mut routes: Query<
-    (&RouteVisual, &mut Sprite),
-    (Without<NodeVisual>, Without<CargoBadge>, Without<CargoArt>),
-  >,
-  mut cargo_badges: Query<
-    (&CargoBadge, &mut Sprite),
-    (Without<NodeVisual>, Without<RouteVisual>, Without<CargoArt>),
-  >,
-  mut cargo_art: Query<
-    (&CargoArt, &mut Sprite),
-    (
-      Without<NodeVisual>,
-      Without<RouteVisual>,
-      Without<CargoBadge>,
-    ),
-  >,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  for (visual, mut activity, mut sprite, fallback) in &mut nodes {
-    activity.0 = node_activity(&host.snapshot, visual.0);
-    if fallback.is_some() {
-      let color = node_color_for_activity(visual.0, activity.0);
-      if sprite.color != color {
-        sprite.color = color;
-      }
-    }
-  }
-  for (visual, mut sprite) in &mut routes {
-    sprite.color = route_color(&host.snapshot, visual.0);
-  }
-  for (badge, mut sprite) in &mut cargo_badges {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == badge.0)
-    {
-      sprite.color = cargo_badge_color(hauler);
-      sprite.custom_size = Some(Vec2::splat(cargo_badge_size(hauler)));
-    }
-  }
-  for (cargo, mut sprite) in &mut cargo_art {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == cargo.0)
-    {
-      configure_cargo_art(&mut sprite, &art, hauler);
-    }
-  }
-}
-
-fn project_deployed_art(
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut drills: Query<(&DrillArt, &mut Sprite)>,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  for (drill, mut sprite) in &mut drills {
-    configure_drill_art(&mut sprite, &host.snapshot, drill.0);
-  }
-}
-
-fn project_craft_gauge(
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut gauges: Query<(
-    &CraftGaugeFill,
-    &mut Sprite,
-    &mut Transform,
-    &mut Visibility,
-  )>,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
-    let Some(factory) = host
-      .snapshot
-      .factories
-      .iter()
-      .find(|factory| factory.node == gauge.node)
-    else {
-      continue;
-    };
-    let progress = craft_progress_fraction(factory.craft.craft_progress, factory.craft.craft_time);
-    let width = gauge.max_width * progress;
-    sprite.custom_size = Some(Vec2::new(width, 6.0));
-    transform.translation.x = gauge.left + width / 2.0;
-    *visibility = if width > 0.0 {
-      Visibility::Visible
-    } else {
-      Visibility::Hidden
-    };
-  }
-}
-
-fn project_power_gauge(
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut gauges: Query<(
-    &PowerGaugeFill,
-    &mut Sprite,
-    &mut Transform,
-    &mut Visibility,
-  )>,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-  let Some(power) = &host.snapshot.power else {
-    return;
-  };
-  for (gauge, mut sprite, mut transform, mut visibility) in &mut gauges {
-    let Some(generator) = power
-      .generators
-      .iter()
-      .find(|generator| generator.node == gauge.node)
-    else {
-      continue;
-    };
-    let progress = power_fraction(generator.energy, generator.capacity);
-    let width = gauge.max_width * progress;
-    sprite.custom_size = Some(Vec2::new(width, 6.0));
-    transform.translation.x = gauge.left + width / 2.0;
-    *visibility = if width > 0.0 {
-      Visibility::Visible
-    } else {
-      Visibility::Hidden
-    };
-  }
-}
-
-fn emit_output_chips(
-  mut commands: Commands,
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut feedback: ResMut<ProductionFeedback>,
-  chips: Query<(), With<OutputChip>>,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  let crafted = host.game.metrics().crafted;
-  let produced = if feedback.scene_revision == host.scene_revision {
-    crafted_output_delta(&feedback.crafted, &crafted)
-  } else {
-    0
-  };
-  feedback.scene_revision = host.scene_revision;
-  feedback.crafted = crafted;
-  if produced == 0 {
-    return;
-  }
-
-  let Some(factory) = host
-    .snapshot
-    .topology
-    .nodes
-    .iter()
-    .filter(|node| matches!(node.id, NodeId::Factory(_)))
-    .last()
-    .map(|node| grid_to_world(node.position))
-  else {
-    return;
-  };
-  let chip_count = OUTPUT_CHIP_COUNT.min(MAX_OUTPUT_CHIPS.saturating_sub(chips.iter().count()));
-  for index in 0..chip_count {
-    let offset = output_chip_offset(index);
-    let color = if index % 2 == 0 {
-      OUTPUT_CHIP_STONE
-    } else {
-      OUTPUT_CHIP_STEEL
-    };
+fn spawn_dynamic(commands: &mut Commands, host: &SimHost, art: &FactoryArt) {
+  for road in &host.snapshot.roads {
+    let position = grid_to_world(*road);
+    let horizontal = host.snapshot.roads.contains(&GridPosition {
+      x: road.x - 1,
+      y: road.y,
+    }) || host.snapshot.roads.contains(&GridPosition {
+      x: road.x + 1,
+      y: road.y,
+    });
     commands.spawn((
-      Sprite::from_color(color, Vec2::new(12.0, 5.0)),
-      Transform::from_xyz(factory.x + offset.x, factory.y + offset.y, 4.0),
-      OutputChip {
-        velocity: output_chip_velocity(index),
-        remaining: OUTPUT_CHIP_LIFETIME,
+      Sprite {
+        image: art.road.clone(),
+        custom_size: Some(Vec2::splat(88.0)),
+        ..default()
       },
-      ProjectionEntity,
+      Transform::from_xyz(position.x, position.y, 1.0).with_rotation(if horizontal {
+        Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)
+      } else {
+        Quat::IDENTITY
+      }),
+      DynamicProjection,
     ));
   }
+
+  for deposit in &host.snapshot.deposits {
+    let position = grid_to_world(deposit.position);
+    let image = if deposit.item == IRON_ORE {
+      art.iron_deposit.clone()
+    } else {
+      art.copper_deposit.clone()
+    };
+    commands.spawn((
+      Sprite {
+        image,
+        custom_size: Some(Vec2::splat(92.0)),
+        ..default()
+      },
+      Transform::from_xyz(position.x, position.y, 2.0),
+      DynamicProjection,
+    ));
+    commands.spawn((
+      Text2d::new(format!(
+        "{}\nstock {} // left {}",
+        item_name(deposit.item),
+        deposit.stockpile,
+        deposit.remaining
+      )),
+      TextFont {
+        font_size: FontSize::Px(12.0),
+        ..default()
+      },
+      TextColor(TEXT_PRIMARY),
+      Transform::from_xyz(position.x, position.y - 52.0, 3.0),
+      DynamicProjection,
+    ));
+  }
+
+  let warehouse = grid_to_world(host.snapshot.warehouse_position);
+  commands.spawn((
+    Sprite {
+      image: art.warehouse.clone(),
+      custom_size: Some(Vec2::splat(98.0)),
+      ..default()
+    },
+    Transform::from_xyz(warehouse.x, warehouse.y, 2.2),
+    DynamicProjection,
+  ));
+  commands.spawn((
+    Text2d::new("WAREHOUSE\nEXPORT HUB"),
+    TextFont {
+      font_size: FontSize::Px(13.0),
+      ..default()
+    },
+    TextColor(ACCENT_GREEN),
+    Transform::from_xyz(warehouse.x, warehouse.y - 54.0, 3.0),
+    DynamicProjection,
+  ));
+
+  for building in &host.snapshot.buildings {
+    let position = grid_to_world(building.position);
+    let image = match building.recipe {
+      Some(CompactRecipe::IronBars) => art.foundry.clone(),
+      _ => art.factory.clone(),
+    };
+    commands.spawn((
+      Sprite {
+        image,
+        custom_size: Some(Vec2::splat(94.0)),
+        ..default()
+      },
+      Transform::from_xyz(position.x, position.y, 2.2),
+      DynamicProjection,
+    ));
+    let recipe = building.recipe.map_or("CHOOSE RECIPE", CompactRecipe::name);
+    commands.spawn((
+      Text2d::new(format!(
+        "F{} // {}\nin {} // out {}",
+        building.id, recipe, building.input_stock, building.output_stock
+      )),
+      TextFont {
+        font_size: FontSize::Px(12.0),
+        ..default()
+      },
+      TextColor(if building.road_connected {
+        TEXT_PRIMARY
+      } else {
+        BUTTON_PRESSED
+      }),
+      Transform::from_xyz(position.x, position.y - 52.0, 3.0),
+      DynamicProjection,
+    ));
+    if host.selected_building == Some(building.id) {
+      commands.spawn((
+        Sprite::from_color(Color::srgba(0.48, 0.88, 0.62, 0.24), Vec2::splat(106.0)),
+        Transform::from_xyz(position.x, position.y, 2.1),
+        DynamicProjection,
+      ));
+    }
+  }
+
+  for truck in &host.snapshot.trucks {
+    for route in &truck.route {
+      let route_position = grid_to_world(*route);
+      commands.spawn((
+        Sprite::from_color(Color::srgba(0.95, 0.72, 0.24, 0.28), Vec2::splat(18.0)),
+        Transform::from_xyz(route_position.x, route_position.y, 3.1),
+        DynamicProjection,
+      ));
+    }
+    let position = grid_to_world(truck.position);
+    commands.spawn((
+      Sprite {
+        image: art.truck.clone(),
+        custom_size: Some(Vec2::splat(66.0)),
+        ..default()
+      },
+      Transform::from_xyz(position.x, position.y, 4.0),
+      TruckVisual {
+        id: truck.id,
+        target: position,
+      },
+      DynamicProjection,
+    ));
+    if let Some(item) = truck.cargo_item {
+      commands.spawn((
+        Text2d::new(format!("{} {}", item_name(item), truck.cargo_quantity)),
+        TextFont {
+          font_size: FontSize::Px(11.0),
+          ..default()
+        },
+        TextColor(ACCENT_GOLD),
+        Transform::from_xyz(position.x, position.y + 36.0, 4.5),
+        DynamicProjection,
+      ));
+    }
+  }
 }
 
-fn animate_activity(
+fn animate_trucks(
   time: Res<Time>,
   host: Res<SimHost>,
-  mut nodes: Query<(&NodeActivityVisual, &mut Transform), Without<RouteDash>>,
-  mut route_dashes: Query<(&RouteDash, &mut Transform, &mut Visibility), Without<NodeVisual>>,
+  mut trucks: Query<(&mut TruckVisual, &mut Transform)>,
 ) {
-  let elapsed = time.elapsed_secs();
-  let pulse = 1.0 + 0.045 * (elapsed * 5.0).sin().max(0.0);
-  for (activity, mut transform) in &mut nodes {
-    let scale = if activity.0 == NodeActivity::Idle {
-      Vec3::ONE
-    } else {
-      Vec3::splat(pulse)
-    };
-    if transform.scale != scale {
-      transform.scale = scale;
-    }
-  }
-
-  for (dash, mut transform, mut visibility) in &mut route_dashes {
-    let Some(direction) = route_direction(&host.snapshot, dash.node) else {
-      *visibility = Visibility::Hidden;
-      continue;
-    };
-    *visibility = Visibility::Visible;
-    let phase = (elapsed * ROUTE_DASH_SPEED + dash.offset) % 1.0;
-    let position = match direction {
-      RouteDirection::TowardRoad => dash.outer.lerp(dash.road, phase),
-      RouteDirection::AwayFromRoad => dash.road.lerp(dash.outer, phase),
-    };
-    transform.translation.x = position.x;
-    transform.translation.y = position.y;
-  }
-}
-
-fn animate_output_chips(
-  mut commands: Commands,
-  time: Res<Time>,
-  mut chips: Query<(Entity, &mut OutputChip, &mut Transform)>,
-) {
-  let delta = time.delta_secs();
-  for (entity, mut chip, mut transform) in &mut chips {
-    chip.remaining -= delta;
-    if chip.remaining <= 0.0 {
-      commands.entity(entity).despawn();
-      continue;
-    }
-    transform.translation.x += chip.velocity.x * delta;
-    transform.translation.y += chip.velocity.y * delta;
-    transform.scale = Vec3::splat((chip.remaining / OUTPUT_CHIP_LIFETIME).max(0.25));
-  }
-}
-
-fn animate_haulers(time: Res<Time>, mut haulers: Query<(&HaulerTarget, &mut Transform)>) {
   let blend = 1.0 - (-10.0 * time.delta_secs()).exp();
-  for (target, mut transform) in &mut haulers {
-    let position = transform.translation.truncate().lerp(target.0, blend);
+  for (mut visual, mut transform) in &mut trucks {
+    if let Some(truck) = host
+      .snapshot
+      .trucks
+      .iter()
+      .find(|truck| truck.id == visual.id)
+    {
+      visual.target = grid_to_world(truck.position);
+    }
+    let position = transform.translation.truncate().lerp(visual.target, blend);
     transform.translation.x = position.x;
     transform.translation.y = position.y;
   }
+}
+
+fn update_ui_text(
+  host: Res<SimHost>,
+  mut last_revision: Local<u64>,
+  mut texts: Query<(
+    &mut Text,
+    Option<&StatusCount>,
+    Option<&MarketStatusText>,
+    Option<&PermitText>,
+    Option<&SelectionText>,
+    Option<&FeedbackText>,
+  )>,
+) {
+  if *last_revision == host.snapshot_revision && !host.is_changed() {
+    return;
+  }
+  *last_revision = host.snapshot_revision;
+
+  for (mut text, count, market, permits, selection, feedback) in &mut texts {
+    if let Some(count) = count {
+      *text = Text::new(total_item(&host.snapshot, count.0).to_string());
+    } else if market.is_some() {
+      *text = Text::new(format!(
+        "DEMAND {}{}SOLD {}{}${}",
+        host.snapshot.market.remaining_demand,
+        INLINE_SEPARATOR,
+        host.snapshot.market.sold_total,
+        INLINE_SEPARATOR,
+        host.snapshot.market.revenue
+      ));
+    } else if permits.is_some() {
+      *text = Text::new(format!(
+        "BUILDINGS {} / {}{}{}",
+        host.snapshot.allowance.used,
+        host.snapshot.allowance.limit,
+        INLINE_SEPARATOR,
+        host.snapshot.allowance.next_unlock_at_sales.map_or_else(
+          || "ALL SLOTS UNLOCKED".into(),
+          |sales| format!("NEXT AT {sales} SALES")
+        )
+      ));
+    } else if selection.is_some() {
+      *text = Text::new(selected_building_text(&host));
+    } else if feedback.is_some() {
+      *text = Text::new(host.feedback.clone());
+    }
+  }
+}
+
+fn update_hover_cursor(
+  hover: Res<HoverCell>,
+  host: Res<SimHost>,
+  mut cursor: Single<(&mut Transform, &mut Visibility, &mut Sprite), With<HoverCursor>>,
+) {
+  let Some(cell) = hover.0 else {
+    *cursor.1 = Visibility::Hidden;
+    return;
+  };
+  *cursor.1 = Visibility::Visible;
+  let position = grid_to_world(cell);
+  cursor.0.translation.x = position.x;
+  cursor.0.translation.y = position.y;
+  cursor.2.color = match host.tool {
+    ToolMode::Inspect => Color::srgba(0.48, 0.88, 0.62, 0.24),
+    ToolMode::Road => Color::srgba(0.32, 0.68, 0.92, 0.28),
+    ToolMode::Erase => Color::srgba(0.92, 0.32, 0.28, 0.28),
+    ToolMode::Building => Color::srgba(0.95, 0.72, 0.24, 0.28),
+  };
 }
 
 fn style_control_buttons(
@@ -1883,7 +1144,22 @@ fn style_control_buttons(
   )>,
 ) {
   for (interaction, button, mut background, mut border) in &mut buttons {
-    let selected = button.0.is_selected(&host);
+    let selected = match button.0 {
+      ControlAction::SetTool(tool) => host.tool == tool,
+      ControlAction::Configure(recipe) => {
+        host.selected_building.and_then(|id| {
+          host
+            .snapshot
+            .buildings
+            .iter()
+            .find(|building| building.id == id)
+            .and_then(|building| building.recipe)
+        }) == Some(recipe)
+      }
+      ControlAction::TogglePause => !host.paused,
+      ControlAction::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
+      _ => false,
+    };
     background.0 = match interaction {
       Interaction::Pressed => BUTTON_PRESSED,
       Interaction::Hovered => BUTTON_HOVERED,
@@ -1898,1815 +1174,213 @@ fn style_control_buttons(
   }
 }
 
-fn sync_annotation_visibility(
-  host: Res<SimHost>,
-  mut last_visibility: Local<Option<bool>>,
-  mut annotations: Query<
-    &mut Visibility,
-    (With<Annotation>, Without<WorldDetail>, Without<DeckTitle>),
-  >,
-  mut deck: Single<&mut Node, (With<ControlDeck>, Without<ControlDeckContent>)>,
-  mut content: Single<&mut Node, (With<ControlDeckContent>, Without<ControlDeck>)>,
-  mut deck_titles: Query<&mut Visibility, (With<DeckTitle>, Without<Annotation>)>,
-  mut toggle_labels: Query<&mut Text, With<DeckToggleLabel>>,
-) {
-  if *last_visibility == Some(host.annotations_visible) {
-    return;
-  }
-  *last_visibility = Some(host.annotations_visible);
-
-  let visibility = if host.annotations_visible {
-    Visibility::Visible
-  } else {
-    Visibility::Hidden
-  };
-  for mut annotation in &mut annotations {
-    *annotation = visibility;
-  }
-
-  deck.width = if host.annotations_visible {
-    px(CONTROL_DECK_WIDTH)
-  } else {
-    px(COLLAPSED_CONTROL_DECK_WIDTH)
-  };
-  content.display = if host.annotations_visible {
-    Display::Flex
-  } else {
-    Display::None
-  };
-  for mut title in &mut deck_titles {
-    *title = if host.annotations_visible {
-      Visibility::Visible
-    } else {
-      Visibility::Hidden
-    };
-  }
-  for mut label in &mut toggle_labels {
-    *label = Text::new(if host.annotations_visible {
-      "HIDE UI"
-    } else {
-      "SHOW UI"
-    });
-  }
-}
-
-fn sync_scenario_picker(
-  host: Res<SimHost>,
-  mut label: Single<&mut Text, With<ScenarioPickerLabel>>,
-  mut options: Single<&mut Node, With<ScenarioPickerOptions>>,
-) {
-  let marker = if host.scenario_picker_open { "^" } else { "V" };
-  **label = Text::new(format!(
-    "SCENARIO // {}  {marker}",
-    host.snapshot.scenario.name.to_uppercase()
-  ));
-  options.display = if host.scenario_picker_open {
-    Display::Flex
-  } else {
-    Display::None
-  };
-}
-
-fn sync_world_detail_visibility(
-  host: Res<SimHost>,
-  view: Res<PlayerView>,
-  mut last_state: Local<Option<(bool, u8, u64)>>,
-  mut details: Query<&mut Visibility, With<WorldDetail>>,
-) {
-  let state = (
-    host.annotations_visible,
-    view.zoom_level,
-    host.scene_revision,
-  );
-  if *last_state == Some(state) {
-    return;
-  }
-  *last_state = Some(state);
-
-  let visibility = if world_detail_visible(host.annotations_visible, view.zoom_level) {
-    Visibility::Visible
-  } else {
-    Visibility::Hidden
-  };
-  for mut detail in &mut details {
-    *detail = visibility;
-  }
-}
-
-fn update_text(
-  host: Res<SimHost>,
-  mut last_snapshot_revision: Local<u64>,
-  mut node_labels: Query<(&NodeLabel, &mut Text2d), Without<HaulerLabel>>,
-  mut hauler_labels: Query<(&HaulerLabel, &mut Text2d), Without<NodeLabel>>,
-  mut hud_title: Query<
-    &mut Text,
-    (
-      With<HudTitleText>,
-      Without<HudValueText>,
-      Without<ResourceCountText>,
-    ),
-  >,
-  mut hud_values: Query<
-    (&HudValueText, &mut Text),
-    (Without<HudTitleText>, Without<ResourceCountText>),
-  >,
-  mut resource_counts: Query<
-    (&ResourceCountText, &mut Text),
-    (Without<HudTitleText>, Without<HudValueText>),
-  >,
-  mut status_battery_fills: Query<&mut Node, With<StatusBatteryFill>>,
-) {
-  if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
-    return;
-  }
-
-  for (label, mut text) in &mut node_labels {
-    let value = node_label_value(&host.snapshot, label.0);
-    if text.as_str() != value {
-      *text = Text2d::new(value);
-    }
-  }
-
-  for (label, mut text) in &mut hauler_labels {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == label.0)
-    {
-      let value = hauler_label_value(hauler);
-      if text.as_str() != value {
-        *text = Text2d::new(value);
-      }
-    }
-  }
-
-  let totals = snapshot_inventory_totals(&host.snapshot);
-  let (resources, materials) = split_stockpile_totals(host.game.content(), totals);
-  let power_snapshot = host.snapshot.power.as_ref();
-  let charge_percent = power_snapshot
-    .map(|power| power_charge_percent(power.energy, power.capacity))
-    .unwrap_or(0);
-  for mut fill in &mut status_battery_fills {
-    fill.width = percent(charge_percent as f32);
-  }
-  let power = power_snapshot
-    .map(|power| format_power_status(power.energy, power.capacity))
-    .unwrap_or_else(|| "off-grid".into());
-  for mut text in &mut hud_title {
-    *text = Text::new(host.snapshot.scenario.name.to_uppercase());
-  }
-  for (resource, mut text) in &mut resource_counts {
-    *text = Text::new(resource_stockpile_count(&resources, resource.0).to_string());
-  }
-  for (field, mut text) in &mut hud_values {
-    let value = match field.0 {
-      HudField::Resources => format_items(&resources),
-      HudField::Materials => format_items(&materials),
-      HudField::Power => power.clone(),
-    };
-    *text = Text::new(value);
-  }
-}
-
-fn claim_snapshot_revision(current: u64, previous: &mut u64) -> bool {
-  if *previous == current {
-    return false;
-  }
-  *previous = current;
-  true
-}
-
-fn world_detail_visible(annotations_visible: bool, zoom_level: u8) -> bool {
-  annotations_visible && zoom_level <= MAX_DETAIL_ZOOM_LEVEL
-}
-
-fn repeated_input_steps<T>(state: &mut InputRepeatState<T>, direction: T, delta_seconds: f32) -> u8
-where
-  T: Copy + Default + PartialEq,
-{
-  if direction == T::default() {
-    *state = InputRepeatState::default();
-    return 0;
-  }
-  if direction != state.direction {
-    state.direction = direction;
-    state.held_seconds = 0.0;
-    state.next_repeat_seconds = INPUT_REPEAT_DELAY_SECONDS;
-    return 1;
-  }
-
-  state.held_seconds += delta_seconds.max(0.0);
-  let mut repeats = 0;
-  while state.held_seconds >= state.next_repeat_seconds && repeats < MAX_INPUT_REPEATS_PER_FRAME {
-    repeats += 1;
-    state.next_repeat_seconds += INPUT_REPEAT_INTERVAL_SECONDS;
-  }
-  if repeats == MAX_INPUT_REPEATS_PER_FRAME && state.held_seconds >= state.next_repeat_seconds {
-    state.next_repeat_seconds = state.held_seconds + INPUT_REPEAT_INTERVAL_SECONDS;
-  }
-  repeats
-}
-
-fn move_zoom_level(level: u8, direction: i8, steps: u8) -> u8 {
-  if direction < 0 {
-    level.saturating_sub(steps).max(MIN_ZOOM_LEVEL)
-  } else if direction > 0 {
-    level.saturating_add(steps).min(MAX_ZOOM_LEVEL)
-  } else {
-    level
-  }
-}
-
-fn move_player_focus(
-  position: GridPosition,
-  x: i32,
-  y: i32,
-  width: i32,
-  height: i32,
-) -> GridPosition {
-  GridPosition {
-    x: (position.x + x).clamp(0, width.saturating_sub(1)),
-    y: (position.y + y).clamp(0, height.saturating_sub(1)),
-  }
-}
-
-fn initial_player_position(snapshot: &TickSnapshot) -> GridPosition {
-  GridPosition {
-    x: snapshot.topology.width / 2,
-    y: snapshot.topology.height / 2,
-  }
-}
-
-fn world_center(width: i32, height: i32) -> Vec2 {
+fn grid_to_world(cell: GridPosition) -> Vec2 {
   Vec2::new(
-    WORLD_LEFT + width.saturating_sub(1) as f32 * GRID_X / 2.0,
-    height.saturating_sub(1) as f32 * GRID_Y / 2.0,
+    (cell.x as f32 - (COMPACT_WORLD_WIDTH - 1) as f32 / 2.0) * CELL_SIZE,
+    (cell.y as f32 - (COMPACT_WORLD_HEIGHT - 1) as f32 / 2.0) * CELL_SIZE,
   )
 }
 
-fn world_art_size(width: i32, height: i32) -> Vec2 {
-  Vec2::new(width.max(1) as f32 * GRID_X, height.max(1) as f32 * GRID_Y)
+fn world_to_grid(world: Vec2) -> Option<GridPosition> {
+  let x = ((world.x / CELL_SIZE) + COMPACT_WORLD_WIDTH as f32 / 2.0).floor() as i32;
+  let y = ((world.y / CELL_SIZE) + COMPACT_WORLD_HEIGHT as f32 / 2.0).floor() as i32;
+  (x >= 0 && y >= 0 && x < COMPACT_WORLD_WIDTH && y < COMPACT_WORLD_HEIGHT)
+    .then_some(GridPosition { x, y })
 }
 
-fn player_zoom_scale(
-  level: u8,
-  width: i32,
-  height: i32,
-  viewport_width: f32,
-  viewport_height: f32,
-) -> f32 {
-  let viewport_width = viewport_width.max(1.0);
-  let viewport_height = viewport_height.max(1.0);
-  let overview = (width.max(1) as f32 * GRID_X / viewport_width)
-    .max(height.max(1) as f32 * GRID_Y / viewport_height);
-  let detail = (MIN_VISIBLE_CELLS * GRID_X / viewport_width)
-    .max(MIN_VISIBLE_CELLS * GRID_Y / viewport_height)
+fn compact_zoom_scale(level: u8, viewport_width: f32, viewport_height: f32) -> f32 {
+  let available_height = (viewport_height - TOP_BAR_HEIGHT).max(1.0);
+  let world_width = COMPACT_WORLD_WIDTH as f32 * CELL_SIZE;
+  let world_height = COMPACT_WORLD_HEIGHT as f32 * CELL_SIZE;
+  let overview = (world_width / viewport_width.max(1.0)).max(world_height / available_height);
+  let detail = (MIN_VISIBLE_CELLS * CELL_SIZE / viewport_width.max(1.0))
+    .max(MIN_VISIBLE_CELLS * CELL_SIZE / available_height)
     .min(overview);
   let level = level.clamp(MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
   let progress = f32::from(level - MIN_ZOOM_LEVEL) / f32::from(MAX_ZOOM_LEVEL - MIN_ZOOM_LEVEL);
   detail * (overview / detail).powf(progress)
 }
 
-#[cfg(test)]
-fn focused_status(snapshot: &TickSnapshot, position: GridPosition) -> String {
-  let mut details = snapshot
-    .topology
-    .nodes
-    .iter()
-    .filter(|node| node.position == position)
-    .map(|node| node_label_value(snapshot, node.id).replace('\n', INLINE_SEPARATOR))
-    .collect::<Vec<_>>();
-  details.extend(
-    snapshot
-      .haulers
-      .iter()
-      .filter(|hauler| hauler.position_grid == position)
-      .map(hauler_label_value),
-  );
-  if details.is_empty() {
-    if snapshot.topology.obstacles.contains(&position) {
-      "inspect: blocked".into()
-    } else {
-      "inspect: empty".into()
-    }
-  } else {
-    format!("inspect: {}", details.join(INLINE_SEPARATOR))
+fn inspect_cell(snapshot: &CompactSnapshot, cell: GridPosition) -> String {
+  if cell == snapshot.warehouse_position {
+    return format!(
+      "Warehouse // demand {} // sold {} // revenue ${}",
+      snapshot.market.remaining_demand, snapshot.market.sold_total, snapshot.market.revenue
+    );
   }
-}
-
-fn snapshot_inventory_totals(snapshot: &TickSnapshot) -> BTreeMap<String, u32> {
-  let mut totals = BTreeMap::new();
-  for items in snapshot
-    .sources
+  if let Some(deposit) = snapshot
+    .deposits
     .iter()
-    .map(|source| &source.stockpile.items)
-    .chain(snapshot.haulers.iter().map(|hauler| &hauler.cargo.items))
-    .chain(
-      snapshot
-        .factories
-        .iter()
-        .map(|factory| &factory.inventory.items),
-    )
-    .chain(snapshot.power.iter().flat_map(|power| {
-      power
-        .generators
-        .iter()
-        .map(|generator| &generator.fuel.items)
-    }))
+    .find(|deposit| deposit.position == cell)
   {
-    for (item, quantity) in items {
-      *totals.entry(item.clone()).or_default() += quantity;
-    }
+    return format!(
+      "{} deposit // stock {} // remaining {}",
+      item_name(deposit.item),
+      deposit.stockpile,
+      deposit.remaining
+    );
   }
-  totals
-}
-
-fn split_stockpile_totals(
-  content: &ContentDatabase,
-  totals: BTreeMap<String, u32>,
-) -> (BTreeMap<String, u32>, BTreeMap<String, u32>) {
-  let resource_items = content
-    .items
-    .values()
-    .filter(|item| item.ingredients.is_empty())
-    .map(|item| item.id.as_str())
-    .collect::<BTreeSet<_>>();
-  totals
-    .into_iter()
-    .partition(|(item, _)| resource_items.contains(item.as_str()))
-}
-
-fn resource_stockpile_count(resources: &BTreeMap<String, u32>, item: ItemId) -> u32 {
-  resources.get(item.as_str()).copied().unwrap_or_default()
-}
-
-fn grid_to_world(position: GridPosition) -> Vec2 {
-  Vec2::new(
-    WORLD_LEFT + position.x as f32 * GRID_X,
-    position.y as f32 * GRID_Y,
-  )
-}
-
-fn hauler_world_position(snapshot: &TickSnapshot, hauler: &HaulerSnapshot) -> Vec2 {
-  let position = grid_to_world(hauler.position_grid);
-  let stack_index = snapshot
-    .haulers
+  if let Some(building) = snapshot
+    .buildings
     .iter()
-    .filter(|candidate| candidate.position_grid == hauler.position_grid && candidate.id < hauler.id)
-    .count();
-  Vec2::new(position.x, position.y - 54.0 - stack_index as f32 * 30.0)
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum NodeActivity {
-  Idle,
-  Ready,
-  Demanding,
-  Crafting,
-  Powering,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum RouteDirection {
-  TowardRoad,
-  AwayFromRoad,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum RoadOrientation {
-  NorthSouth,
-  EastWest,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum NodeArtKind {
-  Deposit(ItemId),
-  Foundry,
-  Factory,
-  CoalPlant,
-  Radar,
-  Warehouse,
-  Road(RoadOrientation),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum NodePresentation {
-  Art(NodeArtKind),
-  Fallback,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum CargoBadgeState {
-  Empty,
-  Loaded(u32),
-}
-
-fn craft_progress_fraction(progress: u32, craft_time: u32) -> f32 {
-  if craft_time == 0 {
-    0.0
-  } else {
-    (progress as f32 / craft_time as f32).clamp(0.0, 1.0)
-  }
-}
-
-fn power_fraction(energy: u32, capacity: u32) -> f32 {
-  if capacity == 0 {
-    0.0
-  } else {
-    (energy as f32 / capacity as f32).clamp(0.0, 1.0)
-  }
-}
-
-fn format_power_status(energy: u32, capacity: u32) -> String {
-  let percent = power_charge_percent(energy, capacity);
-  format!(
-    "{percent}%{INLINE_SEPARATOR}{}",
-    format_compact_energy(energy)
-  )
-}
-
-fn power_charge_percent(energy: u32, capacity: u32) -> u32 {
-  if capacity == 0 {
-    0
-  } else {
-    ((u64::from(energy) * 100 + u64::from(capacity) / 2) / u64::from(capacity)).min(100) as u32
-  }
-}
-
-fn format_compact_energy(value: u32) -> String {
-  const UNITS: [&str; 4] = ["", "K", "M", "B"];
-
-  if value < 1_000 {
-    return value.to_string();
-  }
-
-  let mut scaled = f64::from(value);
-  let mut unit = 0;
-  while scaled >= 1_000.0 && unit < UNITS.len() - 1 {
-    scaled /= 1_000.0;
-    unit += 1;
-  }
-
-  let mut decimal_places = usize::from(scaled < 10.0);
-  let mut rounded = if decimal_places == 1 {
-    (scaled * 10.0).round() / 10.0
-  } else {
-    scaled.round()
-  };
-  if rounded >= 1_000.0 && unit < UNITS.len() - 1 {
-    rounded /= 1_000.0;
-    unit += 1;
-    decimal_places = 1;
-  } else if rounded >= 10.0 {
-    decimal_places = 0;
-  }
-
-  if decimal_places == 1 {
-    format!("{rounded:.1}{}", UNITS[unit])
-  } else {
-    format!("{rounded:.0}{}", UNITS[unit])
-  }
-}
-
-fn crafted_output_delta(previous: &BTreeMap<String, u32>, current: &BTreeMap<String, u32>) -> u32 {
-  current
-    .iter()
-    .map(|(item, quantity)| quantity.saturating_sub(previous.get(item).copied().unwrap_or(0)))
-    .sum()
-}
-
-fn output_chip_offset(index: usize) -> Vec2 {
-  let centered = index as f32 - (OUTPUT_CHIP_COUNT - 1) as f32 / 2.0;
-  Vec2::new(centered * 10.0, -8.0 + (index % 2) as f32 * 5.0)
-}
-
-fn output_chip_velocity(index: usize) -> Vec2 {
-  let centered = index as f32 - (OUTPUT_CHIP_COUNT - 1) as f32 / 2.0;
-  Vec2::new(centered * 2.0, 26.0 + (index % 2) as f32 * 6.0)
-}
-
-fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
-  match node {
-    NodeId::Source(_) => snapshot
-      .sources
-      .iter()
-      .find(|source| source.node == node)
-      .filter(|source| {
-        source.occupied_by.is_some()
-          || (source.deployed
-            && (!source.stockpile.items.is_empty() || !source.dispatch.intents.is_empty()))
-      })
-      .map_or(NodeActivity::Idle, |_| NodeActivity::Ready),
-    NodeId::Road => NodeActivity::Idle,
-    NodeId::Factory(_) => snapshot
-      .factories
-      .iter()
-      .find(|factory| factory.node == node)
-      .map_or(NodeActivity::Idle, |factory| {
-        if factory.craft.crafting {
-          NodeActivity::Crafting
-        } else if !factory.dispatch.intents.is_empty() {
-          NodeActivity::Demanding
-        } else {
-          NodeActivity::Idle
-        }
-      }),
-    NodeId::Generator(_) => snapshot
-      .power
-      .as_ref()
-      .and_then(|power| {
-        power
-          .generators
-          .iter()
-          .find(|generator| generator.node == node)
-      })
-      .map_or(NodeActivity::Idle, |generator| {
-        if snapshot
-          .events
-          .iter()
-          .any(|event| event.starts_with(&format!("power generate {} ", generator.node)))
-        {
-          NodeActivity::Powering
-        } else if generator.energy > 0 {
-          NodeActivity::Ready
-        } else {
-          NodeActivity::Demanding
-        }
-      }),
-    NodeId::Radar(_) => snapshot
-      .radars
-      .iter()
-      .find(|radar| radar.node == node)
-      .map_or(NodeActivity::Idle, |radar| {
-        if radar.claimed_target.is_some() {
-          NodeActivity::Ready
-        } else {
-          NodeActivity::Idle
-        }
-      }),
-    NodeId::BuildSite(_) => NodeActivity::Demanding,
-    NodeId::Structure(_) => NodeActivity::Ready,
-    NodeId::Transit(_) => NodeActivity::Idle,
-  }
-}
-
-fn node_color_for_activity(node: NodeId, activity: NodeActivity) -> Color {
-  match (node, activity) {
-    (NodeId::Source(_), NodeActivity::Ready) => NODE_SOURCE_READY,
-    (NodeId::Source(_), _) => NODE_SOURCE_IDLE,
-    (NodeId::Road, _) => NODE_ROAD,
-    (NodeId::Factory(_), NodeActivity::Crafting) => NODE_FACTORY_CRAFTING,
-    (NodeId::Factory(_), NodeActivity::Demanding) => NODE_FACTORY_DEMAND,
-    (NodeId::Factory(_), _) => NODE_FACTORY_IDLE,
-    (NodeId::Generator(_), NodeActivity::Powering) => NODE_POWER_ACTIVE,
-    (NodeId::Generator(_), NodeActivity::Ready) => NODE_POWER_CHARGED,
-    (NodeId::Generator(_), _) => NODE_POWER_IDLE,
-    (NodeId::Radar(_), NodeActivity::Ready) => NODE_RADAR_CLAIMED,
-    (NodeId::Radar(_), _) => NODE_RADAR_IDLE,
-    (NodeId::BuildSite(_), _) => NODE_BUILD_SITE,
-    (NodeId::Structure(_), _) => NODE_STRUCTURE,
-    (NodeId::Transit(_), _) => NODE_ROAD,
-  }
-}
-
-fn cargo_badge_state(hauler: &HaulerSnapshot) -> CargoBadgeState {
-  let units = hauler.cargo.items.values().sum();
-  if units == 0 {
-    CargoBadgeState::Empty
-  } else {
-    CargoBadgeState::Loaded(units)
-  }
-}
-
-fn cargo_badge_color(hauler: &HaulerSnapshot) -> Color {
-  match cargo_badge_state(hauler) {
-    CargoBadgeState::Empty => CARGO_EMPTY,
-    CargoBadgeState::Loaded(_) => CARGO_LOADED,
-  }
-}
-
-fn cargo_badge_size(hauler: &HaulerSnapshot) -> f32 {
-  match cargo_badge_state(hauler) {
-    CargoBadgeState::Empty => 7.0,
-    CargoBadgeState::Loaded(units) => 9.0 + units.min(4) as f32,
-  }
-}
-
-fn cargo_art_item(hauler: &HaulerSnapshot) -> Option<ItemId> {
-  [IRON_ORE, IRON_BARS].into_iter().find(|item| {
-    hauler
-      .cargo
-      .items
-      .get(item.as_str())
-      .is_some_and(|quantity| *quantity > 0)
-  })
-}
-
-fn cargo_art_sprite(art: &FactoryArt, hauler: &HaulerSnapshot) -> Sprite {
-  let mut sprite = Sprite::default();
-  configure_cargo_art(&mut sprite, art, hauler);
-  sprite
-}
-
-fn configure_cargo_art(sprite: &mut Sprite, art: &FactoryArt, hauler: &HaulerSnapshot) {
-  if let Some(image) = cargo_art_item(hauler).and_then(|item| art.item(item)) {
-    sprite.image = image.clone();
-    sprite.custom_size = Some(Vec2::splat(CARGO_ART_SIZE));
-  } else {
-    sprite.image = Handle::default();
-    sprite.custom_size = Some(Vec2::ZERO);
-  }
-  sprite.color = Color::WHITE;
-}
-
-fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArtKind> {
-  match node.id {
-    NodeId::Source(_) => snapshot
-      .sources
-      .iter()
-      .find(|source| source.node == node.id)
-      .filter(|source| matches!(source.item, IRON_ORE | COPPER_ORE | COAL | STONE))
-      .map(|source| NodeArtKind::Deposit(source.item)),
-    NodeId::Factory(_) => snapshot
-      .factories
-      .iter()
-      .find(|factory| factory.node == node.id)
-      .map(|factory| {
-        if factory.craft.output_item == IRON_BARS {
-          NodeArtKind::Foundry
-        } else {
-          NodeArtKind::Factory
-        }
-      }),
-    NodeId::Generator(_) => snapshot.power.as_ref().and_then(|power| {
-      power
-        .generators
-        .iter()
-        .find(|generator| generator.node == node.id && generator.item == Some(COAL_PLANT))
-        .map(|_| NodeArtKind::CoalPlant)
-    }),
-    NodeId::Radar(_) => snapshot
-      .radars
-      .iter()
-      .any(|radar| radar.node == node.id)
-      .then_some(NodeArtKind::Radar),
-    NodeId::Structure(_) => snapshot
-      .structures
-      .iter()
-      .find(|structure| structure.node == node.id && structure.item == STORAGE_WAREHOUSE)
-      .map(|_| NodeArtKind::Warehouse),
-    NodeId::Road => straight_road_orientation(snapshot, node.position).map(NodeArtKind::Road),
-    _ => None,
-  }
-}
-
-fn node_presentation(snapshot: &TickSnapshot, node: &TopologyNode) -> NodePresentation {
-  node_art_kind(snapshot, node).map_or(NodePresentation::Fallback, NodePresentation::Art)
-}
-
-fn drill_art_candidate(snapshot: &TickSnapshot, node: &TopologyNode) -> bool {
-  let Some(source) = snapshot
-    .sources
-    .iter()
-    .find(|source| source.node == node.id)
-  else {
-    return false;
-  };
-  snapshot
-    .radars
-    .iter()
-    .any(|radar| radar.deployment_item == MINING_DRILL && radar.target_item == source.item)
-}
-
-fn drill_art_visible(snapshot: &TickSnapshot, node: NodeId) -> bool {
-  let Some(source) = snapshot.sources.iter().find(|source| source.node == node) else {
-    return false;
-  };
-  source.deployed
-    && source.occupied_by.is_none()
-    && snapshot
-      .radars
-      .iter()
-      .any(|radar| radar.deployment_item == MINING_DRILL && radar.target_item == source.item)
-}
-
-fn configure_drill_art(sprite: &mut Sprite, snapshot: &TickSnapshot, node: NodeId) {
-  sprite.custom_size = Some(if drill_art_visible(snapshot, node) {
-    Vec2::splat(DRILL_ART_SIZE)
-  } else {
-    Vec2::ZERO
-  });
-}
-
-fn straight_road_orientation(
-  snapshot: &TickSnapshot,
-  position: GridPosition,
-) -> Option<RoadOrientation> {
-  if snapshot
-    .topology
-    .nodes
-    .iter()
-    .any(|node| node.position == position && node.id != NodeId::Road)
+    .find(|building| building.position == cell)
   {
-    return None;
+    return format!(
+      "Factory {} // {} // input {} // output {}",
+      building.id,
+      building.recipe.map_or("choose recipe", CompactRecipe::name),
+      building.input_stock,
+      building.output_stock
+    );
   }
-
-  let occupied = |x: i32, y: i32| {
-    snapshot
-      .topology
-      .nodes
-      .iter()
-      .any(|node| node.position == GridPosition { x, y })
-  };
-  let north = occupied(position.x, position.y + 1);
-  let south = occupied(position.x, position.y - 1);
-  let east = occupied(position.x + 1, position.y);
-  let west = occupied(position.x - 1, position.y);
-
-  match (north, south, east, west) {
-    (true, true, false, false) => Some(RoadOrientation::NorthSouth),
-    (false, false, true, true) => Some(RoadOrientation::EastWest),
-    _ => None,
+  if snapshot.roads.contains(&cell) {
+    return "Road // free // shared capacity".into();
   }
+  "Empty cell.".into()
 }
 
-fn route_direction(snapshot: &TickSnapshot, node: NodeId) -> Option<RouteDirection> {
-  snapshot
-    .haulers
+fn selected_building_text(host: &SimHost) -> String {
+  let Some(id) = host.selected_building else {
+    return "SELECTED // NONE".into();
+  };
+  let recipe = host
+    .snapshot
+    .buildings
     .iter()
-    .find_map(|hauler| match &hauler.dispatch {
-      DispatchReceiverState::Assigned(assignment)
-        if assignment.phase == DispatchPhase::Collect && assignment.source == node =>
-      {
-        Some(RouteDirection::TowardRoad)
-      }
-      DispatchReceiverState::Assigned(assignment)
-        if assignment.phase == DispatchPhase::Deliver && assignment.destination == node =>
-      {
-        Some(RouteDirection::AwayFromRoad)
-      }
-      DispatchReceiverState::Assigned(assignment)
-        if assignment.phase == DispatchPhase::Retrieve && assignment.source == node =>
-      {
-        Some(RouteDirection::TowardRoad)
-      }
-      DispatchReceiverState::Assigned(assignment)
-        if assignment.phase == DispatchPhase::Deploy && assignment.destination == node =>
-      {
-        Some(RouteDirection::AwayFromRoad)
-      }
-      _ => None,
+    .find(|building| building.id == id)
+    .and_then(|building| building.recipe)
+    .map_or("CHOOSE RECIPE", CompactRecipe::name);
+  format!("SELECTED // FACTORY {id} // {recipe}")
+}
+
+fn total_item(snapshot: &CompactSnapshot, item: ItemId) -> u32 {
+  let deposits = snapshot
+    .deposits
+    .iter()
+    .filter(|deposit| deposit.item == item)
+    .map(|deposit| deposit.stockpile)
+    .sum::<u32>();
+  let buildings = snapshot
+    .buildings
+    .iter()
+    .map(|building| {
+      building.recipe.map_or(0, |recipe| {
+        u32::from(recipe.input() == item) * building.input_stock
+          + u32::from(recipe.output() == item) * building.output_stock
+      })
     })
-}
-
-fn route_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
-  if route_direction(snapshot, node).is_some() {
-    ROUTE_ACTIVE
-  } else {
-    ROUTE_IDLE
-  }
-}
-
-fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
-  let label = match node {
-    NodeId::Source(_) => snapshot
-      .sources
-      .iter()
-      .find(|source| source.node == node)
-      .map(|source| {
-        if let Some(occupant) = source.occupied_by {
-          format!("{}\nore site: occupied by {}", source.node, occupant)
-        } else if source.exhausted && !source.deployed {
-          format!("{}\nore site: exhausted", source.node)
-        } else if source.exhausted {
-          format!(
-            "{}\ndraining: {}",
-            source.node,
-            format_items(&source.stockpile.items)
-          )
-        } else if source.deployed {
-          format!(
-            "{}\nstock: {}",
-            source.node,
-            format_items(&source.stockpile.items)
-          )
-        } else {
-          format!("{}\nore site: awaiting drill", source.node)
-        }
-      })
-      .unwrap_or_else(|| node.to_string()),
-    NodeId::Road => "road".into(),
-    NodeId::Factory(_) => snapshot
-      .factories
-      .iter()
-      .find(|factory| factory.node == node)
-      .map(|factory| {
-        format!(
-          "{}\noutput: {}\nstock: {}\ncraft: {}/{} {}",
-          node,
-          factory.craft.output_item,
-          format_items(&factory.inventory.items),
-          factory.craft.craft_progress,
-          factory.craft.craft_time,
-          if factory.craft.crafting {
-            "active"
-          } else {
-            "idle"
-          }
-        )
-      })
-      .unwrap_or_else(|| node.to_string()),
-    NodeId::Generator(_) => snapshot
-      .power
-      .as_ref()
-      .and_then(|power| {
-        power
-          .generators
-          .iter()
-          .find(|generator| generator.node == node)
-      })
-      .map(|generator| {
-        let lines = snapshot
-          .topology
-          .generator_power_lines
-          .iter()
-          .filter(|line| line.generator == generator.node)
-          .collect::<Vec<_>>();
-        let link = match lines.as_slice() {
-          [] => "pending".into(),
-          [line] => format!("{} via {} cells", line.target, line.cells.len()),
-          lines => format!(
-            "{} links via {} cells",
-            lines.len(),
-            lines.iter().map(|line| line.cells.len()).sum::<usize>()
-          ),
-        };
-        format!(
-          "{}\ntype: {}\nmode: {}\nfuel: {}\nlink: {}",
-          generator.node,
-          generator.item.map_or("generator", |item| item.as_str()),
-          if generator.fuel_item.is_some() {
-            "fuel"
-          } else {
-            "fuel-free"
-          },
-          format_items(&generator.fuel.items),
-          link
-        )
-      })
-      .unwrap_or_else(|| node.to_string()),
-    NodeId::Radar(_) => snapshot
-      .radars
-      .iter()
-      .find(|radar| radar.node == node)
-      .map(|radar| {
-        format!(
-          "{}\ndeploy: {}\ntarget: {}\nclaim: {}",
-          radar.node,
-          radar.deployment_item,
-          radar.target_item,
-          radar
-            .claimed_target
-            .map_or_else(|| "none".into(), |target| target.to_string())
-        )
-      })
-      .unwrap_or_else(|| node.to_string()),
-    NodeId::BuildSite(index) => format!("build-site-{index}\nawaiting structure"),
-    NodeId::Structure(_) => snapshot
-      .structures
-      .iter()
-      .find(|structure| structure.node == node)
-      .map(|structure| format!("{}\nspawned: {}", structure.node, structure.item))
-      .unwrap_or_else(|| node.to_string()),
-    NodeId::Transit(position) => format!("transit\n{}, {}", position.x, position.y),
-  };
-  let battery = snapshot.power.as_ref().and_then(|power| {
-    power
-      .batteries
-      .iter()
-      .find(|battery| battery.owner == BatteryOwner::Node(node))
-  });
-  battery.map_or(label.clone(), |battery| {
-    format!("{label}\nbattery: {}/{}", battery.energy, battery.capacity)
-  })
-}
-
-fn hauler_label_value(hauler: &HaulerSnapshot) -> String {
-  format!(
-    "hauler-{}{INLINE_SEPARATOR}{}{INLINE_SEPARATOR}{}",
-    hauler.id,
-    dispatch_text(&hauler.dispatch),
-    format_items(&hauler.cargo.items)
-  )
-}
-
-fn format_items(items: &BTreeMap<String, u32>) -> String {
-  if items.is_empty() {
-    return "empty".into();
-  }
-  items
+    .sum::<u32>();
+  let trucks = snapshot
+    .trucks
     .iter()
-    .map(|(item, quantity)| format!("{item}={quantity}"))
-    .collect::<Vec<_>>()
-    .join(INLINE_SEPARATOR)
+    .filter(|truck| truck.cargo_item == Some(item))
+    .map(|truck| truck.cargo_quantity)
+    .sum::<u32>();
+  deposits
+    .saturating_add(buildings)
+    .saturating_add(trucks)
+    .saturating_add(snapshot.warehouse_stock.get(&item).copied().unwrap_or(0))
 }
 
-fn dispatch_text(state: &DispatchReceiverState) -> String {
-  match state {
-    DispatchReceiverState::Unassigned => "idle".into(),
-    DispatchReceiverState::Assigned(assignment) => {
-      let phase = match assignment.phase {
-        DispatchPhase::Collect => "collect",
-        DispatchPhase::Deliver => "deliver",
-        DispatchPhase::Retrieve => "retrieve",
-        DispatchPhase::Deploy => "deploy",
-      };
-      format!("{phase} {}", assignment.item)
-    }
+fn item_name(item: ItemId) -> &'static str {
+  match item {
+    IRON_ORE => "iron ore",
+    COPPER_ORE => "copper ore",
+    IRON_BARS => "iron bars",
+    COPPER_BARS => "copper bars",
+    _ => "item",
   }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use factory_content::{
-    BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, DEPLOYMENT_DEMO_SCENARIO,
-    IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
-  };
-  use factory_sim::GeneratorPowerLine;
 
   #[test]
-  fn sim_host_steps_match_direct_simulation_bytes() {
-    let mut host = SimHost::new();
-    let mut direct = scenario_game(V2_WORLD_SCENARIO);
-
-    for _ in 0..6 {
-      host.step_once();
-      let direct_snapshot = direct.step();
-      assert_eq!(
-        serde_json::to_vec(&direct_snapshot).expect("direct snapshot serializes"),
-        serde_json::to_vec(&host.snapshot).expect("viewer snapshot serializes")
-      );
-    }
-  }
-
-  #[test]
-  fn reset_restores_the_initial_snapshot_and_preserves_speed() {
-    let mut host = SimHost::new();
-    host.step_once();
-    host.toggle_speed();
-    host.reset();
-
-    assert_eq!(0, host.snapshot.tick);
-    assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
-    assert_eq!(0.0, host.accumulated_seconds);
-  }
-
-  #[test]
-  fn snapshot_revision_gate_projects_each_authoritative_snapshot_once() {
-    let mut host = SimHost::new();
-    let mut projected = 0;
-
-    assert!(claim_snapshot_revision(
-      host.snapshot_revision,
-      &mut projected
-    ));
-    assert!(!claim_snapshot_revision(
-      host.snapshot_revision,
-      &mut projected
-    ));
-
-    host.step_once();
-    assert!(claim_snapshot_revision(
-      host.snapshot_revision,
-      &mut projected
-    ));
-    assert!(!claim_snapshot_revision(
-      host.snapshot_revision,
-      &mut projected
-    ));
-  }
-
-  #[test]
-  fn control_actions_share_one_host_state_machine() {
-    let mut host = SimHost::new();
-
-    host.apply_control(ControlAction::TogglePause);
-    assert!(host.paused);
-    assert!(ControlAction::TogglePause.is_selected(&host));
-
-    host.apply_control(ControlAction::Step);
-    assert_eq!(1, host.snapshot.tick);
-    assert!(host.paused);
-
-    host.apply_control(ControlAction::ToggleSpeed);
-    assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
-    assert!(ControlAction::ToggleSpeed.is_selected(&host));
-
-    host.apply_control(ControlAction::ToggleAnnotations);
-    assert!(!host.annotations_visible);
-    assert!(ControlAction::ToggleAnnotations.is_selected(&host));
-
-    host.apply_control(ControlAction::ToggleAnnotations);
-    host.apply_control(ControlAction::ToggleScenarioPicker);
-    assert!(host.scenario_picker_open);
-    assert!(ControlAction::ToggleScenarioPicker.is_selected(&host));
-
-    host.apply_control(ControlAction::SelectWorld(0));
-    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert!(!host.scenario_picker_open);
-    assert!(ControlAction::SelectWorld(0).is_selected(&host));
-    assert_eq!(1, host.scene_revision);
-
-    host.apply_control(ControlAction::Reset);
-    assert_eq!(0, host.snapshot.tick);
-    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-  }
-
-  #[test]
-  fn scenario_picker_shows_the_roster_and_closes_after_selection() {
-    let mut app = App::new();
-    app.insert_resource(SimHost::new());
-    app.add_systems(Update, sync_scenario_picker);
-    let label = app
-      .world_mut()
-      .spawn((Text::new(""), ScenarioPickerLabel))
-      .id();
-    let options = app
-      .world_mut()
-      .spawn((Node::default(), ScenarioPickerOptions))
-      .id();
-
-    app.update();
-    assert_eq!(
-      "SCENARIO // V3 50X50 FACTORY WORLD  V",
-      app.world().get::<Text>(label).unwrap().as_str()
-    );
-    assert_eq!(
-      Display::None,
-      app.world().get::<Node>(options).unwrap().display
-    );
-
-    app
-      .world_mut()
-      .resource_mut::<SimHost>()
-      .apply_control(ControlAction::ToggleScenarioPicker);
-    app.update();
-    assert_eq!(
-      Display::Flex,
-      app.world().get::<Node>(options).unwrap().display
-    );
-
-    app
-      .world_mut()
-      .resource_mut::<SimHost>()
-      .apply_control(ControlAction::SelectWorld(2));
-    app.update();
-    assert_eq!(
-      "SCENARIO // TWIN PLANT BASIN  V",
-      app.world().get::<Text>(label).unwrap().as_str()
-    );
-    assert_eq!(
-      Display::None,
-      app.world().get::<Node>(options).unwrap().display
-    );
-  }
-
-  #[test]
-  fn pressed_button_routes_through_the_shared_control_action() {
-    let mut app = App::new();
-    app.insert_resource(SimHost::new());
-    app.add_systems(Update, handle_control_buttons);
-    app.world_mut().spawn((
-      Button,
-      Interaction::Pressed,
-      ControlButton(ControlAction::SelectWorld(0)),
-    ));
-
-    app.update();
-
-    let host = app.world().resource::<SimHost>();
-    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(1, host.scene_revision);
-  }
-
-  #[test]
-  fn focus_mode_hides_annotations_and_collapses_the_control_deck() {
-    let mut host = SimHost::new();
-    host.annotations_visible = false;
-    let mut app = App::new();
-    app.insert_resource(host);
-    app.add_systems(Update, sync_annotation_visibility);
-    let annotation = app
-      .world_mut()
-      .spawn((Annotation, Visibility::Visible))
-      .id();
-    let deck = app.world_mut().spawn((Node::default(), ControlDeck)).id();
-    let content = app
-      .world_mut()
-      .spawn((Node::default(), ControlDeckContent))
-      .id();
-    let label = app
-      .world_mut()
-      .spawn((Text::new("HIDE UI"), DeckToggleLabel))
-      .id();
-    let title = app
-      .world_mut()
-      .spawn((Text::new("FACTORY CONTROL"), Visibility::Visible, DeckTitle))
-      .id();
-
-    app.update();
-
-    assert_eq!(
-      Visibility::Hidden,
-      *app.world().get::<Visibility>(annotation).unwrap()
-    );
-    assert_eq!(
-      px(COLLAPSED_CONTROL_DECK_WIDTH),
-      app.world().get::<Node>(deck).unwrap().width
-    );
-    assert_eq!(
-      Display::None,
-      app.world().get::<Node>(content).unwrap().display
-    );
-    assert_eq!("SHOW UI", app.world().get::<Text>(label).unwrap().as_str());
-    assert_eq!(
-      Visibility::Hidden,
-      *app.world().get::<Visibility>(title).unwrap()
-    );
-  }
-
-  #[test]
-  fn status_bar_contains_only_resources_materials_and_power() {
-    assert_eq!(
-      [HudField::Resources, HudField::Materials, HudField::Power],
-      status_metrics().map(|(field, _)| field)
-    );
-    assert_eq!(
-      ["RESOURCES", "MATERIALS", "POWER"],
-      status_metrics().map(|(field, _)| status_label(field))
-    );
-
-    let row = status_metric_node(false);
-    assert_eq!(percent(100), row.width);
-    assert_eq!(FlexDirection::Row, row.flex_direction);
-    assert_eq!(1.0, row.flex_grow);
-    assert_eq!(px(12), row.column_gap);
-    assert_eq!([IRON_ORE, COPPER_ORE, COAL, STONE], status_resource_items());
-    assert_eq!(24.0, STATUS_TITLE_FONT_SIZE);
-    assert_eq!(15.0, STATUS_SUBTITLE_FONT_SIZE);
-    assert_eq!(15.0, STATUS_LABEL_FONT_SIZE);
-    assert_eq!(15.75, STATUS_VALUE_FONT_SIZE);
-    assert_eq!(13.5, STATUS_SEPARATOR_FONT_SIZE);
-    assert_eq!(96.0, STATUS_LABEL_WIDTH);
-    assert_eq!(28.0, STATUS_POWER_LABEL_WIDTH);
-  }
-
-  #[test]
-  fn power_status_leads_with_percent_and_humanizes_stored_energy() {
-    assert_eq!("0", format_compact_energy(0));
-    assert_eq!("999", format_compact_energy(999));
-    assert_eq!("1.0K", format_compact_energy(1_000));
-    assert_eq!("1.5K", format_compact_energy(1_512));
-    assert_eq!("10K", format_compact_energy(9_999));
-    assert_eq!("1.0M", format_compact_energy(999_999));
-    assert_eq!("4.3B", format_compact_energy(u32::MAX));
-
-    assert_eq!(76, power_charge_percent(1_512, 2_000));
-    assert_eq!(100, power_charge_percent(3_000, 2_000));
-    assert_eq!("76% // 1.5K", format_power_status(1_512, 2_000));
-    assert_eq!("0% // 0", format_power_status(0, 0));
-  }
-
-  #[test]
-  fn stockpile_totals_split_resources_from_recipe_materials() {
-    let content = ContentDatabase::starter();
-    let totals = BTreeMap::from([
-      ("iron_ore".to_string(), 12),
-      ("coal".to_string(), 7),
-      ("iron_bars".to_string(), 5),
-      ("storage_warehouse".to_string(), 1),
-    ]);
-
-    let (resources, materials) = split_stockpile_totals(&content, totals);
-
-    assert_eq!(
-      BTreeMap::from([("coal".to_string(), 7), ("iron_ore".to_string(), 12)]),
-      resources
-    );
-    assert_eq!(
-      BTreeMap::from([
-        ("iron_bars".to_string(), 5),
-        ("storage_warehouse".to_string(), 1),
-      ]),
-      materials
-    );
-    assert_eq!(12, resource_stockpile_count(&resources, IRON_ORE));
-    assert_eq!(0, resource_stockpile_count(&resources, COPPER_ORE));
-    assert_eq!(
-      "iron_bars=5 // storage_warehouse=1",
-      format_items(&materials)
-    );
-  }
-
-  #[test]
-  fn presentation_state_tracks_authoritative_material_flow() {
-    let mut host = SimHost::for_scenario(BUILDING_MATERIALS_SCENARIO);
-    let mut saw_ready_source = false;
-    let mut saw_collecting = false;
-    let mut saw_delivering = false;
-    let mut saw_crafting = false;
-
-    for _ in 0..64 {
-      host.step_once();
-      saw_ready_source |= host
-        .snapshot
-        .sources
-        .iter()
-        .any(|source| node_activity(&host.snapshot, source.node) == NodeActivity::Ready);
-      saw_collecting |= host.snapshot.haulers.iter().any(|hauler| {
-        matches!(
-          &hauler.dispatch,
-          DispatchReceiverState::Assigned(assignment)
-            if matches!(assignment.phase, DispatchPhase::Collect | DispatchPhase::Retrieve)
-        )
-      });
-      saw_delivering |= host.snapshot.haulers.iter().any(|hauler| {
-        matches!(
-          &hauler.dispatch,
-          DispatchReceiverState::Assigned(assignment)
-            if matches!(assignment.phase, DispatchPhase::Deliver | DispatchPhase::Deploy)
-        ) || !hauler.cargo.items.is_empty()
-      });
-      saw_crafting |= node_activity(&host.snapshot, NodeId::Factory(0)) == NodeActivity::Crafting;
-    }
-
-    assert!(saw_ready_source);
-    assert!(saw_collecting);
-    assert!(saw_delivering);
-    assert!(saw_crafting);
-  }
-
-  #[test]
-  fn route_direction_tracks_collect_and_delivery_phases() {
-    let mut host = SimHost::for_scenario(IRON_BARS_SCENARIO);
-    let source = host.snapshot.sources[0].node;
-    let mut saw_toward_road = false;
-    let mut saw_away_from_road = false;
-
-    for _ in 0..64 {
-      host.step_once();
-      saw_toward_road |=
-        route_direction(&host.snapshot, source) == Some(RouteDirection::TowardRoad);
-      saw_away_from_road |=
-        route_direction(&host.snapshot, NodeId::Factory(0)) == Some(RouteDirection::AwayFromRoad);
-    }
-
-    assert!(saw_toward_road);
-    assert!(saw_away_from_road);
-  }
-
-  #[test]
-  fn deployment_projection_tracks_dormant_source_and_drill_route() {
-    let mut host = SimHost::for_scenario(DEPLOYMENT_DEMO_SCENARIO);
-    let source = host.snapshot.sources[0].node;
-
-    assert!(node_label_value(&host.snapshot, source).contains("awaiting drill"));
-    host.step_once();
-    assert_eq!(
-      Some(RouteDirection::TowardRoad),
-      route_direction(&host.snapshot, NodeId::Factory(0))
-    );
-    let mut saw_deploy_route = false;
-    for _ in 0..6 {
-      host.step_once();
-      saw_deploy_route |=
-        route_direction(&host.snapshot, source) == Some(RouteDirection::AwayFromRoad);
-    }
-    assert!(saw_deploy_route);
-  }
-
-  #[test]
-  fn v2_radar_projection_exposes_claimed_targets() {
-    let mut host = SimHost::new();
-    host.step_once();
-
-    let radar = NodeId::Radar(0);
-    assert!(host
-      .snapshot
-      .topology
-      .nodes
-      .iter()
-      .any(|node| node.id == radar));
-    assert_eq!(NodeActivity::Ready, node_activity(&host.snapshot, radar));
-    let label = node_label_value(&host.snapshot, radar);
-    assert!(label.contains("deploy: mining_drill"));
-    assert!(label.contains("target: iron_ore"));
-    assert!(label.contains("claim: source-"));
-  }
-
-  #[test]
-  fn v2_remote_coal_plant_projection_exposes_generator_and_occupied_source() {
-    let mut content = ContentDatabase::starter();
-    let recipe_inputs = content.item(COAL_PLANT).ingredients.clone();
-    let scenario = content
-      .scenarios
-      .get_mut(&V2_WORLD_SCENARIO)
-      .expect("v2 scenario exists");
-    for factory in &mut scenario.factories {
-      factory.input_buffer = 0;
-    }
-    scenario.factories[10].starting_items = recipe_inputs;
-    let mut game = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
-
-    let deployed = (0..150)
-      .find_map(|_| {
-        let snapshot = game.step();
-        snapshot
-          .power
-          .as_ref()
-          .is_some_and(|power| power.generators.len() == 2)
-          .then_some(snapshot)
-      })
-      .expect("remote coal plant deploys");
-    let mut snapshot = game.step();
-    let generator = NodeId::Generator(1);
-    let source = snapshot
-      .sources
-      .iter()
-      .find(|source| source.occupied_by == Some(generator))
-      .expect("deployed generator occupies its coal source");
-
-    assert_eq!(NodeActivity::Ready, node_activity(&snapshot, generator));
-    assert!(node_label_value(&snapshot, generator).contains("type: coal_plant"));
-    let line = snapshot
-      .topology
-      .generator_power_lines
-      .iter()
-      .find(|line| line.generator == generator)
-      .expect("remote generator exposes its complete line path");
-    assert_eq!(NodeId::Generator(0), line.target);
-    assert!(line
-      .cells
-      .iter()
-      .all(|cell| snapshot.topology.power_lines.contains(cell)));
-    assert!(node_label_value(&snapshot, generator)
-      .contains(&format!("link: generator-0 via {} cells", line.cells.len())));
-    assert_eq!(NodeActivity::Ready, node_activity(&snapshot, source.node));
-    assert!(node_label_value(&snapshot, source.node).contains("occupied by generator-1"));
-    assert!(deployed
-      .topology
-      .generator_power_lines
-      .iter()
-      .all(|line| line.generator != generator));
-
-    let primary_cells = line.cells.len();
-    snapshot
-      .topology
-      .generator_power_lines
-      .push(GeneratorPowerLine {
-        generator,
-        target: NodeId::Source(0),
-        cells: vec![GridPosition { x: 1, y: 1 }],
-      });
-    assert!(node_label_value(&snapshot, generator)
-      .contains(&format!("link: 2 links via {} cells", primary_cells + 1)));
-  }
-
-  #[test]
-  fn power_line_projection_tracks_generated_grid_cells() {
-    let mut host = SimHost::for_scenario(POWER_LINE_SCENARIO);
-
-    assert!(host.snapshot.topology.power_lines.is_empty());
-    host.step_once();
-
-    assert_eq!(3, host.snapshot.topology.power_lines.len());
-    assert!(node_label_value(&host.snapshot, NodeId::Factory(0)).contains("battery:"));
-    assert!(host
-      .snapshot
-      .events
-      .iter()
-      .any(|event| event.starts_with("power line generator-0 built")));
-  }
-
-  #[test]
-  fn cargo_badge_state_tracks_authoritative_inventory() {
-    let mut host = SimHost::for_scenario(IRON_BARS_SCENARIO);
-    assert_eq!(
-      CargoBadgeState::Empty,
-      cargo_badge_state(&host.snapshot.haulers[0])
-    );
-
-    let loaded = (0..64).find_map(|_| {
-      host.step_once();
-      host.snapshot.haulers.iter().find_map(|hauler| {
-        let state = cargo_badge_state(hauler);
-        (state != CargoBadgeState::Empty).then_some(state)
-      })
-    });
-
-    assert!(matches!(loaded, Some(CargoBadgeState::Loaded(units)) if units > 0));
-  }
-
-  #[test]
-  fn accepted_art_maps_only_to_matching_simulation_identities() {
-    let starter = scenario_game(IRON_BARS_SCENARIO).snapshot(Vec::new());
-    let source = starter
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Source(0))
-      .unwrap();
-    let road = starter
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Road)
-      .unwrap();
-    let factory = starter
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Factory(0))
-      .unwrap();
-
-    assert_eq!(
-      Some(NodeArtKind::Deposit(IRON_ORE)),
-      node_art_kind(&starter, source)
-    );
-    assert_eq!(
-      Some(NodeArtKind::Road(RoadOrientation::EastWest)),
-      node_art_kind(&starter, road)
-    );
-    assert_eq!(Some(NodeArtKind::Foundry), node_art_kind(&starter, factory));
-
-    let v2 = scenario_game(V2_WORLD_SCENARIO).snapshot(Vec::new());
-    for item in [IRON_ORE, COPPER_ORE, COAL, STONE] {
-      let source = v2
-        .sources
-        .iter()
-        .find(|source| source.item == item)
-        .unwrap();
-      let node = v2
-        .topology
-        .nodes
-        .iter()
-        .find(|node| node.id == source.node)
-        .unwrap();
-      assert_eq!(Some(NodeArtKind::Deposit(item)), node_art_kind(&v2, node));
-    }
-    let junction = v2
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Road)
-      .unwrap();
-    assert_eq!(None, node_art_kind(&v2, junction));
-
-    let generic_factory = v2
-      .factories
-      .iter()
-      .find(|factory| factory.craft.output_item != IRON_BARS)
-      .unwrap();
-    let generic_factory_node = v2
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == generic_factory.node)
-      .unwrap();
-    assert_eq!(
-      Some(NodeArtKind::Factory),
-      node_art_kind(&v2, generic_factory_node)
-    );
-    let coal_plant = v2
-      .power
-      .as_ref()
-      .unwrap()
-      .generators
-      .iter()
-      .find(|generator| generator.item == Some(COAL_PLANT))
-      .unwrap();
-    let coal_plant_node = v2
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == coal_plant.node)
-      .unwrap();
-    assert_eq!(
-      Some(NodeArtKind::CoalPlant),
-      node_art_kind(&v2, coal_plant_node)
-    );
-    let radar_node = v2
-      .topology
-      .nodes
-      .iter()
-      .find(|node| matches!(node.id, NodeId::Radar(_)))
-      .unwrap();
-    assert_eq!(Some(NodeArtKind::Radar), node_art_kind(&v2, radar_node));
-
-    let materials = scenario_game(BUILDING_MATERIALS_SCENARIO).snapshot(Vec::new());
-    let stone = materials
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Source(1))
-      .unwrap();
-    assert_eq!(STONE, materials.sources[1].item);
-    assert_eq!(
-      Some(NodeArtKind::Deposit(STONE)),
-      node_art_kind(&materials, stone)
-    );
-
-    let mut construction = scenario_game(BUILDING_DEPLOYMENT_SCENARIO);
-    let initial_construction = construction.snapshot(Vec::new());
-    let build_site = initial_construction
-      .topology
-      .nodes
-      .iter()
-      .find(|node| matches!(node.id, NodeId::BuildSite(_)))
-      .unwrap();
-    assert_eq!(None, node_art_kind(&initial_construction, build_site));
-    let built = (0..16)
-      .find_map(|_| {
-        let snapshot = construction.step();
-        (!snapshot.structures.is_empty()).then_some(snapshot)
-      })
-      .expect("warehouse construction completes");
-    let warehouse = built
-      .topology
-      .nodes
-      .iter()
-      .find(|node| matches!(node.id, NodeId::Structure(_)))
-      .unwrap();
-    assert_eq!(
-      Some(NodeArtKind::Warehouse),
-      node_art_kind(&built, warehouse)
-    );
-
-    let mut deployment = scenario_game(DEPLOYMENT_DEMO_SCENARIO);
-    let initial = deployment.snapshot(Vec::new());
-    let initial_node = initial
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == initial.sources[0].node)
-      .unwrap();
-    assert!(drill_art_candidate(&initial, initial_node));
-    assert!(!drill_art_visible(&initial, initial_node.id));
-    let mut drill_sprite = Sprite::default();
-    configure_drill_art(&mut drill_sprite, &initial, initial_node.id);
-    assert_eq!(Some(Vec2::ZERO), drill_sprite.custom_size);
-    let deployed = (0..64)
-      .find_map(|_| {
-        let snapshot = deployment.step();
-        snapshot.sources[0].deployed.then_some(snapshot)
-      })
-      .expect("mining drill deploys");
-    let deployed_node = deployed
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == deployed.sources[0].node)
-      .unwrap();
-    assert!(drill_art_visible(&deployed, deployed_node.id));
-    configure_drill_art(&mut drill_sprite, &deployed, deployed_node.id);
-    assert_eq!(Some(Vec2::splat(DRILL_ART_SIZE)), drill_sprite.custom_size);
-
-    let mut occupied = deployed.clone();
-    occupied.sources[0].occupied_by = Some(NodeId::Generator(0));
-    configure_drill_art(&mut drill_sprite, &occupied, deployed_node.id);
-    assert_eq!(Some(Vec2::ZERO), drill_sprite.custom_size);
-  }
-
-  #[test]
-  fn node_backplates_are_limited_to_unmapped_identities() {
-    let snapshot = scenario_game(V2_WORLD_SCENARIO).snapshot(Vec::new());
-    let source = snapshot
-      .topology
-      .nodes
-      .iter()
-      .find(|node| matches!(node.id, NodeId::Source(_)))
-      .unwrap();
-    let junction = snapshot
-      .topology
-      .nodes
-      .iter()
-      .find(|node| node.id == NodeId::Road)
-      .unwrap();
-
-    assert!(matches!(
-      node_presentation(&snapshot, source),
-      NodePresentation::Art(NodeArtKind::Deposit(_))
-    ));
-    assert_eq!(
-      NodePresentation::Fallback,
-      node_presentation(&snapshot, junction)
-    );
-  }
-
-  #[test]
-  fn cargo_art_tracks_supported_authoritative_items() {
-    let mut hauler = scenario_game(IRON_BARS_SCENARIO)
-      .snapshot(Vec::new())
-      .haulers[0]
-      .clone();
-    assert_eq!(None, cargo_art_item(&hauler));
-
-    hauler.cargo.items.insert(IRON_ORE.as_str().into(), 2);
-    assert_eq!(Some(IRON_ORE), cargo_art_item(&hauler));
-
-    hauler.cargo.items.clear();
-    hauler.cargo.items.insert(IRON_BARS.as_str().into(), 1);
-    assert_eq!(Some(IRON_BARS), cargo_art_item(&hauler));
-
-    hauler.cargo.items.clear();
-    hauler.cargo.items.insert(STONE.as_str().into(), 3);
-    assert_eq!(None, cargo_art_item(&hauler));
-  }
-
-  #[test]
-  fn runtime_art_paths_are_stable_and_relative_to_the_asset_root() {
-    assert_eq!("factory/terrain/ground.png", GROUND_ART);
-    assert_eq!("factory/logistics/road-straight-ns.png", ROAD_ART);
-    assert_eq!("factory/vehicles/truck.png", TRUCK_ART);
-    assert_eq!("factory/resources/iron-ore-deposit.png", IRON_DEPOSIT_ART);
-    assert_eq!(
-      "factory/resources/copper-ore-deposit.png",
-      COPPER_DEPOSIT_ART
-    );
-    assert_eq!("factory/resources/coal-deposit.png", COAL_DEPOSIT_ART);
-    assert_eq!("factory/resources/stone-deposit.png", STONE_DEPOSIT_ART);
-    assert_eq!("factory/machines/foundry.png", FOUNDRY_ART);
-    assert_eq!("factory/machines/factory.png", FACTORY_ART);
-    assert_eq!("factory/machines/coal-plant.png", COAL_PLANT_ART);
-    assert_eq!("factory/machines/radar.png", RADAR_ART);
-    assert_eq!("factory/machines/mining-drill.png", MINING_DRILL_ART);
-    assert_eq!("factory/structures/warehouse.png", WAREHOUSE_ART);
-    assert_eq!("factory/items/iron-ore.png", IRON_ORE_ART);
-    assert_eq!("factory/items/iron-bars.png", IRON_BARS_ART);
-  }
-
-  #[test]
-  fn craft_progress_fraction_is_bounded() {
-    assert_eq!(0.0, craft_progress_fraction(0, 0));
-    assert_eq!(0.0, craft_progress_fraction(0, 4));
-    assert_eq!(0.5, craft_progress_fraction(2, 4));
-    assert_eq!(1.0, craft_progress_fraction(4, 4));
-    assert_eq!(1.0, craft_progress_fraction(8, 4));
-  }
-
-  #[test]
-  fn player_focus_moves_one_cell_and_clamps_to_the_world() {
-    assert_eq!(
-      GridPosition { x: 2, y: 1 },
-      move_player_focus(GridPosition { x: 1, y: 1 }, 1, 0, 3, 2)
-    );
-    assert_eq!(
-      GridPosition { x: 0, y: 1 },
-      move_player_focus(GridPosition { x: 0, y: 1 }, -1, 1, 3, 2)
-    );
-  }
-
-  #[test]
-  fn held_navigation_repeats_after_delay_independent_of_frame_slicing() {
-    let direction = IVec2::new(1, -1);
-    let mut one_frame = InputRepeatState::default();
-    assert_eq!(1, repeated_input_steps(&mut one_frame, direction, 0.0));
-    let one_frame_repeats = repeated_input_steps(&mut one_frame, direction, 0.4);
-
-    let mut split_frames = InputRepeatState::default();
-    assert_eq!(1, repeated_input_steps(&mut split_frames, direction, 0.0));
-    let split_repeats = (0..5)
-      .map(|_| repeated_input_steps(&mut split_frames, direction, 0.08))
-      .sum::<u8>();
-
-    assert_eq!(2, one_frame_repeats);
-    assert_eq!(one_frame_repeats, split_repeats);
-    assert_eq!(
-      0,
-      repeated_input_steps(&mut split_frames, IVec2::ZERO, 0.08)
-    );
-    assert_eq!(1, repeated_input_steps(&mut split_frames, -direction, 0.0));
-  }
-
-  #[test]
-  fn held_zoom_repeats_resets_and_remains_bounded() {
-    let mut repeat = InputRepeatState::default();
-
-    assert_eq!(1, repeated_input_steps(&mut repeat, -1_i8, 0.0));
-    assert_eq!(0, repeated_input_steps(&mut repeat, -1, 0.24));
-    assert_eq!(1, repeated_input_steps(&mut repeat, -1, 0.01));
-    assert_eq!(0, repeated_input_steps(&mut repeat, 0, 0.08));
-    assert_eq!(1, repeated_input_steps(&mut repeat, 1, 0.0));
-    assert_eq!(MIN_ZOOM_LEVEL, move_zoom_level(MIN_ZOOM_LEVEL, -1, 4));
-    assert_eq!(MAX_ZOOM_LEVEL, move_zoom_level(MAX_ZOOM_LEVEL, 1, 4));
-  }
-
-  #[test]
-  fn player_zoom_fits_the_world_and_keeps_a_ten_cell_detail_view() {
-    let detail = player_zoom_scale(MIN_ZOOM_LEVEL, 50, 50, 1180.0, 720.0);
-    let overview = player_zoom_scale(MAX_ZOOM_LEVEL, 50, 50, 1180.0, 720.0);
-
-    assert!((detail - 5.0 / 3.0).abs() < f32::EPSILON);
-    assert!((overview - 25.0 / 3.0).abs() < f32::EPSILON);
-    assert_eq!(detail, player_zoom_scale(0, 50, 50, 1180.0, 720.0));
-    assert_eq!(overview, player_zoom_scale(11, 50, 50, 1180.0, 720.0));
-    assert_eq!(Vec2::new(4_000.0, 2_940.0), world_center(50, 50));
-    assert_eq!(Vec2::new(9_000.0, 6_000.0), world_art_size(50, 50));
-  }
-
-  #[test]
-  fn world_detail_is_limited_to_close_zoom() {
-    assert!(world_detail_visible(true, MIN_ZOOM_LEVEL));
-    assert!(world_detail_visible(true, MAX_DETAIL_ZOOM_LEVEL));
-    assert!(!world_detail_visible(true, MAX_DETAIL_ZOOM_LEVEL + 1));
-    assert!(!world_detail_visible(false, MIN_ZOOM_LEVEL));
-  }
-
-  #[test]
-  fn world_focus_starts_at_the_map_center() {
-    let game = scenario_game(V2_WORLD_SCENARIO);
-    let snapshot = game.snapshot(Vec::new());
-
-    assert_eq!(
-      GridPosition { x: 25, y: 25 },
-      initial_player_position(&snapshot)
-    );
-  }
-
-  #[test]
-  fn focused_status_and_totals_follow_the_authoritative_snapshot() {
-    let game = scenario_game(BUILDING_DEPLOYMENT_SCENARIO);
-    let snapshot = game.snapshot(Vec::new());
-
-    assert!(focused_status(&snapshot, GridPosition { x: 4, y: 1 }).contains("awaiting structure"));
-    assert_eq!(
-      Some(&1),
-      snapshot_inventory_totals(&snapshot).get("storage_warehouse")
-    );
-  }
-
-  #[test]
-  fn crafted_output_delta_detects_growth_without_false_reset_output() {
-    let previous = BTreeMap::from([("IronBars".to_string(), 2)]);
-    let current = BTreeMap::from([
-      ("BuildingMaterials".to_string(), 1),
-      ("IronBars".to_string(), 5),
-    ]);
-
-    assert_eq!(4, crafted_output_delta(&previous, &current));
-    assert_eq!(0, crafted_output_delta(&current, &BTreeMap::new()));
-  }
-
-  #[test]
-  fn output_chip_pattern_is_compact_and_directional() {
-    let velocities = (0..OUTPUT_CHIP_COUNT)
-      .map(output_chip_velocity)
-      .collect::<Vec<_>>();
-    let offsets = (0..OUTPUT_CHIP_COUNT)
-      .map(output_chip_offset)
-      .collect::<Vec<_>>();
-
-    assert!(velocities.iter().all(|velocity| velocity.y > 0.0));
-    assert!(velocities.iter().all(|velocity| velocity.x.abs() <= 4.0));
-    assert!(offsets.iter().all(|offset| offset.x.abs() <= 20.0));
-  }
-
-  #[test]
-  fn viewer_world_roster_excludes_fixture_scenarios_and_wraps() {
-    let mut host = SimHost::new();
-
-    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(
-      [
-        V2_WORLD_SCENARIO,
-        LEGACY_ASSEMBLY_YARD_SCENARIO,
-        TWIN_PLANT_BASIN_SCENARIO,
-        FOUR_CORNERS_WORKS_SCENARIO,
-      ],
-      WORLD_SCENARIOS
-    );
-    host.select_world(1);
-    assert_eq!(LEGACY_ASSEMBLY_YARD_SCENARIO, host.snapshot.scenario.id);
-    host.select_world(2);
-    assert_eq!(TWIN_PLANT_BASIN_SCENARIO, host.snapshot.scenario.id);
-    host.select_world(3);
-    assert_eq!(FOUR_CORNERS_WORKS_SCENARIO, host.snapshot.scenario.id);
-    host.select_world(4);
-    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(4, host.scene_revision);
-    assert_eq!(0, host.snapshot.tick);
-  }
-
-  #[test]
-  fn viewer_worlds_construct_and_advance_deterministically() {
-    for scenario in WORLD_SCENARIOS {
-      let mut first = scenario_game(scenario);
-      let mut second = scenario_game(scenario);
-      for _ in 0..20 {
-        assert_eq!(first.step(), second.step());
+  fn compact_grid_conversion_round_trips_every_cell() {
+    for y in 0..COMPACT_WORLD_HEIGHT {
+      for x in 0..COMPACT_WORLD_WIDTH {
+        let cell = GridPosition { x, y };
+        assert_eq!(Some(cell), world_to_grid(grid_to_world(cell)));
       }
+    }
+  }
+
+  #[test]
+  fn overview_is_the_maximum_zoom_and_detail_is_about_ten_cells() {
+    let overview = compact_zoom_scale(MAX_ZOOM_LEVEL, 1180.0, 720.0);
+    let detail = compact_zoom_scale(MIN_ZOOM_LEVEL, 1180.0, 720.0);
+
+    assert!(overview > detail);
+    assert!((overview - 1600.0 / (720.0 - TOP_BAR_HEIGHT)).abs() < 0.01);
+    assert!((detail - 1000.0 / (720.0 - TOP_BAR_HEIGHT)).abs() < 0.01);
+  }
+
+  #[test]
+  fn player_shell_starts_paused_on_the_only_player_facing_world() {
+    let host = SimHost::new();
+
+    assert!(host.paused);
+    assert_eq!(COMPACT_SCENARIO_NAME, host.snapshot.name);
+    assert_eq!((16, 16), (host.snapshot.width, host.snapshot.height));
+    assert!(host.snapshot.buildings.is_empty());
+  }
+
+  #[test]
+  fn placement_and_recipe_controls_mutate_authoritative_state() {
+    let mut host = SimHost::new();
+    host.tool = ToolMode::Building;
+    host.edit_cell(GridPosition { x: 7, y: 10 });
+
+    let selected = host.selected_building.expect("placed factory is selected");
+    host.configure_selected(CompactRecipe::IronBars);
+    assert_eq!(
+      Some(CompactRecipe::IronBars),
+      host
+        .snapshot
+        .buildings
+        .iter()
+        .find(|building| building.id == selected)
+        .and_then(|building| building.recipe)
+    );
+  }
+
+  #[test]
+  fn top_status_counts_all_authoritative_stockpile_locations() {
+    let mut game = CompactGame::new();
+    let mut snapshot = game.snapshot();
+    for _ in 0..8 {
+      snapshot = game.step();
+    }
+
+    assert_eq!(8, total_item(&snapshot, IRON_ORE));
+    assert_eq!(8, total_item(&snapshot, COPPER_ORE));
+    assert_eq!(0, total_item(&snapshot, IRON_BARS));
+  }
+
+  #[test]
+  fn controls_use_literal_double_slash_separators() {
+    let host = SimHost::new();
+    assert!(selected_building_text(&host).contains(" // "));
+    assert!(inspect_cell(&host.snapshot, host.snapshot.warehouse_position).contains(" // "));
+  }
+
+  #[test]
+  fn accepted_art_paths_remain_local_and_stable() {
+    for path in [
+      GROUND_ART,
+      ROAD_ART,
+      TRUCK_ART,
+      IRON_DEPOSIT_ART,
+      COPPER_DEPOSIT_ART,
+      FOUNDRY_ART,
+      FACTORY_ART,
+      WAREHOUSE_ART,
+      IRON_ORE_ART,
+      IRON_BARS_ART,
+    ] {
+      assert!(path.starts_with("factory/"));
+      assert!(path.ends_with(".png"));
     }
   }
 }
