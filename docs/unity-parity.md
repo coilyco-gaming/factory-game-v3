@@ -1,7 +1,9 @@
-# Completed Unity parity
+# Unity parity audit
 
-Git history retains the Unity reference. Rust now owns every retained behavior,
-tests cover its transitions, and the viewer exposes player-visible state.
+Git history retains the Unity reference. The original migration covered the
+major systems, and a source-level pass against the final Unity tests now tracks
+the remaining narrow contracts in
+[unity-feature-audit.md](unity-feature-audit.md).
 
 ## Current parity
 

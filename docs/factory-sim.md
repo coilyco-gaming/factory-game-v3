@@ -14,7 +14,8 @@ The world generalizes to N sources, N factories, and N haulers:
 
 - each source node has its own extractor: a finite deposit mined into its stockpile at a fixed per-tick speed until it runs dry, or a manifest item (`create_from_nothing`) created each tick, capacity-bounded
 - haulers have fixed quantity, weight, and volume limits plus explicit collect, deliver, retrieve, or deploy assignment state, and can be assigned from any position
-- recipes may have multiple ingredients: crafting starts only when every input is stocked and consumes all of them
+- recipes accept multiple ingredients or manifest a create-from-nothing item.
+  Start counts as the first craft tick, and output blocking preserves inputs
 - every factory has reserved input capacity per ingredient and advertises one dispatch intent per under-buffered input, in item-id order
 - automated inserters pull each required item at rate five from any distinct
   source or factory container in the eight neighboring cells

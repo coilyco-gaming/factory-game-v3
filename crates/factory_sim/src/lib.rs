@@ -16,7 +16,9 @@ pub use dispatch::{
 pub use metrics::{RunMetrics, RunMetricsSnapshot};
 pub use mining::{Deposit, MiningExtractor};
 pub use power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
-pub use production::{CraftSnapshot, FactoryProduction, RecipeRuntime};
+pub use production::{
+  CraftSnapshot, FactoryProduction, ProductionBlockReason, RecipeRuntime,
+};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
   FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerSnapshot, NodeId, ScenarioSnapshot,
@@ -90,7 +92,7 @@ impl GameState {
       .enumerate()
       .map(|(index, spec)| {
         let product = content.item(spec.product_item).clone();
-        if product.ingredients.is_empty() {
+        if product.ingredients.is_empty() && !product.create_from_nothing {
           return Err(SimulationError::RecipeMissingIngredients(product.id));
         }
         let recipe = RecipeRuntime {
@@ -112,7 +114,7 @@ impl GameState {
         }
         Ok(FactoryNode::new(
           NodeId::Factory(index as u8),
-          FactoryProduction::new(inventory, recipe),
+          FactoryProduction::new(inventory, recipe, spec.output_buffer),
           spec.input_buffer,
         ))
       })
@@ -957,7 +959,7 @@ impl GameState {
     for factory_index in 0..self.world.factories.len() {
       let wants_power = self.world.factories[factory_index]
         .production
-        .wants_power();
+        .wants_power(&self.content);
       let node = self.world.factories[factory_index].node;
       if wants_power
         && !self.consume_power(node, production_cost, &node.to_string(), events)
@@ -1416,6 +1418,39 @@ mod tests {
   }
 
   #[test]
+  fn manifest_factories_produce_without_recipe_inputs() {
+    let mut content = ContentDatabase::starter();
+    content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists")
+      .factories[0]
+      .product_item = STONE;
+    let mut state = GameState::new(content, IRON_BARS_SCENARIO).unwrap();
+
+    let first = state.step();
+
+    assert_eq!(Some(&1), first.factories[0].inventory.items.get(STONE.as_str()));
+    assert_eq!(Some(&1), state.metrics().crafted.get(STONE.as_str()));
+  }
+
+  #[test]
+  fn ingredientless_non_manifest_recipes_remain_invalid() {
+    let mut content = ContentDatabase::starter();
+    content
+      .scenarios
+      .get_mut(&IRON_BARS_SCENARIO)
+      .expect("iron-bars scenario exists")
+      .factories[0]
+      .product_item = IRON_ORE;
+
+    assert!(matches!(
+      GameState::new(content, IRON_BARS_SCENARIO),
+      Err(SimulationError::RecipeMissingIngredients(IRON_ORE))
+    ));
+  }
+
+  #[test]
   fn source_deposit_depletes_in_the_iron_bars_scenario() {
     let mut state = GameState::starter_iron_bars();
     let snapshots: Vec<_> = (0..6).map(|_| state.step()).collect();
@@ -1512,7 +1547,11 @@ mod tests {
         .copied()
         .unwrap_or(0)
     );
-    assert!(second.factories[0].craft.crafting);
+    assert!(!second.factories[0].craft.crafting);
+    assert_eq!(
+      Some(&10),
+      second.factories[0].inventory.items.get(IRON_BARS.as_str())
+    );
 
     let third = state.step();
     assert!(matches!(

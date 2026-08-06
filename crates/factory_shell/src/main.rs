@@ -2042,6 +2042,7 @@ mod tests {
   fn presentation_state_tracks_authoritative_material_flow() {
     let mut host = SimHost::new();
     host.auto_cycle = false;
+    host.select_scenario(2, "test selected");
     let mut saw_ready_source = false;
     let mut saw_collecting = false;
     let mut saw_delivering = false;

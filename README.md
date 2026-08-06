@@ -41,8 +41,8 @@ ward exec image-build
 ## Inventory
 
 See [docs/FEATURES.md](docs/FEATURES.md) for the current feature inventory and migration surface.
-See [docs/unity-parity.md](docs/unity-parity.md) for the completed historical
-parity map.
+See [docs/unity-parity.md](docs/unity-parity.md) for the historical parity map
+and its source-level hardening audit.
 
 ## See also
 

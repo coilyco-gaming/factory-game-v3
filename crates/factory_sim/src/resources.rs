@@ -154,6 +154,12 @@ impl Inventory {
     }
   }
 
+  pub fn force_insert(&mut self, item: ItemId, quantity: u32) {
+    if quantity > 0 {
+      *self.items.entry(item).or_insert(0) += quantity;
+    }
+  }
+
   pub fn remove_up_to(&mut self, item: ItemId, requested: u32) -> u32 {
     let available = self.count(item);
     let removed = requested.min(available);

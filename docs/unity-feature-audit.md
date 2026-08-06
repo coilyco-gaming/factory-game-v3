@@ -1,8 +1,9 @@
 # Unity feature audit
 
-This completed historical audit maps every former Unity gameplay subsystem to
+This source-level audit maps the final Unity gameplay snapshot at `4d683d6^` to
 its Rust replacement. “Working” means deterministic tests and, where visual, a
-surface exposed by the Bevy/Wasm viewer.
+surface exposed by the Bevy/Wasm viewer. The original completion claim was
+reopened when the final Unity tests exposed narrower component contracts.
 
 * **Content catalog** - working - `factory_content` owns all active resources,
   products, spawnable recipes, physical values, timing, multipliers, manifest
@@ -12,9 +13,9 @@ surface exposed by the Bevy/Wasm viewer.
   insertion, and adjacent receiver retrieval from source or factory containers.
 * **Mining** - working - Rust owns finite and manifest extraction, deployment
   requirements, power gating, depletion, and source/drill teardown.
-* **Production** - working - Rust owns indexed factories, multi-input recipes,
-  progress, output capacity, power gating, and an end-to-end five-factory
-  mining-drill chain.
+* **Production** - working - Rust owns indexed factories, multi-input and
+  ingredientless manifest recipes, start-tick progress, output gating, power
+  gating, and an end-to-end five-factory mining-drill chain.
 * **Dispatch** - working - Rust owns collect, deliver, retrieve, deploy,
   fleet arbitration, in-flight work, one-phase-per-tick receiver transitions,
   fuel delivery, factory-output supply, nearest matching world-object
@@ -23,9 +24,11 @@ surface exposed by the Bevy/Wasm viewer.
 * **Movement and pathfinding** - working - Rust owns deterministic A-star
   routing, diagonals, occupied targets, queued movement, recalculation,
   no-path state, and transit conflict arbitration.
-* **Battery and generation** - working - Rust owns node and hauler batteries,
-  minimum capacity, clamped charge, overdraw rejection, capacity-weighted
-  adjacent balancing, fuel burn, owner-specific system costs, and starvation.
+* **Battery** - working - Rust owns node and hauler batteries, minimum capacity,
+  clamped charge, overdraw rejection, capacity-weighted adjacent balancing,
+  owner-specific system costs, and starvation.
+* **Generation** - parity gap - Rust proves one fuel-burning plant. The final
+  Unity tests also prove multiple generators and fuel-free generation.
 * **Automatic power lines** - working - Rust owns one-time nearest-target
   selection, greedy eight-neighbor construction, pass-through line cells,
   1,000-capacity line batteries, snapshots, and viewer projection.
@@ -41,6 +44,10 @@ surface exposed by the Bevy/Wasm viewer.
   exposes those interactions.
 * **Observability** - working - Rust owns structured snapshots, event feeds,
   deterministic metrics, and headless JSONL output.
+* **Per-object alerts** - parity gap - the final Unity object model retains ten
+  alerts per object, deduplicates repeated messages, and refreshes last-seen
+  ticks. Rust currently exposes only a global event feed.
 
-Every row is working. The repository removed the superseded C# gameplay and
-dependency surface after the final full gate.
+Issue #45 restores the overlooked production contract. Generalized generation
+and per-object alerts remain the audited implementation queue. The repository
+still retains the exact Unity source evidence in Git history.
