@@ -43,10 +43,11 @@ and west neighbors and no north or south neighbors. North-south straights use
 the source orientation. Corners, junctions, endpoints, and co-located nodes
 retain the colored road fallback.
 
-Colored nodes, haulers, and cargo badges remain underneath the art. Missing
-images therefore degrade to the previous presentation. Labels, gauges, route
-dashes, frame-time effects, detail visibility, and hauler interpolation keep
-their existing ownership and behavior.
+Colored node fallbacks render only for identities without accepted art. Real
+node sprites retain activity pulses without the old rectangular backplates,
+and truck art replaces the colored hauler underlay. Cargo badges, labels,
+gauges, route dashes, detail visibility, and interpolation retain their state
+and animation roles.
 
 ## Packaging boundary
 

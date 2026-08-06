@@ -63,9 +63,6 @@ const GRID_POWER_LINE: Color = Color::srgb(0.26, 0.78, 0.92);
 const ROUTE_IDLE: Color = Color::srgb(0.20, 0.23, 0.28);
 const ROUTE_ACTIVE: Color = Color::srgb(0.94, 0.67, 0.25);
 const ROUTE_DASH: Color = Color::srgb(1.0, 0.88, 0.48);
-const HAULER_IDLE: Color = Color::srgb(0.38, 0.45, 0.58);
-const HAULER_COLLECTING: Color = Color::srgb(0.95, 0.60, 0.24);
-const HAULER_DELIVERING: Color = Color::srgb(0.38, 0.72, 0.98);
 const CARGO_EMPTY: Color = Color::srgb(0.10, 0.13, 0.18);
 const CARGO_LOADED: Color = Color::srgb(0.98, 0.92, 0.58);
 const CRAFT_GAUGE_BACKGROUND: Color = Color::srgb(0.10, 0.16, 0.14);
@@ -372,13 +369,13 @@ struct NodeVisual(NodeId);
 struct NodeActivityVisual(NodeActivity);
 
 #[derive(Component)]
+struct NodeFallback;
+
+#[derive(Component)]
 struct NodeLabel(NodeId);
 
 #[derive(Component)]
 struct DrillArt(NodeId);
-
-#[derive(Component)]
-struct HaulerVisual(HaulerId);
 
 #[derive(Component)]
 struct HaulerArt(HaulerId);
@@ -827,6 +824,7 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
   }
   for node in &snapshot.topology.nodes {
     let position = grid_to_world(node.position);
+    let activity = node_activity(snapshot, node.id);
     let size = match node.id {
       NodeId::Source(_) => Vec2::new(124.0, 74.0),
       NodeId::Road => Vec2::new(100.0, 34.0),
@@ -837,15 +835,27 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
       NodeId::Structure(_) => Vec2::new(132.0, 82.0),
       NodeId::Transit(_) => Vec2::new(28.0, 28.0),
     };
-    commands.spawn((
-      Sprite::from_color(node_color(snapshot, node.id), size),
-      Transform::from_xyz(position.x, position.y, 1.0),
-      NodeVisual(node.id),
-      NodeActivityVisual(node_activity(snapshot, node.id)),
-      ProjectionEntity,
-    ));
-    if let Some(kind) = node_art_kind(snapshot, node) {
-      spawn_node_art(commands, art, kind, position, NODE_ART_SIZE, 1.2);
+    match node_presentation(snapshot, node) {
+      NodePresentation::Art(kind) => spawn_node_art(
+        commands,
+        art,
+        node.id,
+        activity,
+        kind,
+        position,
+        NODE_ART_SIZE,
+        1.2,
+      ),
+      NodePresentation::Fallback => {
+        commands.spawn((
+          Sprite::from_color(node_color_for_activity(node.id, activity), size),
+          Transform::from_xyz(position.x, position.y, 1.0),
+          NodeVisual(node.id),
+          NodeActivityVisual(activity),
+          NodeFallback,
+          ProjectionEntity,
+        ));
+      }
     }
     if drill_art_candidate(snapshot, node) {
       spawn_drill_art(commands, art, snapshot, node, position);
@@ -883,13 +893,6 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
 
   for hauler in &snapshot.haulers {
     let position = hauler_world_position(snapshot, hauler);
-    commands.spawn((
-      Sprite::from_color(hauler_color(hauler), Vec2::splat(hauler_size(hauler))),
-      Transform::from_xyz(position.x, position.y, 2.0),
-      HaulerVisual(hauler.id),
-      HaulerTarget(position),
-      ProjectionEntity,
-    ));
     let mut truck = Sprite::from_image(art.truck.clone());
     truck.custom_size = Some(Vec2::splat(TRUCK_ART_SIZE));
     commands.spawn((
@@ -940,6 +943,8 @@ fn spawn_projection(commands: &mut Commands, snapshot: &TickSnapshot, art: &Fact
 fn spawn_node_art(
   commands: &mut Commands,
   art: &FactoryArt,
+  node: NodeId,
+  activity: NodeActivity,
   kind: NodeArtKind,
   position: Vec2,
   size: f32,
@@ -951,6 +956,8 @@ fn spawn_node_art(
   commands.spawn((
     sprite,
     Transform::from_xyz(position.x, position.y, z).with_rotation(rotation),
+    NodeVisual(node),
+    NodeActivityVisual(activity),
     ProjectionEntity,
   ));
 }
@@ -1282,46 +1289,21 @@ fn rebuild_projection(
 fn project_snapshot(
   host: Res<SimHost>,
   mut last_snapshot_revision: Local<u64>,
-  mut hauler_visuals: Query<
-    (&HaulerVisual, &mut HaulerTarget),
-    (
-      Without<HaulerArt>,
-      Without<HaulerLabel>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
-    ),
-  >,
   mut hauler_art: Query<
     (&HaulerArt, &mut HaulerTarget),
-    (
-      Without<HaulerVisual>,
-      Without<HaulerLabel>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
-    ),
+    (Without<HaulerLabel>, Without<CargoBadge>, Without<CargoArt>),
   >,
   mut hauler_labels: Query<
     (&HaulerLabel, &mut HaulerTarget),
-    (
-      Without<HaulerVisual>,
-      Without<HaulerArt>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
-    ),
+    (Without<HaulerArt>, Without<CargoBadge>, Without<CargoArt>),
   >,
   mut cargo_badges: Query<
     (&CargoBadge, &mut HaulerTarget),
-    (
-      Without<HaulerVisual>,
-      Without<HaulerArt>,
-      Without<HaulerLabel>,
-      Without<CargoArt>,
-    ),
+    (Without<HaulerArt>, Without<HaulerLabel>, Without<CargoArt>),
   >,
   mut cargo_art: Query<
     (&CargoArt, &mut HaulerTarget),
     (
-      Without<HaulerVisual>,
       Without<HaulerArt>,
       Without<HaulerLabel>,
       Without<CargoBadge>,
@@ -1330,17 +1312,6 @@ fn project_snapshot(
 ) {
   if !claim_snapshot_revision(host.snapshot_revision, &mut last_snapshot_revision) {
     return;
-  }
-
-  for (visual, mut target) in &mut hauler_visuals {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == visual.0)
-    {
-      target.0 = hauler_world_position(&host.snapshot, hauler);
-    }
   }
 
   for (visual, mut target) in &mut hauler_art {
@@ -1394,47 +1365,27 @@ fn project_activity(
   art: Res<FactoryArt>,
   mut last_snapshot_revision: Local<u64>,
   mut nodes: Query<
-    (&NodeVisual, &mut NodeActivityVisual, &mut Sprite),
     (
-      Without<HaulerVisual>,
-      Without<RouteVisual>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
+      &NodeVisual,
+      &mut NodeActivityVisual,
+      &mut Sprite,
+      Option<&NodeFallback>,
     ),
+    (Without<RouteVisual>, Without<CargoBadge>, Without<CargoArt>),
   >,
   mut routes: Query<
     (&RouteVisual, &mut Sprite),
-    (
-      Without<NodeVisual>,
-      Without<HaulerVisual>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
-    ),
-  >,
-  mut haulers: Query<
-    (&HaulerVisual, &mut Sprite),
-    (
-      Without<NodeVisual>,
-      Without<RouteVisual>,
-      Without<CargoBadge>,
-      Without<CargoArt>,
-    ),
+    (Without<NodeVisual>, Without<CargoBadge>, Without<CargoArt>),
   >,
   mut cargo_badges: Query<
     (&CargoBadge, &mut Sprite),
-    (
-      Without<NodeVisual>,
-      Without<RouteVisual>,
-      Without<HaulerVisual>,
-      Without<CargoArt>,
-    ),
+    (Without<NodeVisual>, Without<RouteVisual>, Without<CargoArt>),
   >,
   mut cargo_art: Query<
     (&CargoArt, &mut Sprite),
     (
       Without<NodeVisual>,
       Without<RouteVisual>,
-      Without<HaulerVisual>,
       Without<CargoBadge>,
     ),
   >,
@@ -1443,26 +1394,17 @@ fn project_activity(
     return;
   }
 
-  for (visual, mut activity, mut sprite) in &mut nodes {
+  for (visual, mut activity, mut sprite, fallback) in &mut nodes {
     activity.0 = node_activity(&host.snapshot, visual.0);
-    let color = node_color_for_activity(visual.0, activity.0);
-    if sprite.color != color {
-      sprite.color = color;
+    if fallback.is_some() {
+      let color = node_color_for_activity(visual.0, activity.0);
+      if sprite.color != color {
+        sprite.color = color;
+      }
     }
   }
   for (visual, mut sprite) in &mut routes {
     sprite.color = route_color(&host.snapshot, visual.0);
-  }
-  for (visual, mut sprite) in &mut haulers {
-    if let Some(hauler) = host
-      .snapshot
-      .haulers
-      .iter()
-      .find(|hauler| hauler.id == visual.0)
-    {
-      sprite.color = hauler_color(hauler);
-      sprite.custom_size = Some(Vec2::splat(hauler_size(hauler)));
-    }
   }
   for (badge, mut sprite) in &mut cargo_badges {
     if let Some(hauler) = host
@@ -2177,13 +2119,6 @@ enum NodeActivity {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum HaulerActivity {
-  Idle,
-  Collecting,
-  Delivering,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum RouteDirection {
   TowardRoad,
   AwayFromRoad,
@@ -2204,6 +2139,12 @@ enum NodeArtKind {
   Radar,
   Warehouse,
   Road(RoadOrientation),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum NodePresentation {
+  Art(NodeArtKind),
+  Fallback,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -2310,28 +2251,6 @@ fn node_activity(snapshot: &TickSnapshot, node: NodeId) -> NodeActivity {
   }
 }
 
-fn hauler_activity(hauler: &HaulerSnapshot) -> HaulerActivity {
-  match &hauler.dispatch {
-    DispatchReceiverState::Assigned(assignment)
-      if matches!(
-        assignment.phase,
-        DispatchPhase::Collect | DispatchPhase::Retrieve
-      ) =>
-    {
-      HaulerActivity::Collecting
-    }
-    DispatchReceiverState::Assigned(_) => HaulerActivity::Delivering,
-    DispatchReceiverState::Unassigned if !hauler.cargo.items.is_empty() => {
-      HaulerActivity::Delivering
-    }
-    DispatchReceiverState::Unassigned => HaulerActivity::Idle,
-  }
-}
-
-fn node_color(snapshot: &TickSnapshot, node: NodeId) -> Color {
-  node_color_for_activity(node, node_activity(snapshot, node))
-}
-
 fn node_color_for_activity(node: NodeId, activity: NodeActivity) -> Color {
   match (node, activity) {
     (NodeId::Source(_), NodeActivity::Ready) => NODE_SOURCE_READY,
@@ -2348,22 +2267,6 @@ fn node_color_for_activity(node: NodeId, activity: NodeActivity) -> Color {
     (NodeId::BuildSite(_), _) => NODE_BUILD_SITE,
     (NodeId::Structure(_), _) => NODE_STRUCTURE,
     (NodeId::Transit(_), _) => NODE_ROAD,
-  }
-}
-
-fn hauler_color(hauler: &HaulerSnapshot) -> Color {
-  match hauler_activity(hauler) {
-    HaulerActivity::Idle => HAULER_IDLE,
-    HaulerActivity::Collecting => HAULER_COLLECTING,
-    HaulerActivity::Delivering => HAULER_DELIVERING,
-  }
-}
-
-fn hauler_size(hauler: &HaulerSnapshot) -> f32 {
-  if hauler.cargo.items.is_empty() {
-    25.0
-  } else {
-    33.0
   }
 }
 
@@ -2456,6 +2359,10 @@ fn node_art_kind(snapshot: &TickSnapshot, node: &TopologyNode) -> Option<NodeArt
     NodeId::Road => straight_road_orientation(snapshot, node.position).map(NodeArtKind::Road),
     _ => None,
   }
+}
+
+fn node_presentation(snapshot: &TickSnapshot, node: &TopologyNode) -> NodePresentation {
+  node_art_kind(snapshot, node).map_or(NodePresentation::Fallback, NodePresentation::Art)
 }
 
 fn drill_art_candidate(snapshot: &TickSnapshot, node: &TopologyNode) -> bool {
@@ -2912,16 +2819,20 @@ mod tests {
         .sources
         .iter()
         .any(|source| node_activity(&host.snapshot, source.node) == NodeActivity::Ready);
-      saw_collecting |= host
-        .snapshot
-        .haulers
-        .iter()
-        .any(|hauler| hauler_activity(hauler) == HaulerActivity::Collecting);
-      saw_delivering |= host
-        .snapshot
-        .haulers
-        .iter()
-        .any(|hauler| hauler_activity(hauler) == HaulerActivity::Delivering);
+      saw_collecting |= host.snapshot.haulers.iter().any(|hauler| {
+        matches!(
+          &hauler.dispatch,
+          DispatchReceiverState::Assigned(assignment)
+            if matches!(assignment.phase, DispatchPhase::Collect | DispatchPhase::Retrieve)
+        )
+      });
+      saw_delivering |= host.snapshot.haulers.iter().any(|hauler| {
+        matches!(
+          &hauler.dispatch,
+          DispatchReceiverState::Assigned(assignment)
+            if matches!(assignment.phase, DispatchPhase::Deliver | DispatchPhase::Deploy)
+        ) || !hauler.cargo.items.is_empty()
+      });
       saw_crafting |= node_activity(&host.snapshot, NodeId::Factory(0)) == NodeActivity::Crafting;
     }
 
@@ -3260,6 +3171,32 @@ mod tests {
     occupied.sources[0].occupied_by = Some(NodeId::Generator(0));
     configure_drill_art(&mut drill_sprite, &occupied, deployed_node.id);
     assert_eq!(Some(Vec2::ZERO), drill_sprite.custom_size);
+  }
+
+  #[test]
+  fn node_backplates_are_limited_to_unmapped_identities() {
+    let snapshot = scenario_game(V2_WORLD_SCENARIO).snapshot(Vec::new());
+    let source = snapshot
+      .topology
+      .nodes
+      .iter()
+      .find(|node| matches!(node.id, NodeId::Source(_)))
+      .unwrap();
+    let junction = snapshot
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Road)
+      .unwrap();
+
+    assert!(matches!(
+      node_presentation(&snapshot, source),
+      NodePresentation::Art(NodeArtKind::Deposit(_))
+    ));
+    assert_eq!(
+      NodePresentation::Fallback,
+      node_presentation(&snapshot, junction)
+    );
   }
 
   #[test]
