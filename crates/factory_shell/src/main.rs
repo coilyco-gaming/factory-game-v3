@@ -402,8 +402,6 @@ struct HudTitleText;
 enum HudField {
   Flow,
   Stock,
-  Logistics,
-  World,
   Power,
 }
 
@@ -551,20 +549,18 @@ fn spawn_status_bar(commands: &mut Commands) {
             HudTitleText,
           ));
         });
-      for (label, field, accent) in [
-        ("FLOW", HudField::Flow, Color::srgb(0.96, 0.58, 0.28)),
-        ("STOCK", HudField::Stock, Color::srgb(0.95, 0.78, 0.36)),
-        (
-          "LOGISTICS",
-          HudField::Logistics,
-          Color::srgb(0.38, 0.78, 0.96),
-        ),
-        ("WORLD", HudField::World, Color::srgb(0.68, 0.62, 0.94)),
-        ("POWER", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
-      ] {
+      for (label, field, accent) in status_metrics() {
         spawn_status_metric(panel, label, field, accent);
       }
     });
+}
+
+fn status_metrics() -> [(&'static str, HudField, Color); 3] {
+  [
+    ("FLOW", HudField::Flow, Color::srgb(0.96, 0.58, 0.28)),
+    ("STOCK", HudField::Stock, Color::srgb(0.95, 0.78, 0.36)),
+    ("POWER", HudField::Power, Color::srgb(0.48, 0.88, 0.62)),
+  ]
 }
 
 fn spawn_status_metric(
@@ -576,7 +572,7 @@ fn spawn_status_metric(
   parent
     .spawn((
       Node {
-        width: percent(16),
+        width: percent(24),
         height: percent(100),
         min_width: px(0),
         flex_grow: 1.0,
@@ -1757,24 +1753,6 @@ fn update_text(
         format_items(&metrics.crafted)
       ),
       HudField::Stock => format_items(&totals),
-      HudField::Logistics => format!(
-        "{} dispatched  |  {} idle  |  {} haulers",
-        metrics.dispatches_assigned,
-        metrics.idle_ticks,
-        host.snapshot.haulers.len()
-      ),
-      HudField::World => format!(
-        "{} sources  |  {} factories  |  {} radars  |  {} generators  |  {} built",
-        host.snapshot.sources.len(),
-        host.snapshot.factories.len(),
-        host.snapshot.radars.len(),
-        host
-          .snapshot
-          .power
-          .as_ref()
-          .map_or(0, |power| power.generators.len()),
-        host.snapshot.structures.len()
-      ),
       HudField::Power => format!(
         "{}  |  {} made  |  {} moved  |  {} used  |  {} starved",
         power,
@@ -2643,6 +2621,18 @@ mod tests {
     assert_eq!(
       Visibility::Hidden,
       *app.world().get::<Visibility>(title).unwrap()
+    );
+  }
+
+  #[test]
+  fn status_bar_contains_only_flow_stock_and_power() {
+    assert_eq!(
+      ["FLOW", "STOCK", "POWER"],
+      status_metrics().map(|(label, _, _)| label)
+    );
+    assert_eq!(
+      [HudField::Flow, HudField::Stock, HudField::Power],
+      status_metrics().map(|(_, field, _)| field)
     );
   }
 

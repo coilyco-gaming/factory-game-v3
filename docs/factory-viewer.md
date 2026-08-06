@@ -33,11 +33,11 @@ test suite, but do not appear in the player-facing UI. Each world displays:
 - independent craft progress and output item for every factory
 - generator mode and fuel, total energy, node batteries, use, and starvation
 - radar deployment item, target resource, current claim, and claim activity
-- material-flow metrics plus global object and stored-resource totals
+- material-flow, stored-resource, and power metrics
 
 The scene rebuilds when the scenario changes and interpolates haulers between
-authoritative snapshots. One full-width top bar groups persistent metrics, and
-one compact control panel sits at bottom right. Recent activity and focused
+authoritative snapshots. One full-width top bar groups Flow, Stock, and Power,
+and one compact control panel sits at bottom right. Recent activity and focused
 alert overlays are intentionally absent. A presentation offset keeps labels
 between the two screen-edge surfaces. See [factory-art.md](factory-art.md).
 
