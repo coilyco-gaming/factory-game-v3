@@ -157,7 +157,7 @@ impl Topology {
       .map(|node| node.position)
       .collect::<BTreeSet<_>>();
     blocked.extend(obstacles.iter().copied());
-    // Position lookup sits on several 100x100 hot paths. Keep the ordered node
+    // Position lookup sits on several large-world hot paths. Keep the ordered node
     // vector for stable snapshots while avoiding a full scan for every query.
     let positions = nodes.iter().map(|node| (node.id, node.position)).collect();
     Self {

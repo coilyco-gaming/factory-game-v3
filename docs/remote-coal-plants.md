@@ -43,9 +43,9 @@ queued placement, world creation, claim release, power linking, and generation.
 The viewer labels the generator type, primary link or aggregate link count,
 path length, and occupied coal site in detail and overview modes.
 
-## 100x100 proof and performance
+## 50x50 proof and performance
 
-The focused lifecycle test keeps the 100x100 topology, all 424 sources, four
+The focused lifecycle test keeps the 50x50 topology, all 424 sources, four
 radars, 15 factories, and 15 haulers. It derives the exact coal-plant inputs
 from the catalog and suppresses unrelated factory demand, but never seeds a
 plant item or remote generator. This keeps routine validation focused while
@@ -54,7 +54,7 @@ mutation paths.
 
 The focused simulation proof now continues through remote coal delivery, fuel
 burn, generation, battery charge, and grid balancing while retaining the full
-100x100 world. It and the viewer proof each finish in about 0.4 to 0.5 seconds
+50x50 world. It and the viewer proof each finish in about 0.4 to 0.5 seconds
 in a warm debug build on the implementation host, while the focused simulation
 proof takes about 0.05 seconds in release mode. After deterministic route
 caching and sealed-endpoint dispatch filtering, the full unseeded 50-tick v2

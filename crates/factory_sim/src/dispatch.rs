@@ -61,11 +61,7 @@ impl DispatchPolicy {
     }
   }
 
-  pub fn clear_priority(
-    &mut self,
-    destination: NodeId,
-    item: ItemId,
-  ) -> Option<DispatchPriority> {
+  pub fn clear_priority(&mut self, destination: NodeId, item: ItemId) -> Option<DispatchPriority> {
     self.priorities.remove(&(destination, item))
   }
 }
@@ -190,6 +186,21 @@ impl DispatchAssignment {
     }
   }
 
+  pub fn deliver_with_priority(
+    item: ItemId,
+    source: NodeId,
+    destination: NodeId,
+    priority: DispatchPriority,
+  ) -> Self {
+    Self {
+      item,
+      source,
+      destination,
+      phase: DispatchPhase::Deliver,
+      priority,
+    }
+  }
+
   pub fn retrieve(item: ItemId, source: NodeId, destination: NodeId) -> Self {
     Self {
       item,
@@ -208,7 +219,9 @@ pub struct DispatchBoard {
 
 impl DispatchBoard {
   pub fn new() -> Self {
-    Self { intents: Vec::new() }
+    Self {
+      intents: Vec::new(),
+    }
   }
 }
 

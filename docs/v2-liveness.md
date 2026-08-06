@@ -1,7 +1,7 @@
 # Sustained v2-world operation
 
-The gate advances the complete 100x100 `v2-world` beyond starter charge. It
-proves continued material flow and remote fuel-backed generation.
+The complete 50x50 `v2-world` runs beyond starter charge, proving continued
+material flow and remote fuel-backed generation.
 
 ## Proof window
 
@@ -15,9 +15,8 @@ every non-generator battery, removing all distributed starter and stored energy:
 
 The remote plant must retain coal at tick 650. This connects extraction,
 deployment, fuel delivery, generation, balancing, and downstream production.
-
-Every 50 ticks, both replays must expose identical metrics and liveness.
-Per-generator maps distinguish the central and remote plants.
+Every 50 ticks, both replays expose identical metrics and liveness. Generator
+maps distinguish the central and remote plants.
 
 ## Structural liveness bounds
 
@@ -29,8 +28,7 @@ Every tick checks bounds derived from the scenario rather than copied constants:
 * power-line cells cannot exceed the grid area
 * starvation is actor-and-window bounded, with none added in the final 50 ticks
 
-The compact summary omits inventories and events, allowing every intermediate
-tick to be inspected without snapshot serialization cost.
+The summary omits inventories and events, avoiding snapshot serialization.
 
 ## Deadlock prevention
 
@@ -47,6 +45,10 @@ The dispatch and topology contracts now prevent that state:
   preventing a fleet from piling onto one nearly full buffer
 * an empty source at collection range and any no-path movement cancel the stale
   assignment so the hauler can re-enter arbitration
+* loaded unassigned haulers rejoin compatible reachable demand before empty
+  carriers collect more freight
+* radars release transfer-inaccessible targets so dense deployments cannot pin
+  a permanently unreachable claim
 * generators extend their connected grid to drained active deposits, with link
   count bounded by generators, sources, and factories
 * full or depleted sources do not spend mining power or attract new lines
@@ -56,18 +58,17 @@ excluded from snapshots, equality, and clones because it is not simulation state
 
 ## Measured result
 
-The deterministic tick-650 summary on the implementation host records 8,120
-coal, 7,684 copper ore, 10,112 iron ore, and 2,076 stone mined. It records
-13,906 units collected, 12,955 delivered, 186 frames, 206 motors, and two
-active generators. `generator-1` burns 1,768 coal and generates 35,244 energy.
-Three links span 26 cells, and starvation stays at zero. Four haulers remain
-assigned, none retains a route, and no mutation is left unapplied.
+The deterministic tick-650 summary on the implementation host records 10,788
+coal, 10,216 copper ore, 26,508 iron ore, and 3,056 stone mined. It records
+16,951 units collected, 14,583 delivered, 186 frames, 220 motors, and two
+active generators. `generator-1` burns 1,912 coal and generates 36,159 energy.
+Seven links span 61 cells, and starvation stays at zero. Seven haulers remain
+assigned, two retain bounded routes of at most 12 cells, and no mutation is
+left unapplied.
 
-Before the deadlock fix, one snapshot-free 650-tick release probe took 48.81
-seconds. The final release test advances and compares two full replays in 1.65
-seconds. The 50-tick release integration test finishes in 0.15 seconds. These
-are point-in-time implementation-host measurements, not portable wall-clock
-budgets.
+An early 650-tick 100x100 release probe took 48.81 seconds. The current 50x50
+test compares two replays in 1.16 seconds. These point measurements span
+different bounds and are neither portable budgets nor a direct benchmark.
 
 Run `ward exec v2-liveness` for the committed proof. The headless runner can
 also expose an inspectable final summary without intermediate snapshots:
@@ -76,5 +77,4 @@ also expose an inspectable final summary without intermediate snapshots:
 ward exec cargo-run -- run --scenario v2-world --ticks 650 --summary-only --exhaust-batteries-at 500
 ```
 
-The gate proves operation for 150 ticks after a controlled distributed-energy
-cutoff. It does not claim infinite steady state, .NET parity, or portable timing.
+The gate proves 150 post-cutoff ticks, not infinite steady state or .NET parity.

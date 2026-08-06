@@ -275,9 +275,16 @@ pub struct ScenarioDefinition {
   pub layout: LayoutSpec,
 }
 
-const V2_MAP_SIZE: i32 = 100;
+const V2_MAP_SIZE: i32 = 50;
 const V2_ORE_PER_ITEM: usize = 141;
 const V2_RANDOM_SEED: u32 = 4_382_721;
+
+const fn v2_position(x: i32, y: i32) -> GridPoint {
+  GridPoint {
+    x: V2_MAP_SIZE / 2 + x,
+    y: V2_MAP_SIZE / 2 + y,
+  }
+}
 
 struct V2WorldRng(u32);
 
@@ -293,6 +300,7 @@ impl V2WorldRng {
 }
 
 fn v2_ore_position(rng: &mut V2WorldRng, occupied: &mut BTreeSet<GridPoint>) -> GridPoint {
+  let map_size = u32::try_from(V2_MAP_SIZE).expect("v2 map size fits u32");
   let valid = |position: GridPoint| {
     let dx = position.x - V2_MAP_SIZE / 2;
     let dy = position.y - V2_MAP_SIZE / 2;
@@ -300,8 +308,8 @@ fn v2_ore_position(rng: &mut V2WorldRng, occupied: &mut BTreeSet<GridPoint>) -> 
   };
   for _ in 0..10 {
     let position = GridPoint {
-      x: i32::try_from(rng.next() % 100).expect("generated x fits i32"),
-      y: i32::try_from(rng.next() % 100).expect("generated y fits i32"),
+      x: i32::try_from(rng.next() % map_size).expect("generated x fits i32"),
+      y: i32::try_from(rng.next() % map_size).expect("generated y fits i32"),
     };
     if valid(position) {
       occupied.insert(position);
@@ -336,7 +344,7 @@ fn v2_world_scenario() -> ScenarioDefinition {
       });
     }
   }
-  source_positions.push(GridPoint { x: 56, y: 50 });
+  source_positions.push(v2_position(6, 0));
   sources.push(SourceSpec {
     item: STONE,
     deposit: 0,
@@ -364,7 +372,7 @@ fn v2_world_scenario() -> ScenarioDefinition {
   ];
   ScenarioDefinition {
     id: V2_WORLD_SCENARIO,
-    name: "V2 100x100 Factory World".into(),
+    name: "V2 50x50 Factory World".into(),
     sources,
     factories,
     build_sites: Vec::new(),
@@ -372,22 +380,22 @@ fn v2_world_scenario() -> ScenarioDefinition {
       RadarSpec {
         deployment_item: MINING_DRILL,
         target_item: IRON_ORE,
-        position: GridPoint { x: 50, y: 50 },
+        position: v2_position(0, 0),
       },
       RadarSpec {
         deployment_item: MINING_DRILL,
         target_item: COPPER_ORE,
-        position: GridPoint { x: 50, y: 51 },
+        position: v2_position(0, 1),
       },
       RadarSpec {
         deployment_item: MINING_DRILL,
         target_item: COAL,
-        position: GridPoint { x: 50, y: 52 },
+        position: v2_position(0, 2),
       },
       RadarSpec {
         deployment_item: COAL_PLANT,
         target_item: COAL,
-        position: GridPoint { x: 50, y: 53 },
+        position: v2_position(0, 3),
       },
     ],
     hauler_count: 15,
@@ -410,41 +418,41 @@ fn v2_world_scenario() -> ScenarioDefinition {
       width: V2_MAP_SIZE,
       height: V2_MAP_SIZE,
       source_positions,
-      road_position: GridPoint { x: 50, y: 50 },
+      road_position: v2_position(0, 0),
       factory_positions: vec![
-        GridPoint { x: 52, y: 50 },
-        GridPoint { x: 53, y: 50 },
-        GridPoint { x: 54, y: 50 },
-        GridPoint { x: 57, y: 52 },
-        GridPoint { x: 57, y: 51 },
-        GridPoint { x: 57, y: 53 },
-        GridPoint { x: 55, y: 50 },
-        GridPoint { x: 52, y: 51 },
-        GridPoint { x: 54, y: 51 },
-        GridPoint { x: 53, y: 52 },
-        GridPoint { x: 55, y: 52 },
-        GridPoint { x: 55, y: 51 },
-        GridPoint { x: 56, y: 52 },
-        GridPoint { x: 56, y: 53 },
-        GridPoint { x: 56, y: 51 },
+        v2_position(2, 0),
+        v2_position(3, 0),
+        v2_position(4, 0),
+        v2_position(7, 2),
+        v2_position(7, 1),
+        v2_position(7, 3),
+        v2_position(5, 0),
+        v2_position(2, 1),
+        v2_position(4, 1),
+        v2_position(3, 2),
+        v2_position(5, 2),
+        v2_position(5, 1),
+        v2_position(6, 2),
+        v2_position(6, 3),
+        v2_position(6, 1),
       ],
-      generator_positions: vec![GridPoint { x: 52, y: 52 }],
+      generator_positions: vec![v2_position(2, 2)],
       hauler_positions: vec![
-        GridPoint { x: 49, y: 50 },
-        GridPoint { x: 49, y: 51 },
-        GridPoint { x: 49, y: 52 },
-        GridPoint { x: 51, y: 50 },
-        GridPoint { x: 51, y: 51 },
-        GridPoint { x: 51, y: 52 },
-        GridPoint { x: 51, y: 53 },
-        GridPoint { x: 52, y: 53 },
-        GridPoint { x: 53, y: 53 },
-        GridPoint { x: 54, y: 53 },
-        GridPoint { x: 57, y: 50 },
-        GridPoint { x: 57, y: 51 },
-        GridPoint { x: 57, y: 52 },
-        GridPoint { x: 57, y: 53 },
-        GridPoint { x: 57, y: 54 },
+        v2_position(-1, 0),
+        v2_position(-1, 1),
+        v2_position(-1, 2),
+        v2_position(1, 0),
+        v2_position(1, 1),
+        v2_position(1, 2),
+        v2_position(1, 3),
+        v2_position(2, 3),
+        v2_position(3, 3),
+        v2_position(4, 3),
+        v2_position(7, 0),
+        v2_position(7, 1),
+        v2_position(7, 2),
+        v2_position(7, 3),
+        v2_position(7, 4),
       ],
       obstacles: Vec::new(),
     },
@@ -1207,7 +1215,7 @@ mod tests {
     let content = ContentDatabase::starter();
     let scenario = content.scenario(V2_WORLD_SCENARIO);
 
-    assert_eq!((100, 100), (scenario.layout.width, scenario.layout.height));
+    assert_eq!((50, 50), (scenario.layout.width, scenario.layout.height));
     assert_eq!(424, scenario.sources.len());
     assert_eq!(
       423,
@@ -1255,11 +1263,11 @@ mod tests {
     );
     assert_eq!(10, scenario.factories[9].starting_items[&MINING_DRILL]);
     assert_eq!(
-      GridPoint { x: 52, y: 52 },
+      GridPoint { x: 27, y: 27 },
       scenario.layout.generator_positions[0]
     );
     assert_eq!(
-      GridPoint { x: 56, y: 50 },
+      GridPoint { x: 31, y: 25 },
       scenario.layout.source_positions[423]
     );
     assert_eq!(

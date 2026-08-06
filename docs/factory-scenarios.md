@@ -1,6 +1,6 @@
 # Factory simulation scenarios
 
-The deterministic showcase covers twelve layouts:
+The deterministic scenario catalog covers twelve layouts:
 
 - **Iron bars** - one hauler supplies one foundry from a finite iron deposit.
 - **Iron bars fleet** - three haulers arbitrate the same bounded demand.
@@ -22,11 +22,13 @@ The deterministic showcase covers twelve layouts:
   occupied structure.
 - **Hybrid generator grid** - fueled and fuel-free generators produce together,
   build independent links, and balance their combined output across the grid.
-- **V2 100x100 factory world** - 423 generated ore deposits, one manifest stone
+- **V2 50x50 factory world** - 423 generated ore deposits, one manifest stone
   source, three mining-drill radars, one coal-plant radar, 15 haulers, seven
   foundries, eight factories, and the central coal plant run deployment,
   mining, freight, production, and remote power expansion together. A 650-tick
   release proof survives a complete non-generator energy cutoff at tick 500.
 
-Every scenario is available through the headless CLI and the Bevy/Wasm control
-deck. The viewer cycles through them automatically after quiet completion.
+Every scenario remains available through the headless CLI and test suite. The
+Bevy/Wasm control deck exposes only complete world simulations, currently the
+v2 world, so focused component fixtures no longer appear as player-facing
+content.

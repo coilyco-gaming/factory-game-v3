@@ -342,6 +342,7 @@ impl GameState {
           && source.occupied_by.is_none()
           && !source.exhausted
           && !source.mining.is_depleted()
+          && self.world.topology.has_transfer_access(source.node)
       })
       .map(|source| (source.node, source.item))
       .collect::<std::collections::BTreeMap<_, _>>();
@@ -633,6 +634,44 @@ impl GameState {
           need = need.saturating_sub(in_flight);
         }
       }
+    }
+    for hauler_index in 0..self.world.haulers.len() {
+      if need == 0 {
+        break;
+      }
+      let hauler = &self.world.haulers[hauler_index];
+      let carried = hauler.cargo.count(item);
+      if !matches!(hauler.dispatch, DispatchReceiverState::Unassigned)
+        || carried == 0
+        || self
+          .world
+          .topology
+          .path(hauler.position, destination)
+          .is_none()
+      {
+        continue;
+      }
+      let dispatch_cost = self
+        .world
+        .power
+        .as_ref()
+        .map_or(0, |power| power.spec.dispatch_cost);
+      if !self.consume_power(destination, dispatch_cost, "dispatch-loaded", events) {
+        return;
+      }
+      let hauler = &mut self.world.haulers[hauler_index];
+      hauler.assign(DispatchAssignment::deliver_with_priority(
+        item,
+        hauler.position,
+        destination,
+        priority,
+      ));
+      self.metrics.dispatches_assigned += 1;
+      need = need.saturating_sub(carried);
+      events.push(format!(
+        "dispatch reassigned loaded {} -> {} to hauler-{}",
+        item, destination, hauler.id
+      ));
     }
     for hauler_index in 0..self.world.haulers.len() {
       if need == 0 {
@@ -2076,8 +2115,8 @@ mod tests {
         "{metrics:?}"
       );
     }
-    assert_eq!(2_131, metrics.units_collected, "{metrics:?}");
-    assert_eq!(1_301, metrics.units_delivered, "{metrics:?}");
+    assert_eq!(1_987, metrics.units_collected, "{metrics:?}");
+    assert_eq!(1_481, metrics.units_delivered, "{metrics:?}");
     for item in [IRON_BARS, FRAMES, BUILDING_MATERIALS] {
       assert!(
         metrics.crafted.get(item.as_str()).copied().unwrap_or(0) > 0,
@@ -2203,6 +2242,11 @@ mod tests {
           .get("generator-1")
           .copied()
           .unwrap_or(0)
+      ,
+      "remote generator contributes after starter drain: metrics={metrics:?}; radar={:?}; plant_factory={:?}; haulers={:?}",
+      first.world.radars[3],
+      first.world.factories[10],
+      first.world.haulers
     );
     let remote = &first.world.power.as_ref().unwrap().generators[1];
     assert!(
@@ -2873,7 +2917,7 @@ mod tests {
     scenario.factories[10].starting_items = recipe_inputs;
     let mut state = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
     let initial = state.snapshot(Vec::new());
-    assert_eq!((100, 100), (initial.topology.width, initial.topology.height));
+    assert_eq!((50, 50), (initial.topology.width, initial.topology.height));
     let initial_power = initial.power.as_ref().expect("v2 has a power grid");
     assert_eq!(1, initial_power.generators.len());
     assert_eq!(NodeId::Generator(0), initial_power.generators[0].node);
@@ -2890,7 +2934,7 @@ mod tests {
     let coal_drill_target = first.radars[2].claimed_target.expect("coal drill claim");
     let coal_plant_target = first.radars[3].claimed_target.expect("coal plant claim");
     assert_ne!(coal_drill_target, coal_plant_target);
-    assert_eq!(NodeId::Source(367), coal_plant_target);
+    assert_eq!(NodeId::Source(360), coal_plant_target);
     assert_eq!(COAL_PLANT, first.radars[3].deployment_item);
     assert_eq!(COAL, first.radars[3].target_item);
 
@@ -3028,16 +3072,16 @@ mod tests {
     assert_eq!(NodeId::Generator(0), line.target);
     assert_eq!(
       vec![
-        GridPosition { x: 62, y: 57 },
-        GridPosition { x: 61, y: 56 },
-        GridPosition { x: 60, y: 55 },
-        GridPosition { x: 59, y: 54 },
-        GridPosition { x: 58, y: 53 },
-        GridPosition { x: 57, y: 52 },
-        GridPosition { x: 56, y: 52 },
-        GridPosition { x: 55, y: 52 },
-        GridPosition { x: 54, y: 52 },
-        GridPosition { x: 53, y: 52 },
+        GridPosition { x: 17, y: 32 },
+        GridPosition { x: 18, y: 31 },
+        GridPosition { x: 19, y: 30 },
+        GridPosition { x: 20, y: 29 },
+        GridPosition { x: 21, y: 28 },
+        GridPosition { x: 22, y: 27 },
+        GridPosition { x: 23, y: 27 },
+        GridPosition { x: 24, y: 27 },
+        GridPosition { x: 25, y: 27 },
+        GridPosition { x: 26, y: 27 },
       ],
       line.cells
     );
@@ -3456,6 +3500,32 @@ mod tests {
       .batteries
       .values()
       .all(|battery| battery.energy == 5));
+  }
+
+  #[test]
+  fn unassigned_loaded_hauler_rejoins_compatible_demand() {
+    let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+    let hauler = &mut state.world.haulers[0];
+    hauler.cargo.force_insert(IRON_ORE, 3);
+    hauler.position = NodeId::Road;
+    hauler.clear_assignment();
+    let mut events = Vec::new();
+
+    state.refresh_dispatch_intents(&mut events);
+    state.assign_dispatch(&mut events);
+
+    assert!(matches!(
+      state.world.haulers[0].dispatch,
+      DispatchReceiverState::Assigned(DispatchAssignment {
+        item: IRON_ORE,
+        destination: NodeId::Factory(0),
+        phase: DispatchPhase::Deliver,
+        ..
+      })
+    ));
+    assert!(events
+      .iter()
+      .any(|event| event == "dispatch reassigned loaded iron_ore -> factory-0 to hauler-0"));
   }
 
   #[test]

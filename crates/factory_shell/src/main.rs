@@ -1,12 +1,7 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
-use factory_content::{
-  ContentDatabase, ScenarioId, BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO,
-  DEPLOYMENT_DEMO_SCENARIO, DISTRIBUTED_CHAIN_SCENARIO, HYBRID_GRID_SCENARIO,
-  IRON_BARS_FLEET_SCENARIO, IRON_BARS_SCENARIO, PATHFINDING_DEMO_SCENARIO,
-  POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, V2_WORLD_SCENARIO,
-};
+use factory_content::{ContentDatabase, ScenarioId, V2_WORLD_SCENARIO};
 use factory_sim::{
   AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
   HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
@@ -16,7 +11,6 @@ use std::collections::{BTreeMap, VecDeque};
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
 const MAX_TICKS_PER_FRAME: u8 = 8;
-const AUTO_ADVANCE_IDLE_TICKS: u16 = 8;
 const MAX_RECENT_EVENTS: usize = 10;
 const HUD_VALUE_MAX_CHARS: usize = 52;
 const ACTIVITY_ENTRY_MAX_CHARS: usize = 52;
@@ -27,20 +21,10 @@ const POWER_GAUGE_WIDTH: f32 = 96.0;
 const OUTPUT_CHIP_COUNT: usize = 5;
 const MAX_OUTPUT_CHIPS: usize = 15;
 const OUTPUT_CHIP_LIFETIME: f32 = 0.55;
-const DEMO_SCENARIOS: [ScenarioId; 12] = [
-  IRON_BARS_SCENARIO,
-  IRON_BARS_FLEET_SCENARIO,
-  BUILDING_MATERIALS_SCENARIO,
-  POWERED_IRONWORKS_SCENARIO,
-  DEPLOYMENT_DEMO_SCENARIO,
-  PATHFINDING_DEMO_SCENARIO,
-  PRODUCTION_CHAIN_SCENARIO,
-  DISTRIBUTED_CHAIN_SCENARIO,
-  POWER_LINE_SCENARIO,
-  BUILDING_DEPLOYMENT_SCENARIO,
-  HYBRID_GRID_SCENARIO,
-  V2_WORLD_SCENARIO,
-];
+const WORLD_SCENARIOS: [ScenarioId; 1] = [V2_WORLD_SCENARIO];
+const MIN_ZOOM_LEVEL: u8 = 1;
+const MAX_ZOOM_LEVEL: u8 = 10;
+const MIN_VISIBLE_CELLS: f32 = 10.0;
 const GRID_X: f32 = 180.0;
 const GRID_Y: f32 = 120.0;
 const WORLD_LEFT: f32 = -410.0;
@@ -130,18 +114,19 @@ struct SimHost {
   paused: bool,
   ticks_per_second: f32,
   accumulated_seconds: f32,
-  scenario_index: usize,
-  auto_cycle: bool,
+  world_index: usize,
   annotations_visible: bool,
-  idle_streak: u16,
-  completed_scenarios: u32,
   scene_revision: u64,
   recent_events: VecDeque<String>,
 }
 
 impl SimHost {
   fn new() -> Self {
-    let game = scenario_game(DEMO_SCENARIOS[0]);
+    Self::for_scenario(WORLD_SCENARIOS[0])
+  }
+
+  fn for_scenario(scenario: ScenarioId) -> Self {
+    let game = scenario_game(scenario);
     let snapshot = game.snapshot(Vec::new());
     let scenario_name = snapshot.scenario.name.clone();
     Self {
@@ -150,32 +135,20 @@ impl SimHost {
       paused: false,
       ticks_per_second: NORMAL_TICKS_PER_SECOND,
       accumulated_seconds: 0.0,
-      scenario_index: 0,
-      auto_cycle: true,
+      world_index: 0,
       annotations_visible: true,
-      idle_streak: 0,
-      completed_scenarios: 0,
       scene_revision: 0,
-      recent_events: VecDeque::from([format!("t000 showcase started: {scenario_name}")]),
+      recent_events: VecDeque::from([format!("t000 world started: {scenario_name}")]),
     }
   }
 
   fn step_once(&mut self) {
     self.snapshot = self.game.step();
     self.record_snapshot_events();
-    self.idle_streak = if self.snapshot.events.is_empty() {
-      self.idle_streak.saturating_add(1)
-    } else {
-      0
-    };
-    if self.auto_cycle && self.idle_streak >= AUTO_ADVANCE_IDLE_TICKS {
-      self.completed_scenarios += 1;
-      self.next_scenario("showcase advanced");
-    }
   }
 
   fn reset(&mut self) {
-    self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
+    self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     self
       .snapshot
@@ -183,7 +156,6 @@ impl SimHost {
       .push(format!("scenario reset: {}", self.snapshot.scenario.name));
     self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
-    self.idle_streak = 0;
   }
 
   fn toggle_speed(&mut self) {
@@ -193,11 +165,6 @@ impl SimHost {
       NORMAL_TICKS_PER_SECOND
     };
     self.accumulated_seconds = 0.0;
-  }
-
-  fn toggle_auto_cycle(&mut self) {
-    self.auto_cycle = !self.auto_cycle;
-    self.idle_streak = 0;
   }
 
   fn apply_control(&mut self, action: ControlAction) {
@@ -213,17 +180,16 @@ impl SimHost {
       }
       ControlAction::Reset => self.reset(),
       ControlAction::ToggleSpeed => self.toggle_speed(),
-      ControlAction::ToggleAutoCycle => self.toggle_auto_cycle(),
       ControlAction::ToggleAnnotations => self.annotations_visible = !self.annotations_visible,
-      ControlAction::SelectScenario(index) => {
-        self.select_scenario(index, "scenario selected");
+      ControlAction::SelectWorld(index) => {
+        self.select_world(index, "world selected");
       }
     }
   }
 
-  fn select_scenario(&mut self, index: usize, reason: &str) {
-    self.scenario_index = index % DEMO_SCENARIOS.len();
-    self.game = scenario_game(DEMO_SCENARIOS[self.scenario_index]);
+  fn select_world(&mut self, index: usize, reason: &str) {
+    self.world_index = index % WORLD_SCENARIOS.len();
+    self.game = scenario_game(WORLD_SCENARIOS[self.world_index]);
     self.snapshot = self.game.snapshot(Vec::new());
     let scenario_name = self.snapshot.scenario.name.clone();
     self
@@ -232,7 +198,6 @@ impl SimHost {
       .push(format!("{reason}: {scenario_name}"));
     self.record_snapshot_events();
     self.accumulated_seconds = 0.0;
-    self.idle_streak = 0;
     self.scene_revision += 1;
   }
 
@@ -251,13 +216,10 @@ impl SimHost {
     }
   }
 
-  fn next_scenario(&mut self, reason: &str) {
-    self.select_scenario(self.scenario_index + 1, reason);
-  }
 }
 
 fn scenario_game(scenario: ScenarioId) -> GameState {
-  GameState::new(ContentDatabase::starter(), scenario).expect("showcase scenario is valid")
+  GameState::new(ContentDatabase::starter(), scenario).expect("viewer scenario is valid")
 }
 
 #[derive(Resource, Default)]
@@ -282,7 +244,7 @@ impl Default for PlayerView {
   fn default() -> Self {
     Self {
       position: GridPosition { x: 0, y: 0 },
-      zoom_level: 1,
+      zoom_level: MAX_ZOOM_LEVEL,
       scene_revision: u64::MAX,
     }
   }
@@ -388,9 +350,8 @@ enum ControlAction {
   Step,
   Reset,
   ToggleSpeed,
-  ToggleAutoCycle,
   ToggleAnnotations,
-  SelectScenario(usize),
+  SelectWorld(usize),
 }
 
 impl ControlAction {
@@ -398,9 +359,8 @@ impl ControlAction {
     match self {
       Self::TogglePause => host.paused,
       Self::ToggleSpeed => host.ticks_per_second == FAST_TICKS_PER_SECOND,
-      Self::ToggleAutoCycle => host.auto_cycle,
       Self::ToggleAnnotations => !host.annotations_visible,
-      Self::SelectScenario(index) => host.scenario_index == index,
+      Self::SelectWorld(index) => host.world_index == index,
       Self::Step | Self::Reset => false,
     }
   }
@@ -649,31 +609,9 @@ fn spawn_control_deck(commands: &mut Commands) {
               (ControlAction::Step, "STEP"),
               (ControlAction::Reset, "RESET"),
               (ControlAction::ToggleSpeed, "SPEED"),
-              (ControlAction::ToggleAutoCycle, "AUTO"),
             ],
           );
-          spawn_control_row(
-            content,
-            &[
-              (ControlAction::SelectScenario(6), "DRILL CHAIN"),
-              (ControlAction::SelectScenario(7), "FREIGHT LINE"),
-              (ControlAction::SelectScenario(8), "GRID LINK"),
-              (ControlAction::SelectScenario(9), "BUILD"),
-              (ControlAction::SelectScenario(10), "HYBRID"),
-              (ControlAction::SelectScenario(11), "V2 WORLD"),
-            ],
-          );
-          spawn_control_row(
-            content,
-            &[
-              (ControlAction::SelectScenario(0), "IRON"),
-              (ControlAction::SelectScenario(1), "FLEET"),
-              (ControlAction::SelectScenario(2), "MATERIALS"),
-              (ControlAction::SelectScenario(3), "POWER"),
-              (ControlAction::SelectScenario(4), "DEPLOY"),
-              (ControlAction::SelectScenario(5), "DETOUR"),
-            ],
-          );
+          spawn_control_row(content, &[(ControlAction::SelectWorld(0), "V2 WORLD")]);
         });
     });
 }
@@ -990,9 +928,8 @@ fn handle_controls(keys: Res<ButtonInput<KeyCode>>, mut host: ResMut<SimHost>) {
     (KeyCode::KeyF, ControlAction::ToggleSpeed),
     (
       KeyCode::KeyC,
-      ControlAction::SelectScenario((host.scenario_index + 1) % DEMO_SCENARIOS.len()),
+      ControlAction::SelectWorld((host.world_index + 1) % WORLD_SCENARIOS.len()),
     ),
-    (KeyCode::KeyL, ControlAction::ToggleAutoCycle),
   ] {
     if keys.just_pressed(key) {
       host.apply_control(action);
@@ -1005,12 +942,13 @@ fn handle_player_view(
   mut mouse_wheel: MessageReader<MouseWheel>,
   host: Res<SimHost>,
   mut view: ResMut<PlayerView>,
+  window: Single<&Window>,
   mut camera: Single<(&mut Transform, &mut Projection), With<MainCamera>>,
   mut cursor: Single<&mut Transform, (With<PlayerCursor>, Without<MainCamera>)>,
 ) {
   if view.scene_revision != host.scene_revision {
     view.position = initial_player_position(&host.snapshot);
-    view.zoom_level = 1;
+    view.zoom_level = MAX_ZOOM_LEVEL;
     view.scene_revision = host.scene_revision;
   }
 
@@ -1019,14 +957,10 @@ fn handle_player_view(
   } else {
     1
   };
-  let move_right = keys.just_pressed(KeyCode::KeyD)
-    || keys.just_pressed(KeyCode::ArrowRight);
-  let move_left = keys.just_pressed(KeyCode::KeyA)
-    || keys.just_pressed(KeyCode::ArrowLeft);
-  let move_up = keys.just_pressed(KeyCode::KeyW)
-    || keys.just_pressed(KeyCode::ArrowUp);
-  let move_down = keys.just_pressed(KeyCode::KeyS)
-    || keys.just_pressed(KeyCode::ArrowDown);
+  let move_right = keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight);
+  let move_left = keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft);
+  let move_up = keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp);
+  let move_down = keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown);
   let horizontal = pan_distance * (i32::from(move_right) - i32::from(move_left));
   let vertical = pan_distance * (i32::from(move_up) - i32::from(move_down));
   view.position = move_player_focus(
@@ -1039,25 +973,36 @@ fn handle_player_view(
 
   let wheel_delta = mouse_wheel.read().map(|event| event.y).sum::<f32>();
   if keys.just_pressed(KeyCode::KeyE) || wheel_delta > 0.0 {
-    view.zoom_level = view.zoom_level.saturating_sub(1).max(1);
+    view.zoom_level = view.zoom_level.saturating_sub(1).max(MIN_ZOOM_LEVEL);
   }
   if keys.just_pressed(KeyCode::KeyQ) || wheel_delta < 0.0 {
-    view.zoom_level = view.zoom_level.saturating_add(1).min(10);
+    view.zoom_level = view.zoom_level.saturating_add(1).min(MAX_ZOOM_LEVEL);
   }
   if keys.just_pressed(KeyCode::KeyO) {
-    view.zoom_level = if view.zoom_level == 10 { 1 } else { 10 };
+    view.zoom_level = if view.zoom_level == MAX_ZOOM_LEVEL {
+      MIN_ZOOM_LEVEL
+    } else {
+      MAX_ZOOM_LEVEL
+    };
   }
 
-  let world = grid_to_world(view.position);
-  camera.0.translation.x = world.x;
-  camera.0.translation.y = world.y - CAMERA_UI_OFFSET_Y;
-  cursor.translation.x = world.x;
-  cursor.translation.y = world.y;
+  let focused_world = grid_to_world(view.position);
+  let camera_world = if view.zoom_level == MAX_ZOOM_LEVEL {
+    world_center(host.snapshot.topology.width, host.snapshot.topology.height)
+  } else {
+    Vec2::new(focused_world.x, focused_world.y - CAMERA_UI_OFFSET_Y)
+  };
+  camera.0.translation.x = camera_world.x;
+  camera.0.translation.y = camera_world.y;
+  cursor.translation.x = focused_world.x;
+  cursor.translation.y = focused_world.y;
   if let Projection::Orthographic(projection) = &mut *camera.1 {
     projection.scale = player_zoom_scale(
       view.zoom_level,
       host.snapshot.topology.width,
       host.snapshot.topology.height,
+      window.width(),
+      window.height(),
     );
   }
 }
@@ -1617,42 +1562,36 @@ fn move_player_focus(
 }
 
 fn initial_player_position(snapshot: &TickSnapshot) -> GridPosition {
-  if snapshot.topology.width <= 20 && snapshot.topology.height <= 20 {
-    return GridPosition {
-      x: snapshot.topology.width / 2,
-      y: snapshot.topology.height / 2,
-    };
-  }
-  let factory_positions = snapshot
-    .topology
-    .nodes
-    .iter()
-    .filter(|node| matches!(node.id, NodeId::Factory(_)))
-    .map(|node| node.position)
-    .collect::<Vec<_>>();
-  let min_x = factory_positions.iter().map(|position| position.x).min();
-  let max_x = factory_positions.iter().map(|position| position.x).max();
-  let min_y = factory_positions.iter().map(|position| position.y).min();
-  let max_y = factory_positions.iter().map(|position| position.y).max();
-  match (min_x, max_x, min_y, max_y) {
-    (Some(min_x), Some(max_x), Some(min_y), Some(max_y)) => GridPosition {
-      x: (min_x + max_x) / 2,
-      y: (min_y + max_y) / 2,
-    },
-    _ => GridPosition {
-      x: snapshot.topology.width / 2,
-      y: snapshot.topology.height / 2,
-    },
+  GridPosition {
+    x: snapshot.topology.width / 2,
+    y: snapshot.topology.height / 2,
   }
 }
 
-fn player_zoom_scale(level: u8, width: i32, height: i32) -> f32 {
-  let level = level.clamp(1, 10);
-  if width <= 10 && height <= 10 {
-    return 1.0 + f32::from(level - 1) * 0.18;
-  }
-  let overview = (width as f32 / 7.0).max(height as f32 / 6.0).max(2.62);
-  overview.powf(f32::from(level - 1) / 9.0)
+fn world_center(width: i32, height: i32) -> Vec2 {
+  Vec2::new(
+    WORLD_LEFT + width.saturating_sub(1) as f32 * GRID_X / 2.0,
+    height.saturating_sub(1) as f32 * GRID_Y / 2.0,
+  )
+}
+
+fn player_zoom_scale(
+  level: u8,
+  width: i32,
+  height: i32,
+  viewport_width: f32,
+  viewport_height: f32,
+) -> f32 {
+  let viewport_width = viewport_width.max(1.0);
+  let viewport_height = viewport_height.max(1.0);
+  let overview = (width.max(1) as f32 * GRID_X / viewport_width)
+    .max(height.max(1) as f32 * GRID_Y / viewport_height);
+  let detail = (MIN_VISIBLE_CELLS * GRID_X / viewport_width)
+    .max(MIN_VISIBLE_CELLS * GRID_Y / viewport_height)
+    .min(overview);
+  let level = level.clamp(MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
+  let progress = f32::from(level - MIN_ZOOM_LEVEL) / f32::from(MAX_ZOOM_LEVEL - MIN_ZOOM_LEVEL);
+  detail * (overview / detail).powf(progress)
 }
 
 fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
@@ -2192,13 +2131,16 @@ fn dispatch_text(state: &DispatchReceiverState) -> String {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use factory_content::COAL_PLANT;
+  use factory_content::{
+    BUILDING_DEPLOYMENT_SCENARIO, BUILDING_MATERIALS_SCENARIO, COAL_PLANT,
+    DEPLOYMENT_DEMO_SCENARIO, IRON_BARS_SCENARIO, POWER_LINE_SCENARIO,
+  };
   use factory_sim::GeneratorPowerLine;
 
   #[test]
   fn sim_host_steps_match_direct_simulation_bytes() {
     let mut host = SimHost::new();
-    let mut direct = scenario_game(IRON_BARS_SCENARIO);
+    let mut direct = scenario_game(V2_WORLD_SCENARIO);
 
     for _ in 0..6 {
       host.step_once();
@@ -2238,22 +2180,18 @@ mod tests {
     assert_eq!(FAST_TICKS_PER_SECOND, host.ticks_per_second);
     assert!(ControlAction::ToggleSpeed.is_selected(&host));
 
-    host.apply_control(ControlAction::ToggleAutoCycle);
-    assert!(!host.auto_cycle);
-    assert!(!ControlAction::ToggleAutoCycle.is_selected(&host));
-
     host.apply_control(ControlAction::ToggleAnnotations);
     assert!(!host.annotations_visible);
     assert!(ControlAction::ToggleAnnotations.is_selected(&host));
 
-    host.apply_control(ControlAction::SelectScenario(2));
-    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
-    assert!(ControlAction::SelectScenario(2).is_selected(&host));
+    host.apply_control(ControlAction::SelectWorld(0));
+    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
+    assert!(ControlAction::SelectWorld(0).is_selected(&host));
     assert_eq!(1, host.scene_revision);
 
     host.apply_control(ControlAction::Reset);
     assert_eq!(0, host.snapshot.tick);
-    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
   }
 
   #[test]
@@ -2264,13 +2202,13 @@ mod tests {
     app.world_mut().spawn((
       Button,
       Interaction::Pressed,
-      ControlButton(ControlAction::SelectScenario(1)),
+      ControlButton(ControlAction::SelectWorld(0)),
     ));
 
     app.update();
 
     let host = app.world().resource::<SimHost>();
-    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
     assert_eq!(1, host.scene_revision);
   }
 
@@ -2310,9 +2248,8 @@ mod tests {
   }
 
   #[test]
-  fn recent_activity_is_bounded_and_survives_scenario_changes() {
+  fn recent_activity_is_bounded_and_survives_world_resets() {
     let mut host = SimHost::new();
-    host.auto_cycle = false;
     for _ in 0..32 {
       host.step_once();
     }
@@ -2324,7 +2261,7 @@ mod tests {
       .expect("activity history has an event")
       .clone();
 
-    host.select_scenario(1, "test selected");
+    host.select_world(0, "test selected");
 
     assert_eq!(MAX_RECENT_EVENTS, host.recent_events.len());
     assert!(host.recent_events.contains(&latest_before_change));
@@ -2345,9 +2282,7 @@ mod tests {
 
   #[test]
   fn presentation_state_tracks_authoritative_material_flow() {
-    let mut host = SimHost::new();
-    host.auto_cycle = false;
-    host.select_scenario(2, "test selected");
+    let mut host = SimHost::for_scenario(BUILDING_MATERIALS_SCENARIO);
     let mut saw_ready_source = false;
     let mut saw_collecting = false;
     let mut saw_delivering = false;
@@ -2381,8 +2316,7 @@ mod tests {
 
   #[test]
   fn route_direction_tracks_collect_and_delivery_phases() {
-    let mut host = SimHost::new();
-    host.auto_cycle = false;
+    let mut host = SimHost::for_scenario(IRON_BARS_SCENARIO);
     let source = host.snapshot.sources[0].node;
     let mut saw_toward_road = false;
     let mut saw_away_from_road = false;
@@ -2401,9 +2335,7 @@ mod tests {
 
   #[test]
   fn deployment_projection_tracks_dormant_source_and_drill_route() {
-    let mut host = SimHost::new();
-    host.auto_cycle = false;
-    host.select_scenario(4, "test selected");
+    let mut host = SimHost::for_scenario(DEPLOYMENT_DEMO_SCENARIO);
     let source = host.snapshot.sources[0].node;
 
     assert!(node_label_value(&host.snapshot, source).contains("awaiting drill"));
@@ -2424,8 +2356,6 @@ mod tests {
   #[test]
   fn v2_radar_projection_exposes_claimed_targets() {
     let mut host = SimHost::new();
-    host.auto_cycle = false;
-    host.select_scenario(11, "test selected");
     host.step_once();
 
     let radar = NodeId::Radar(0);
@@ -2512,9 +2442,7 @@ mod tests {
 
   #[test]
   fn power_line_projection_tracks_generated_grid_cells() {
-    let mut host = SimHost::new();
-    host.auto_cycle = false;
-    host.select_scenario(8, "test selected");
+    let mut host = SimHost::for_scenario(POWER_LINE_SCENARIO);
 
     assert!(host.snapshot.topology.power_lines.is_empty());
     host.step_once();
@@ -2530,8 +2458,7 @@ mod tests {
 
   #[test]
   fn cargo_badge_state_tracks_authoritative_inventory() {
-    let mut host = SimHost::new();
-    host.auto_cycle = false;
+    let mut host = SimHost::for_scenario(IRON_BARS_SCENARIO);
     assert_eq!(
       CargoBadgeState::Empty,
       cargo_badge_state(&host.snapshot.haulers[0])
@@ -2570,25 +2497,26 @@ mod tests {
   }
 
   #[test]
-  fn player_zoom_preserves_the_unity_one_to_ten_bounds() {
-    assert_eq!(1.0, player_zoom_scale(1, 100, 100));
-    assert_eq!(
-      player_zoom_scale(1, 100, 100),
-      player_zoom_scale(0, 100, 100)
-    );
-    assert_eq!(
-      player_zoom_scale(10, 100, 100),
-      player_zoom_scale(11, 100, 100)
-    );
-    assert!(player_zoom_scale(10, 100, 100) > 16.0);
+  fn player_zoom_fits_the_world_and_keeps_a_ten_cell_detail_view() {
+    let detail = player_zoom_scale(MIN_ZOOM_LEVEL, 50, 50, 1180.0, 720.0);
+    let overview = player_zoom_scale(MAX_ZOOM_LEVEL, 50, 50, 1180.0, 720.0);
+
+    assert!((detail - 5.0 / 3.0).abs() < f32::EPSILON);
+    assert!((overview - 25.0 / 3.0).abs() < f32::EPSILON);
+    assert_eq!(detail, player_zoom_scale(0, 50, 50, 1180.0, 720.0));
+    assert_eq!(overview, player_zoom_scale(11, 50, 50, 1180.0, 720.0));
+    assert_eq!(Vec2::new(4_000.0, 2_940.0), world_center(50, 50));
   }
 
   #[test]
-  fn large_world_focus_starts_on_the_factory_district() {
+  fn world_focus_starts_at_the_map_center() {
     let game = scenario_game(V2_WORLD_SCENARIO);
     let snapshot = game.snapshot(Vec::new());
 
-    assert_eq!(GridPosition { x: 54, y: 51 }, initial_player_position(&snapshot));
+    assert_eq!(
+      GridPosition { x: 25, y: 25 },
+      initial_player_position(&snapshot)
+    );
   }
 
   #[test]
@@ -2627,7 +2555,6 @@ mod tests {
   #[test]
   fn focus_alert_overlay_is_contextual_and_honors_hidden_ui() {
     let mut host = SimHost::new();
-    host.auto_cycle = false;
     host.game.world.factories[0]
       .alerts
       .record(7, "product output full");
@@ -2702,51 +2629,14 @@ mod tests {
   }
 
   #[test]
-  fn scenario_selection_follows_the_showcase_order_and_wraps() {
+  fn viewer_world_roster_excludes_fixture_scenarios_and_wraps() {
     let mut host = SimHost::new();
 
-    assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(BUILDING_MATERIALS_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(POWERED_IRONWORKS_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(DEPLOYMENT_DEMO_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(PATHFINDING_DEMO_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(PRODUCTION_CHAIN_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(DISTRIBUTED_CHAIN_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(POWER_LINE_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(BUILDING_DEPLOYMENT_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(HYBRID_GRID_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
     assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
-    host.next_scenario("test");
-    assert_eq!(IRON_BARS_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(12, host.scene_revision);
-  }
-
-  #[test]
-  fn completed_scenario_advances_automatically() {
-    let mut host = SimHost::new();
-
-    for _ in 0..256 {
-      host.step_once();
-      if host.snapshot.scenario.id != IRON_BARS_SCENARIO {
-        break;
-      }
-    }
-
-    assert_eq!(IRON_BARS_FLEET_SCENARIO, host.snapshot.scenario.id);
-    assert_eq!(1, host.completed_scenarios);
+    assert_eq!([V2_WORLD_SCENARIO], WORLD_SCENARIOS);
+    host.select_world(1, "test");
+    assert_eq!(V2_WORLD_SCENARIO, host.snapshot.scenario.id);
+    assert_eq!(1, host.scene_revision);
     assert_eq!(0, host.snapshot.tick);
-    assert_eq!(0, host.idle_streak);
   }
 }

@@ -28,7 +28,8 @@ The world generalizes to N sources, factories, haulers, and generators:
   building cells
 - dispatch skips sealed transfer endpoints and unreachable source-destination
   pairs, reserves a hauler's full carrying capacity for in-flight demand, and
-  cancels stale empty-source or no-path assignments
+  cancels stale empty-source or no-path assignments. Unassigned loaded haulers
+  rejoin reachable demand before empty collection
 - scenario layouts define grid bounds, object positions, and static obstacles,
   deterministic A-star routing supports cardinal and diagonal movement, allows
   arrival at an occupied target, reports a sealed route, caches a bounded set
@@ -60,7 +61,7 @@ The twelve layouts and their proof goals are listed in
 ## Headless runner
 
 The CLI's snapshot and summary-only output contracts are documented in
-[headless-runner.md](headless-runner.md). The sustained 100x100 release gate is
+[headless-runner.md](headless-runner.md). The sustained 50x50 release gate is
 documented in [v2-liveness.md](v2-liveness.md).
 
 The migration and C# deletion gates are tracked in

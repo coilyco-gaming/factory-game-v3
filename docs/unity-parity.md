@@ -1,7 +1,7 @@
 # Unity parity audit
 
 Git history retains the Unity reference. Rust covers retained contracts in the
-component audit and exercises them together at 100x100 scale. See
+component audit and exercises them together at 50x50 scale. See
 [unity-feature-audit.md](unity-feature-audit.md) and [v2-world.md](v2-world.md).
 
 ## Current parity
@@ -49,10 +49,10 @@ component audit and exercises them together at 100x100 scale. See
   deterministic tick boundary. These cover every retained caller of Unity's
   generic spawn, move, and delete queue.
 * **Player and UI interaction** - substantial - Bevy owns playback, reset,
-  scenario selection, bounded and accelerated grid navigation, camera following,
-  detail-through-overview zoom, focused-cell inspection, object and inventory
-  totals, and activity projection. Unity had no player placement, editing, or
-  programmable logistics, so those are not migration gaps.
+  world selection, grid navigation, camera following, full-extent startup,
+  approximately 10x10-cell detail zoom, focused-cell inspection, totals, and
+  activity. Fixtures remain headless. Unity had no player placement, editing,
+  or programmable logistics, so those are not migration gaps.
 * **Observability** - substantial - snapshots, snapshot-free stepping, JSONL,
   per-generator metrics, liveness summaries, events, bounded alerts, activity,
   and Bevy cover the active Rust systems.

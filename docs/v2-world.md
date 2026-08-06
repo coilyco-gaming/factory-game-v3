@@ -6,7 +6,7 @@ startup population in the deterministic Rust simulation.
 
 ## Startup contract
 
-* 100x100 bounded grid using seed `4382721`.
+* 50x50 bounded grid using seed `4382721`.
 * 141 iron, 141 copper, and 141 coal deposits. Generated ore stays outside the
   protected ten-cell central radius and never overlaps another deposit.
 * One manifest stone source, for 424 source nodes in total.
@@ -26,18 +26,19 @@ historical random-number stream.
 
 The workspace gate advances the full world for 50 deterministic ticks. That
 run keeps source IDs unique through `source-423`, deploys six drills, mines
-iron, copper, coal, and manifest stone, collects 2,131 units, delivers 1,301
+iron, copper, coal, and manifest stone, collects 1,987 units, delivers 1,481
 units, and crafts iron bars, frames, and building materials. These fixed
 assertions exercise deployment, long-distance pathfinding, freight arbitration,
 power, inserters, production, snapshots, and metrics in one populated world.
 
 The CLI test serializes all 424 sources, 15 factories, 15 haulers, and four
-radars in one snapshot. A focused 100x100 lifecycle proof derives the plant
+radars in one snapshot. A focused 50x50 lifecycle proof derives the plant
 recipe inputs from the catalog, starts with no plant item or remote generator,
 and verifies craft, haul, placement, occupancy, identity, inventory, battery,
-metrics, events, and viewer state. The browser viewer exposes the same scenario
-in its control deck. `O` switches between local detail and a whole-map overview,
-while shifted grid movement crosses ten cells per keypress.
+metrics, events, and viewer state. The browser viewer opens directly into the
+same scenario at the full-world extent. `O` switches between that extent and an
+approximately 10x10-cell detail view, while shifted grid movement crosses ten
+cells per keypress.
 
 ## Sustained operation
 
