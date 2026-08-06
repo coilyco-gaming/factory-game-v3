@@ -54,7 +54,16 @@ and animation roles.
 
 ## Packaging boundary
 
-Native development reads these files directly from the crate asset root. The Wasm target
-compiles with the same handles, but this change does not alter Trunk output,
-the container image, or deployment. Browser delivery and parity verification
-are tracked in [issue #60](https://forgejo.coilysiren.me/coilyco-gaming/factory-game-v3/issues/60).
+Native development reads these files directly from the crate asset root. The
+browser build reaches the same files over HTTP: Bevy's `AssetServer` requests
+`/assets/<path>` in the browser, so `index.html` carries a Trunk `copy-dir`
+link that places the crate asset root at `dist/assets`. The container image
+copies the whole `dist` tree, so no separate Dockerfile step is needed.
+
+Sprite names carry no content hash, because the paths are compiled into the
+binary. `nginx.conf` therefore serves `/assets/` with a one-hour revalidated
+cache instead of the immutable policy the hashed Trunk bundles use, and with
+`try_files ... =404` so a missing sprite fails as a real 404. Without that the
+SPA fallback would answer an image request with `index.html`, masking the miss.
+On a failed request the viewer keeps the same colored fallback it uses
+natively for unsprited identities.

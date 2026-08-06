@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>factory game</title>
     <link data-trunk rel="rust" data-wasm-opt="0" />
+    <!-- Bevy's AssetServer fetches /assets/<path> in the browser, so the crate
+         asset root must land in dist under that same name. Unhashed on
+         purpose: the sprite paths are compiled into the binary. -->
+    <link data-trunk rel="copy-dir" href="assets" />
     <style>
       html,
       body {
