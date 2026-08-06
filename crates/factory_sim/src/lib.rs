@@ -28,9 +28,9 @@ pub use production::{CraftSnapshot, FactoryProduction, ProductionBlockReason, Re
 pub use radar::{DeploymentRadar, RadarSnapshot};
 pub use resources::{Inventory, InventoryError, InventorySnapshot};
 pub use world::{
-  FactoryNode, FactorySnapshot, GridPosition, Hauler, HaulerId, HaulerSnapshot, NodeId, NodeIndex,
-  ScenarioSnapshot, SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot, Topology,
-  TopologyNode, TopologySnapshot, WorldMutation, WorldState,
+  FactoryNode, FactorySnapshot, GeneratorPowerLine, GridPosition, Hauler, HaulerId, HaulerSnapshot,
+  NodeId, NodeIndex, ScenarioSnapshot, SourceNode, SourceSnapshot, StructureSnapshot, TickSnapshot,
+  Topology, TopologyNode, TopologySnapshot, WorldMutation, WorldState,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -246,6 +246,7 @@ impl GameState {
         power,
         batteries,
         power_lines: std::collections::BTreeSet::new(),
+        generator_power_lines: std::collections::BTreeMap::new(),
         linked_generators: std::collections::BTreeSet::new(),
         topology,
         queued_mutations: Vec::new(),
@@ -979,10 +980,14 @@ impl GameState {
             .world
             .batteries
             .remove(&BatteryOwner::Node(source_node));
-          self
-            .world
-            .batteries
-            .insert(owner, Battery::new(owner, 0, battery_capacity));
+          assert!(
+            self
+              .world
+              .batteries
+              .insert(owner, Battery::new(owner, 0, battery_capacity))
+              .is_none(),
+            "deployed generator battery identity is unique"
+          );
           self
             .world
             .sources
@@ -1228,20 +1233,26 @@ impl GameState {
     self.metrics.fuel_burned += burned;
     self.metrics.energy_generated += generated;
     self.construct_power_lines(events);
-    self.balance_batteries(events);
+    self.metrics.energy_balanced = self
+      .metrics
+      .energy_balanced
+      .saturating_add(self.balance_batteries(events));
   }
 
   fn construct_power_lines(&mut self, events: &mut Vec<String>) {
-    let generators = self
+    let (generators, static_generator_count) = self
       .world
       .power
       .as_ref()
       .map(|power| {
-        power
-          .generators
-          .iter()
-          .map(|generator| generator.node)
-          .collect::<Vec<_>>()
+        (
+          power
+            .generators
+            .iter()
+            .map(|generator| generator.node)
+            .collect::<Vec<_>>(),
+          power.spec.generators.len(),
+        )
       })
       .unwrap_or_default();
     for generator in generators {
@@ -1249,30 +1260,39 @@ impl GameState {
         continue;
       }
       let origin = self.world.topology.position(generator);
+      let deployed = match generator {
+        NodeId::Generator(index) => usize::from(index) >= static_generator_count,
+        _ => false,
+      };
       let target = self
         .world
         .batteries
-        .keys()
-        .filter_map(|owner| match owner {
-          BatteryOwner::Node(node) if *node != generator => {
-            Some((*owner, self.world.topology.position(*node)))
+        .iter()
+        .filter_map(|(owner, battery)| match owner {
+          BatteryOwner::Node(node)
+            if *node != generator
+              && (!deployed || matches!(node, NodeId::Generator(_)))
+              && (!deployed || battery.energy > 0) =>
+          {
+            Some((*node, self.world.topology.position(*node)))
           }
           BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
         })
-        .min_by_key(|(owner, position)| {
+        .min_by_key(|(node, position)| {
           (
             origin.x.abs_diff(position.x).pow(2) + origin.y.abs_diff(position.y).pow(2),
-            *owner,
+            *node,
           )
         });
-      let Some((_, target)) = target else {
+      let Some((target_node, target)) = target else {
         events.push(format!("power line {generator} no battery target found"));
         self.record_node_alert(generator, "no power source found");
         continue;
       };
 
       let mut current = origin;
-      let mut built = Vec::new();
+      let mut cells = Vec::new();
+      let mut built = 0_usize;
       while !adjacent(current, target) {
         current = GridPosition {
           x: current.x + (target.x - current.x).signum(),
@@ -1286,27 +1306,33 @@ impl GameState {
         {
           break;
         }
+        cells.push(current);
         if self.world.power_lines.insert(current) {
           let owner = BatteryOwner::PowerLine(current);
           self
             .world
             .batteries
             .insert(owner, Battery::new(owner, 0, 1_000));
-          built.push(current);
+          built += 1;
         }
       }
+      self.world.generator_power_lines.insert(
+        generator,
+        GeneratorPowerLine {
+          generator,
+          target: target_node,
+          cells: cells.clone(),
+        },
+      );
       self.world.linked_generators.insert(generator);
       events.push(format!(
-        "power line {generator} built {} cells {:?} toward {},{}",
-        built.len(),
-        built,
-        target.x,
-        target.y
+        "power line {generator} built {built} cells {:?} toward {target_node} at {},{}",
+        cells, target.x, target.y
       ));
     }
   }
 
-  fn balance_batteries(&mut self, events: &mut Vec<String>) {
+  fn balance_batteries(&mut self, events: &mut Vec<String>) -> u64 {
     let positions = self
       .world
       .batteries
@@ -1342,6 +1368,7 @@ impl GameState {
         .push(*owner);
     }
 
+    let mut balanced = 0_u64;
     while let Some(start) = unseen.pop_first() {
       let mut component = vec![start];
       let mut cursor = 0;
@@ -1362,11 +1389,16 @@ impl GameState {
           }
         }
       }
-      self.balance_battery_component(&component, events);
+      balanced = balanced.saturating_add(self.balance_battery_component(&component, events));
     }
+    balanced
   }
 
-  fn balance_battery_component(&mut self, owners: &[BatteryOwner], events: &mut Vec<String>) {
+  fn balance_battery_component(
+    &mut self,
+    owners: &[BatteryOwner],
+    events: &mut Vec<String>,
+  ) -> u64 {
     let total_energy = owners
       .iter()
       .map(|owner| u64::from(self.world.batteries[owner].energy))
@@ -1376,7 +1408,7 @@ impl GameState {
       .map(|owner| u64::from(self.world.batteries[owner].capacity))
       .sum::<u64>();
     if total_capacity == 0 {
-      return;
+      return 0;
     }
     let mut assigned = 0_u64;
     let mut shares = owners
@@ -1400,6 +1432,11 @@ impl GameState {
     let changed = shares
       .iter()
       .any(|(owner, energy, _)| self.world.batteries[owner].energy != *energy);
+    let balanced = shares
+      .iter()
+      .map(|(owner, energy, _)| energy.saturating_sub(self.world.batteries[owner].energy))
+      .map(u64::from)
+      .sum::<u64>();
     for (owner, energy, _) in shares {
       self
         .world
@@ -1410,11 +1447,13 @@ impl GameState {
     }
     if changed && owners.len() > 1 {
       events.push(format!(
-        "power balance {} energy across {} adjacent batteries",
+        "power balance {} energy across {} adjacent batteries, moved {}",
         total_energy,
-        owners.len()
+        owners.len(),
+        balanced
       ));
     }
+    balanced
   }
 
   fn consume_power(
@@ -1603,6 +1642,7 @@ impl GameState {
         blocked: self.world.topology.blocked.clone(),
         obstacles: self.world.topology.obstacles.clone(),
         power_lines: self.world.power_lines.clone(),
+        generator_power_lines: self.world.generator_power_lines.values().cloned().collect(),
       },
       sources: self
         .world
@@ -2470,6 +2510,26 @@ mod tests {
       "coal-plant placement is not drill activation"
     );
     assert_eq!(Some(generator.node), source.occupied_by);
+    assert_ne!(generator.node, source.node);
+    assert_eq!(
+      1,
+      deployed
+        .topology
+        .nodes
+        .iter()
+        .filter(|node| node.id == generator.node)
+        .count(),
+      "deployed generator topology identity is registered once"
+    );
+    assert_eq!(
+      1,
+      power
+        .batteries
+        .iter()
+        .filter(|battery| battery.owner == BatteryOwner::Node(generator.node))
+        .count(),
+      "deployed generator battery identity is registered once"
+    );
     assert_eq!(
       deployed
         .topology
@@ -2499,6 +2559,106 @@ mod tests {
       .events
       .iter()
       .any(|event| event.starts_with("power line generator-1 built")));
+    assert!(after
+      .events
+      .iter()
+      .all(|event| !event.starts_with("power generate generator-1")));
+
+    let line = after
+      .topology
+      .generator_power_lines
+      .iter()
+      .find(|line| line.generator == generator.node)
+      .expect("deployed generator owns an ordered power-line path");
+    assert_eq!(NodeId::Generator(0), line.target);
+    assert_eq!(
+      vec![
+        GridPosition { x: 62, y: 57 },
+        GridPosition { x: 61, y: 56 },
+        GridPosition { x: 60, y: 55 },
+        GridPosition { x: 59, y: 54 },
+        GridPosition { x: 58, y: 53 },
+        GridPosition { x: 57, y: 52 },
+        GridPosition { x: 56, y: 52 },
+        GridPosition { x: 55, y: 52 },
+        GridPosition { x: 54, y: 52 },
+        GridPosition { x: 53, y: 52 },
+      ],
+      line.cells
+    );
+    assert!(!line.cells.is_empty());
+    assert!(line
+      .cells
+      .iter()
+      .all(|position| after.topology.power_lines.contains(position)));
+    let generator_position = after
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == generator.node)
+      .expect("deployed generator remains in topology")
+      .position;
+    let target_position = after
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == line.target)
+      .expect("line target remains in topology")
+      .position;
+    assert!(adjacent(generator_position, line.cells[0]));
+    assert!(adjacent(*line.cells.last().unwrap(), target_position));
+    assert!(line
+      .cells
+      .windows(2)
+      .all(|cells| adjacent(cells[0], cells[1])));
+
+    let metrics_before_remote_generation = state.metrics();
+    let mut delivered_coal = false;
+    let generated = (0..250).find_map(|_| {
+      let snapshot = state.step();
+      delivered_coal |= snapshot
+        .events
+        .iter()
+        .any(|event| event.contains("dispatch deliver") && event.contains("generator-1"));
+      snapshot
+        .events
+        .iter()
+        .any(|event| event.starts_with("power generate generator-1 burned 4 generated 160"))
+        .then_some(snapshot)
+    });
+    let generated = generated.unwrap_or_else(|| {
+      panic!(
+        "remote coal plant did not receive fuel and generate: {:?}",
+        state.metrics()
+      )
+    });
+    assert!(delivered_coal, "normal dispatch delivers remote plant fuel");
+    let remote = generated
+      .power
+      .as_ref()
+      .unwrap()
+      .generators
+      .iter()
+      .find(|candidate| candidate.node == generator.node)
+      .expect("remote generator remains registered");
+    assert!(
+      remote.energy > 0,
+      "remote generator battery receives charge"
+    );
+    assert_eq!(Some(COAL), remote.fuel_item);
+    let metrics = state.metrics();
+    assert!(metrics.fuel_burned >= metrics_before_remote_generation.fuel_burned + 4);
+    assert!(metrics.energy_generated >= metrics_before_remote_generation.energy_generated + 160);
+    assert!(metrics.energy_balanced > metrics_before_remote_generation.energy_balanced);
+    assert!(metrics.energy_consumed > 0);
+    let starvations = metrics.power_starvations;
+    assert!(!state.consume_power(
+      NodeId::Radar(0),
+      1,
+      "unpowered radar probe",
+      &mut Vec::new()
+    ));
+    assert_eq!(starvations + 1, state.metrics().power_starvations);
   }
 
   #[test]
@@ -2885,7 +3045,7 @@ mod tests {
       .batteries
       .insert(second, Battery::new(second, 75, 200));
 
-    state.balance_batteries(&mut Vec::new());
+    assert_eq!(8, state.balance_batteries(&mut Vec::new()));
 
     assert_eq!(33, state.world.batteries[&first].energy);
     assert_eq!(67, state.world.batteries[&second].energy);
@@ -2915,7 +3075,7 @@ mod tests {
       .batteries
       .insert(factory, Battery::new(factory, 75, 100));
 
-    state.balance_batteries(&mut Vec::new());
+    assert_eq!(0, state.balance_batteries(&mut Vec::new()));
 
     assert_eq!(25, state.world.batteries[&source].energy);
     assert_eq!(75, state.world.batteries[&factory].energy);
@@ -2959,6 +3119,18 @@ mod tests {
       ]),
       first.topology.power_lines
     );
+    assert_eq!(
+      vec![GeneratorPowerLine {
+        generator: NodeId::Generator(0),
+        target: NodeId::Factory(0),
+        cells: vec![
+          GridPosition { x: 1, y: 1 },
+          GridPosition { x: 2, y: 1 },
+          GridPosition { x: 3, y: 1 },
+        ],
+      }],
+      first.topology.generator_power_lines
+    );
     assert!(first
       .events
       .iter()
@@ -2987,6 +3159,10 @@ mod tests {
 
     let second = state.step();
     assert_eq!(first.topology.power_lines, second.topology.power_lines);
+    assert_eq!(
+      first.topology.generator_power_lines,
+      second.topology.generator_power_lines
+    );
     assert!(second
       .events
       .iter()

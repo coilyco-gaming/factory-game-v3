@@ -160,6 +160,13 @@ impl PowerGrid {
     let node = NodeId::Generator(
       NodeIndex::try_from(self.generators.len()).expect("generator index fits NodeIndex"),
     );
+    assert!(
+      self
+        .generators
+        .iter()
+        .all(|generator| generator.node != node),
+      "deployed generator identity is not already registered"
+    );
     let fuel = generator_inventory(content, &spec);
     self
       .generators

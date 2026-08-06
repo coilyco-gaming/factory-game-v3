@@ -1559,8 +1559,12 @@ fn update_text(
         host.snapshot.structures.len()
       ),
       HudField::Power => format!(
-        "{}  |  {} used  |  {} starved",
-        power, metrics.energy_consumed, metrics.power_starvations
+        "{}  |  {} made  |  {} moved  |  {} used  |  {} starved",
+        power,
+        metrics.energy_generated,
+        metrics.energy_balanced,
+        metrics.energy_consumed,
+        metrics.power_starvations
       ),
     };
     *text = Text::new(truncate_for_display(&value, HUD_VALUE_MAX_CHARS));
@@ -2085,8 +2089,13 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
           .find(|generator| generator.node == node)
       })
       .map(|generator| {
+        let line = snapshot
+          .topology
+          .generator_power_lines
+          .iter()
+          .find(|line| line.generator == generator.node);
         format!(
-          "{}\ntype: {}\nmode: {}\nfuel: {}",
+          "{}\ntype: {}\nmode: {}\nfuel: {}\nlink: {}",
           generator.node,
           generator.item.map_or("generator", |item| item.as_str()),
           if generator.fuel_item.is_some() {
@@ -2094,7 +2103,11 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
           } else {
             "fuel-free"
           },
-          format_items(&generator.fuel.items)
+          format_items(&generator.fuel.items),
+          line.map_or_else(
+            || "pending".into(),
+            |line| format!("{} via {} cells", line.target, line.cells.len())
+          )
         )
       })
       .unwrap_or_else(|| node.to_string()),
@@ -2435,7 +2448,7 @@ mod tests {
     scenario.factories[10].starting_items = recipe_inputs;
     let mut game = GameState::new(content, V2_WORLD_SCENARIO).unwrap();
 
-    let snapshot = (0..150)
+    let deployed = (0..150)
       .find_map(|_| {
         let snapshot = game.step();
         snapshot
@@ -2445,6 +2458,7 @@ mod tests {
           .then_some(snapshot)
       })
       .expect("remote coal plant deploys");
+    let snapshot = game.step();
     let generator = NodeId::Generator(1);
     let source = snapshot
       .sources
@@ -2452,10 +2466,28 @@ mod tests {
       .find(|source| source.occupied_by == Some(generator))
       .expect("deployed generator occupies its coal source");
 
-    assert_eq!(NodeActivity::Demanding, node_activity(&snapshot, generator));
+    assert_eq!(NodeActivity::Ready, node_activity(&snapshot, generator));
     assert!(node_label_value(&snapshot, generator).contains("type: coal_plant"));
+    let line = snapshot
+      .topology
+      .generator_power_lines
+      .iter()
+      .find(|line| line.generator == generator)
+      .expect("remote generator exposes its complete line path");
+    assert_eq!(NodeId::Generator(0), line.target);
+    assert!(line
+      .cells
+      .iter()
+      .all(|cell| snapshot.topology.power_lines.contains(cell)));
+    assert!(node_label_value(&snapshot, generator)
+      .contains(&format!("link: generator-0 via {} cells", line.cells.len())));
     assert_eq!(NodeActivity::Ready, node_activity(&snapshot, source.node));
     assert!(node_label_value(&snapshot, source.node).contains("occupied by generator-1"));
+    assert!(deployed
+      .topology
+      .generator_power_lines
+      .iter()
+      .all(|line| line.generator != generator));
   }
 
   #[test]

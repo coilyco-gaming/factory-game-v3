@@ -524,6 +524,14 @@ pub struct TopologySnapshot {
   pub blocked: BTreeSet<GridPosition>,
   pub obstacles: BTreeSet<GridPosition>,
   pub power_lines: BTreeSet<GridPosition>,
+  pub generator_power_lines: Vec<GeneratorPowerLine>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct GeneratorPowerLine {
+  pub generator: NodeId,
+  pub target: NodeId,
+  pub cells: Vec<GridPosition>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -585,6 +593,7 @@ pub struct WorldState {
   pub power: Option<PowerGrid>,
   pub batteries: BTreeMap<BatteryOwner, Battery>,
   pub power_lines: BTreeSet<GridPosition>,
+  pub generator_power_lines: BTreeMap<NodeId, GeneratorPowerLine>,
   pub linked_generators: BTreeSet<NodeId>,
   pub topology: Topology,
   pub queued_mutations: Vec<WorldMutation>,

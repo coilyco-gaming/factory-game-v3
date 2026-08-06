@@ -27,14 +27,17 @@ claimed source position and exposes `coal_plant` as its object item.
 The plant starts with empty coal inventory, a 4,000-unit coal reservation, and
 an empty 10,000-unit battery. That battery replaces the dormant source battery
 at the occupied site. Its generator contract burns four coal for 160 energy. On
-later ticks it advertises normal coal delivery, builds an automatic power line,
-and participates in spatial battery balancing.
+later ticks it advertises normal coal delivery, builds an automatic power line
+to the powered central generator component, and participates in spatial battery
+balancing. It does not attach to a merely closer source or factory battery.
 
 Snapshots expose the typed generator, inventory, battery, topology position,
-and occupied source. Metrics count both the general deployment and the typed
-generator deployment. Events cover assignment, retrieval, queued placement,
-world creation, claim release, power linking, and generation. The viewer labels
-the generator type and occupied coal site in detail and overview modes.
+occupied source, intended link target, and complete ordered line path. Metrics
+count both the general deployment and the typed generator deployment, then
+separate generated, balanced, consumed, and starved energy. Events cover
+assignment, retrieval, queued placement, world creation, claim release, power
+linking, and generation. The viewer labels the generator type, link target,
+path length, and occupied coal site in detail and overview modes.
 
 ## 100x100 proof and performance
 
@@ -45,7 +48,10 @@ plant item or remote generator. This keeps routine validation focused while
 still exercising the real 40-tick recipe, inventory, fleet, pathfinding, and
 mutation paths.
 
-The focused simulation and viewer proofs each finish in about 0.4 seconds in a
-warm debug build on the implementation host. The full unseeded 50-tick v2
-release test remains at 0.51 to 0.52 seconds, matching the radar-only result.
-These are point-in-time checks rather than portable wall-clock budgets.
+The focused simulation proof now continues through remote coal delivery, fuel
+burn, generation, battery charge, and grid balancing while retaining the full
+100x100 world. It and the viewer proof each finish in about 0.4 to 0.5 seconds
+in a warm debug build on the implementation host, while the focused simulation
+proof takes about 0.05 seconds in release mode. The full unseeded 50-tick v2
+release test remains at 0.52 seconds after this slice. These are point-in-time
+checks rather than portable wall-clock budgets.

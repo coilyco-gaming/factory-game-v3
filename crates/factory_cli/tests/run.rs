@@ -27,6 +27,10 @@ fn cli_produces_stable_json_lines() {
   let summary: serde_json::Value = serde_json::from_str(summary_lines[0]).expect("json");
   assert_eq!(Some(3), summary["summary"]["ticks"].as_u64());
   assert_eq!(Some(9), summary["summary"]["mined"]["iron_ore"].as_u64());
+  assert_eq!(Some(0), summary["summary"]["energy_generated"].as_u64());
+  assert_eq!(Some(0), summary["summary"]["energy_balanced"].as_u64());
+  assert_eq!(Some(0), summary["summary"]["energy_consumed"].as_u64());
+  assert_eq!(Some(0), summary["summary"]["power_starvations"].as_u64());
 }
 
 #[test]
