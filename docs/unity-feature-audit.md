@@ -44,10 +44,10 @@ reopened when the final Unity tests exposed narrower component contracts.
   exposes those interactions.
 * **Observability** - working - Rust owns structured snapshots, event feeds,
   deterministic metrics, and headless JSONL output.
-* **Per-object alerts** - parity gap - the final Unity object model retains ten
-  alerts per object, deduplicates repeated messages, and refreshes last-seen
-  ticks. Rust currently exposes only a global event feed.
+* **Per-object alerts** - working - typed source, factory, hauler, structure,
+  and generator histories retain ten messages per object, refresh repeats by
+  exact message, serialize in snapshots, and stay separate from tick events.
 
-Issue #45 restores the overlooked production contract. Generalized generation
-and per-object alerts remain the audited implementation queue. The repository
-still retains the exact Unity source evidence in Git history.
+Issues #45 and #46 restore the overlooked production and alert contracts.
+Generalized generation is the remaining audited implementation queue. The
+repository retains the exact Unity source evidence in Git history.

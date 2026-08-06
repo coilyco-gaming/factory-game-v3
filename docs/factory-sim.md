@@ -5,7 +5,7 @@ The first Rust migration slice lives in a small workspace with no Bevy dependenc
 ## Crates
 
 - `factory_content` - typed item and scenario IDs plus the active Unity item catalog. Items carry manifest and spawnable-object flags, and scenarios define sources, indexed factories, build sites, hauler capacity, power, starting objects, and occupied-grid layouts.
-- `factory_sim` - deterministic inventory, mining extraction, adjacent automated insertion and retrieval, indexed factories, typed dispatch with multi-hauler arbitration and factory-output supply, queued deployment, construction, and movement mutations, occupied-grid A-star pathfinding, transit collision arbitration, per-object batteries, automatic power lines, fuel-burning power, and tick stepping.
+- `factory_sim` - deterministic inventory, mining, adjacent insertion and retrieval, indexed factories, typed multi-hauler dispatch, queued deployment, construction and movement, occupied-grid A-star pathfinding, transit arbitration, per-object batteries and alerts, automatic power lines, fuel-burning power, and tick stepping.
 - `factory_cli` - a headless runner that emits one JSON snapshot per tick.
 
 ## Scenarios
@@ -52,7 +52,8 @@ The ten layouts and their proof goals are listed in
 ward exec cargo-run -- run --scenario iron-bars --ticks 6
 ```
 
-The CLI prints JSON lines. Each tick line contains the tick number, the current topology, source, hauler, and indexed factory snapshots, the typed dispatch protocol state, and the events emitted during that tick.
+The CLI prints JSON lines. Each tick contains topology, object snapshots,
+typed dispatch, per-object alert histories, and that tick's global events.
 
 After the last tick the CLI prints one final `{"summary": ...}` line with deterministic run totals: ticks, material flow, dispatch, energy, deployments, world deletions, and idle ticks. The `summary` key keeps tick lines and the summary mechanically separable.
 

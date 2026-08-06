@@ -55,8 +55,9 @@ the remaining narrow contracts in
   totals, and activity projection. Unity has no player placement, object
   editing, or programmable logistics interaction, so those speculative gaps
   are obsolete rather than migration requirements.
-* **Observability** - substantial - snapshots, JSONL, run metrics, events, the
-  activity feed, and the Bevy projection cover the active Rust systems.
+* **Observability** - substantial - snapshots, JSONL, run metrics, events,
+  bounded message-deduplicated per-object alerts, the activity feed, and the
+  Bevy projection cover the active Rust systems.
 
 The completed deletion record lives in
 [csharp-decommission.md](csharp-decommission.md).

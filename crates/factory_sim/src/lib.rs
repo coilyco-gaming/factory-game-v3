@@ -1,3 +1,4 @@
+mod alerts;
 mod dispatch;
 mod metrics;
 mod mining;
@@ -9,6 +10,7 @@ mod world;
 use factory_content::{ContentDatabase, ItemId, ScenarioId, IRON_BARS_SCENARIO, MINING_DRILL};
 use std::fmt;
 
+pub use alerts::{AlertEntry, AlertHistory, MAX_OBJECT_ALERTS};
 pub use dispatch::{
   DispatchAssignment, DispatchBoard, DispatchIntent, DispatchPhase, DispatchPolicy,
   DispatchPriority, DispatchReceiverState, DispatchVerb,
@@ -253,6 +255,8 @@ impl GameState {
             source.mining.item, mined, source.node
           )),
         }
+      } else if source.mining.deposit == Deposit::Finite(0) {
+        source.alerts.record(self.world.tick, "nothing to mine");
       }
     }
   }
@@ -527,6 +531,7 @@ impl GameState {
   }
 
   fn advance_receiver_phases(&mut self, events: &mut Vec<String>) {
+    let tick = self.world.tick;
     for hauler in &mut self.world.haulers {
       let DispatchReceiverState::Assigned(assignment) = &hauler.dispatch else {
         continue;
@@ -546,18 +551,30 @@ impl GameState {
         _ => continue,
       };
       if let Some(phase) = next_phase {
+        let alert = match (assignment.phase, phase) {
+          (DispatchPhase::Collect, DispatchPhase::Deliver) => "collect => deliver",
+          (DispatchPhase::Retrieve, DispatchPhase::Deploy) => "retrieve => deploy",
+          _ => "receiver phase changed",
+        };
         let item = assignment.item;
         hauler.dispatch = DispatchReceiverState::Assigned(DispatchAssignment {
           phase,
           ..assignment.clone()
         });
+        hauler.alerts.record(tick, alert);
         events.push(format!(
           "receiver hauler-{} {} => {:?}",
           hauler.id, item, phase
         ));
       } else {
         let phase = assignment.phase;
+        let alert = match phase {
+          DispatchPhase::Deliver => "deliver => collect",
+          DispatchPhase::Deploy => "deploy => retrieve",
+          _ => "receiver => awaiting",
+        };
         hauler.clear_assignment();
+        hauler.alerts.record(tick, alert);
         events.push(format!("receiver hauler-{} {:?} => awaiting", hauler.id, phase));
       }
     }
@@ -812,6 +829,7 @@ impl GameState {
           self.world.structures.push(StructureSnapshot {
             node: structure,
             item,
+            alerts: AlertHistory::default(),
           });
           if let Some(hauler) = self
             .world
@@ -968,6 +986,15 @@ impl GameState {
       }
       let factory = &mut self.world.factories[factory_index];
       let produced = factory.production.advance(&self.content, events);
+      if let Some(blocked) = factory.production.blocked {
+        factory.alerts.record(
+          self.world.tick,
+          match blocked {
+            ProductionBlockReason::OutputFull => "product output full",
+            ProductionBlockReason::NoOutputSpace => "no space for product",
+          },
+        );
+      }
       let output_item = factory.production.recipe.output_item;
       self.metrics.record_crafted(output_item, produced);
     }
@@ -1013,6 +1040,11 @@ impl GameState {
       });
     let Some((_, target)) = target else {
       events.push("power line no battery target found".into());
+      if let Some(power) = &mut self.world.power {
+        power
+          .alerts
+          .record(self.world.tick, "no power source found");
+      }
       return;
     };
 
@@ -1166,6 +1198,7 @@ impl GameState {
     let Some(battery) = self.world.batteries.get_mut(&owner) else {
       events.push(format!("power starved {consumer} missing battery at {node}"));
       self.metrics.power_starvations += 1;
+      self.record_node_alert(node, format!("not enough energy for {consumer}"));
       return false;
     };
     if battery.consume(amount) {
@@ -1176,12 +1209,47 @@ impl GameState {
       ));
       true
     } else {
+      let energy = battery.energy;
+      let capacity = battery.capacity;
       self.metrics.power_starvations += 1;
       events.push(format!(
         "power starved {consumer} need {amount} battery {}/{} at {node}",
-        battery.energy, battery.capacity
+        energy, capacity
       ));
+      self.record_node_alert(node, format!("not enough energy for {consumer}"));
       false
+    }
+  }
+
+  fn record_node_alert(&mut self, node: NodeId, message: impl Into<String>) {
+    let message = message.into();
+    match node {
+      NodeId::Source(index) => {
+        if let Some(source) = self.world.sources.get_mut(usize::from(index)) {
+          source.alerts.record(self.world.tick, message);
+        }
+      }
+      NodeId::Factory(index) => {
+        if let Some(factory) = self.world.factories.get_mut(usize::from(index)) {
+          factory.alerts.record(self.world.tick, message);
+        }
+      }
+      NodeId::PowerPlant => {
+        if let Some(power) = &mut self.world.power {
+          power.alerts.record(self.world.tick, message);
+        }
+      }
+      NodeId::Structure(index) => {
+        if let Some(structure) = self
+          .world
+          .structures
+          .iter_mut()
+          .find(|structure| structure.node == NodeId::Structure(index))
+        {
+          structure.alerts.record(self.world.tick, message);
+        }
+      }
+      NodeId::Road | NodeId::BuildSite(_) | NodeId::Transit(_) => {}
     }
   }
 
@@ -1297,6 +1365,7 @@ impl GameState {
           dispatch: source.dispatch.clone(),
           deployed: source.deployed,
           exhausted: source.exhausted,
+          alerts: source.alerts.clone(),
         })
         .collect(),
       haulers: self
@@ -1312,6 +1381,7 @@ impl GameState {
           cargo: hauler.cargo.snapshot(),
           carry_limit: hauler.carry_limit,
           dispatch: hauler.dispatch.clone(),
+          alerts: hauler.alerts.clone(),
         })
         .collect(),
       factories: self
@@ -1323,6 +1393,7 @@ impl GameState {
           inventory: factory.production.inventory.snapshot(),
           craft: factory.production.craft_snapshot(),
           dispatch: factory.dispatch.clone(),
+          alerts: factory.alerts.clone(),
         })
         .collect(),
       structures: self.world.structures.clone(),
@@ -1583,6 +1654,53 @@ mod tests {
     ));
     assert_eq!(NodeId::Road, fourth.haulers[0].position);
     assert_eq!(NodeId::Factory(0), fourth.haulers[0].target);
+  }
+
+  #[test]
+  fn repeated_factory_conditions_refresh_one_object_alert() {
+    let mut state = GameState::starter_iron_bars();
+    let factory = &mut state.world.factories[0];
+    factory.production.inventory.force_insert(IRON_ORE, 3);
+    factory.production.inventory.force_insert(IRON_BARS, 20);
+
+    let first = state.step();
+    assert_eq!(
+      Some(&AlertEntry {
+        tick: 1,
+        message: "product output full".into(),
+      }),
+      first.factories[0].alerts.latest()
+    );
+
+    let second = state.step();
+    assert_eq!(1, second.factories[0].alerts.entries.len());
+    assert_eq!(
+      Some(&AlertEntry {
+        tick: 2,
+        message: "product output full".into(),
+      }),
+      second.factories[0].alerts.latest()
+    );
+  }
+
+  #[test]
+  fn receiver_alerts_remain_isolated_to_the_owning_hauler() {
+    let mut state = GameState::starter_iron_bars();
+    let hauler = &mut state.world.haulers[0];
+    hauler.assign(DispatchAssignment::collect(
+      IRON_ORE,
+      NodeId::Source(0),
+      NodeId::Factory(0),
+    ));
+    hauler.cargo.force_insert(IRON_ORE, 1);
+
+    let snapshot = state.step();
+    assert_eq!("collect => deliver", snapshot.haulers[0].alerts.latest().unwrap().message);
+    assert!(snapshot.sources.iter().all(|source| source.alerts.entries.is_empty()));
+    assert!(snapshot
+      .factories
+      .iter()
+      .all(|factory| factory.alerts.entries.is_empty()));
   }
 
   #[test]
@@ -2313,6 +2431,7 @@ mod tests {
       vec![StructureSnapshot {
         node: NodeId::Structure(0),
         item: STORAGE_WAREHOUSE,
+        alerts: AlertHistory::default(),
       }],
       built.structures
     );

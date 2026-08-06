@@ -8,8 +8,8 @@ use factory_content::{
   POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO,
 };
 use factory_sim::{
-  BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition, HaulerSnapshot,
-  NodeId, TickSnapshot,
+  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
+  HaulerSnapshot, NodeId, TickSnapshot,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -111,6 +111,7 @@ fn main() {
         animate_haulers,
         update_text,
         sync_annotation_visibility,
+        update_focus_alert,
         style_control_buttons,
       )
         .chain(),
@@ -362,6 +363,9 @@ struct MainCamera;
 struct PlayerCursor;
 
 #[derive(Component)]
+struct FocusAlertText;
+
+#[derive(Component)]
 struct Annotation;
 
 #[derive(Component)]
@@ -498,6 +502,32 @@ fn spawn_status_panels(commands: &mut Commands) {
         EventText,
       ));
     });
+
+  commands.spawn((
+    Text::new(""),
+    TextFont {
+      font_size: FontSize::Px(12.0),
+      ..default()
+    },
+    TextLayout::no_wrap(),
+    TextColor(Color::srgb(1.0, 0.72, 0.42)),
+    Node {
+      position_type: PositionType::Absolute,
+      left: px(18),
+      bottom: px(18),
+      width: px(540),
+      padding: UiRect::axes(px(12), px(8)),
+      border: UiRect::all(px(1)),
+      overflow: Overflow::clip_x(),
+      ..default()
+    },
+    BackgroundColor(Color::srgba(0.05, 0.06, 0.08, 0.92)),
+    BorderColor::all(BUTTON_PRESSED),
+    GlobalZIndex(90),
+    Visibility::Hidden,
+    FocusAlertText,
+    Annotation,
+  ));
 }
 
 fn spawn_status_row(parent: &mut ChildSpawnerCommands, label: &'static str, field: HudField) {
@@ -1387,6 +1417,21 @@ fn sync_annotation_visibility(
   }
 }
 
+fn update_focus_alert(
+  host: Res<SimHost>,
+  view: Res<PlayerView>,
+  mut alert: Single<(&mut Text, &mut Visibility), With<FocusAlertText>>,
+) {
+  let value = focused_alert(&host.snapshot, view.position);
+  let visible = host.annotations_visible && !value.is_empty();
+  *alert.0 = Text::new(value);
+  *alert.1 = if visible {
+    Visibility::Visible
+  } else {
+    Visibility::Hidden
+  };
+}
+
 fn update_text(
   host: Res<SimHost>,
   mut node_labels: Query<(&NodeLabel, &mut Text2d), (Without<HudText>, Without<EventText>)>,
@@ -1507,6 +1552,58 @@ fn move_player_focus(
 
 fn player_zoom_scale(level: u8) -> f32 {
   1.0 + f32::from(level.clamp(1, 10) - 1) * 0.18
+}
+
+fn node_alerts(snapshot: &TickSnapshot, node: NodeId) -> Option<&AlertHistory> {
+  match node {
+    NodeId::Source(_) => snapshot
+      .sources
+      .iter()
+      .find(|source| source.node == node)
+      .map(|source| &source.alerts),
+    NodeId::Factory(_) => snapshot
+      .factories
+      .iter()
+      .find(|factory| factory.node == node)
+      .map(|factory| &factory.alerts),
+    NodeId::PowerPlant => snapshot.power.as_ref().map(|power| &power.alerts),
+    NodeId::Structure(_) => snapshot
+      .structures
+      .iter()
+      .find(|structure| structure.node == node)
+      .map(|structure| &structure.alerts),
+    NodeId::Road | NodeId::BuildSite(_) | NodeId::Transit(_) => None,
+  }
+}
+
+fn focused_alert(snapshot: &TickSnapshot, position: GridPosition) -> String {
+  let node_alerts = snapshot
+    .topology
+    .nodes
+    .iter()
+    .filter(|node| node.position == position)
+    .filter_map(|node| {
+      node_alerts(snapshot, node.id)
+        .and_then(AlertHistory::latest)
+        .map(|alert| (alert.tick, format!("{}: {}", node.id, alert.message)))
+    });
+  let hauler_alerts = snapshot
+    .haulers
+    .iter()
+    .filter(|hauler| hauler.position_grid == position)
+    .filter_map(|hauler| {
+      hauler
+        .alerts
+        .latest()
+        .map(|alert| (alert.tick, format!("hauler-{}: {}", hauler.id, alert.message)))
+    });
+  node_alerts
+    .chain(hauler_alerts)
+    .max_by_key(|(tick, _)| *tick)
+    .map(|(tick, message)| {
+      truncate_for_display(&format!("ALERT t{tick:03}  {message}"), HUD_VALUE_MAX_CHARS)
+    })
+    .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -2194,6 +2291,69 @@ mod tests {
       Some(&1),
       snapshot_inventory_totals(&snapshot).get("storage_warehouse")
     );
+  }
+
+  #[test]
+  fn focused_alert_uses_the_latest_authoritative_object_history() {
+    let mut game = scenario_game(IRON_BARS_SCENARIO);
+    game.world.factories[0]
+      .alerts
+      .record(7, "product output full");
+    let snapshot = game.snapshot(Vec::new());
+    let position = snapshot
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Factory(0))
+      .unwrap()
+      .position;
+
+    assert_eq!(
+      "ALERT t007  factory-0: product output full",
+      focused_alert(&snapshot, position)
+    );
+  }
+
+  #[test]
+  fn focus_alert_overlay_is_contextual_and_honors_hidden_ui() {
+    let mut host = SimHost::new();
+    host.auto_cycle = false;
+    host.game.world.factories[0]
+      .alerts
+      .record(7, "product output full");
+    host.snapshot = host.game.snapshot(Vec::new());
+    let position = host
+      .snapshot
+      .topology
+      .nodes
+      .iter()
+      .find(|node| node.id == NodeId::Factory(0))
+      .unwrap()
+      .position;
+    let view = PlayerView {
+      position,
+      zoom_level: 1,
+      scene_revision: 0,
+    };
+    let mut app = App::new();
+    app.insert_resource(host);
+    app.insert_resource(view);
+    app.add_systems(Update, update_focus_alert);
+    let overlay = app
+      .world_mut()
+      .spawn((Text::new(""), Visibility::Hidden, FocusAlertText))
+      .id();
+
+    app.update();
+    assert_eq!(
+      "ALERT t007  factory-0: product output full",
+      app.world().get::<Text>(overlay).unwrap().as_str()
+    );
+    assert_eq!(Visibility::Visible, *app.world().get::<Visibility>(overlay).unwrap());
+
+    app.world_mut().resource_mut::<SimHost>().annotations_visible = false;
+    app.update();
+    assert_eq!(Visibility::Hidden, *app.world().get::<Visibility>(overlay).unwrap());
   }
 
   #[test]

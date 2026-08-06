@@ -1,3 +1,4 @@
+use crate::alerts::AlertHistory;
 use crate::dispatch::{DispatchBoard, DispatchIntent};
 use crate::resources::{Inventory, InventorySnapshot};
 use crate::{GridPosition, NodeId};
@@ -49,6 +50,7 @@ pub struct PowerPlant {
   pub fuel: Inventory,
   pub dispatch: DispatchBoard,
   pub spec: PowerSpec,
+  pub alerts: AlertHistory,
 }
 
 impl PowerPlant {
@@ -61,6 +63,7 @@ impl PowerPlant {
       fuel,
       dispatch: DispatchBoard::new(),
       spec,
+      alerts: AlertHistory::default(),
     }
   }
 
@@ -103,6 +106,7 @@ impl PowerPlant {
       gain_rate: self.spec.gain_rate,
       dispatch: self.dispatch.clone(),
       batteries,
+      alerts: self.alerts.clone(),
     }
   }
 }
@@ -117,4 +121,5 @@ pub struct PowerSnapshot {
   pub gain_rate: u32,
   pub dispatch: DispatchBoard,
   pub batteries: Vec<Battery>,
+  pub alerts: AlertHistory,
 }

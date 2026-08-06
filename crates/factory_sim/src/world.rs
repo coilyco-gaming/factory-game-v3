@@ -1,3 +1,4 @@
+use crate::alerts::AlertHistory;
 use crate::dispatch::{DispatchAssignment, DispatchBoard, DispatchIntent, DispatchReceiverState};
 use crate::mining::MiningExtractor;
 use crate::power::{Battery, BatteryOwner, PowerPlant, PowerSnapshot};
@@ -309,6 +310,7 @@ pub struct SourceNode {
   pub dispatch: DispatchBoard,
   pub deployed: bool,
   pub exhausted: bool,
+  pub alerts: AlertHistory,
 }
 
 impl SourceNode {
@@ -327,6 +329,7 @@ impl SourceNode {
       dispatch: DispatchBoard::new(),
       deployed,
       exhausted: false,
+      alerts: AlertHistory::default(),
     }
   }
 
@@ -344,6 +347,7 @@ pub struct FactoryNode {
   pub production: FactoryProduction,
   pub dispatch: DispatchBoard,
   pub input_buffer: u32,
+  pub alerts: AlertHistory,
 }
 
 impl FactoryNode {
@@ -353,6 +357,7 @@ impl FactoryNode {
       production,
       dispatch: DispatchBoard::new(),
       input_buffer,
+      alerts: AlertHistory::default(),
     }
   }
 
@@ -387,6 +392,7 @@ pub struct Hauler {
   pub target: NodeId,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
+  pub alerts: AlertHistory,
 }
 
 impl Hauler {
@@ -398,6 +404,7 @@ impl Hauler {
       target: position,
       carry_limit,
       dispatch: DispatchReceiverState::Unassigned,
+      alerts: AlertHistory::default(),
     }
   }
 
@@ -423,6 +430,7 @@ pub struct SourceSnapshot {
   pub dispatch: DispatchBoard,
   pub deployed: bool,
   pub exhausted: bool,
+  pub alerts: AlertHistory,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -431,12 +439,14 @@ pub struct FactorySnapshot {
   pub inventory: crate::resources::InventorySnapshot,
   pub craft: CraftSnapshot,
   pub dispatch: DispatchBoard,
+  pub alerts: AlertHistory,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct StructureSnapshot {
   pub node: NodeId,
   pub item: ItemId,
+  pub alerts: AlertHistory,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -449,6 +459,7 @@ pub struct HaulerSnapshot {
   pub cargo: crate::resources::InventorySnapshot,
   pub carry_limit: u32,
   pub dispatch: DispatchReceiverState,
+  pub alerts: AlertHistory,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

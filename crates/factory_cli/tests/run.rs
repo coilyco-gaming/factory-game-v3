@@ -15,7 +15,15 @@ fn cli_produces_stable_json_lines() {
   for line in tick_lines {
     let value: serde_json::Value = serde_json::from_str(line).expect("json");
     assert_eq!(Some("iron-bars"), value["scenario"]["id"].as_str());
+    assert!(value["sources"][0]["alerts"]["entries"].is_array());
+    assert!(value["haulers"][0]["alerts"]["entries"].is_array());
+    assert!(value["factories"][0]["alerts"]["entries"].is_array());
   }
+  let second_tick: serde_json::Value = serde_json::from_str(tick_lines[1]).expect("json");
+  assert_eq!(
+    Some("collect => deliver"),
+    second_tick["haulers"][0]["alerts"]["entries"][0]["message"].as_str()
+  );
   let summary: serde_json::Value = serde_json::from_str(summary_lines[0]).expect("json");
   assert_eq!(Some(3), summary["summary"]["ticks"].as_u64());
   assert_eq!(Some(9), summary["summary"]["mined"]["iron_ore"].as_u64());
