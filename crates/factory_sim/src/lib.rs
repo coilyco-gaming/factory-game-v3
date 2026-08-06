@@ -247,8 +247,7 @@ impl GameState {
         power,
         batteries,
         power_lines: std::collections::BTreeSet::new(),
-        generator_power_lines: std::collections::BTreeMap::new(),
-        linked_generators: std::collections::BTreeSet::new(),
+        generator_power_lines: Vec::new(),
         topology,
         queued_mutations: Vec::new(),
         scenario,
@@ -286,6 +285,18 @@ impl GameState {
     self.dispatch_policy.clear_priority(destination, item)
   }
 
+  fn source_wants_mining(&self, source_index: usize) -> bool {
+    let Some(source) = self.world.sources.get(source_index) else {
+      return false;
+    };
+    source.deployed
+      && !source.mining.is_depleted()
+      && source
+        .stockpile
+        .max_insertable(&self.content, source.mining.item, source.mining.speed)
+        > 0
+  }
+
   fn advance_mining(&mut self, events: &mut Vec<String>) {
     let mining_cost = self
       .world
@@ -293,7 +304,7 @@ impl GameState {
       .as_ref()
       .map_or(0, |power| power.spec.mining_cost);
     for source_index in 0..self.world.sources.len() {
-      if !self.world.sources[source_index].deployed {
+      if !self.source_wants_mining(source_index) {
         continue;
       }
       let node = self.world.sources[source_index].node;
@@ -1292,37 +1303,84 @@ impl GameState {
       })
       .unwrap_or_default();
     for generator in generators {
-      if self.world.linked_generators.contains(&generator) {
-        continue;
-      }
       let origin = self.world.topology.position(generator);
       let deployed = match generator {
         NodeId::Generator(index) => usize::from(index) >= static_generator_count,
         _ => false,
       };
-      let target = self
+      let has_primary = self
         .world
-        .batteries
+        .generator_power_lines
         .iter()
-        .filter_map(|(owner, battery)| match owner {
-          BatteryOwner::Node(node)
-            if *node != generator
-              && (!deployed || matches!(node, NodeId::Generator(_)))
-              && (!deployed || battery.energy > 0) =>
-          {
-            Some((*node, self.world.topology.position(*node)))
-          }
-          BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
-        })
-        .min_by_key(|(node, position)| {
-          (
-            origin.x.abs_diff(position.x).pow(2) + origin.y.abs_diff(position.y).pow(2),
-            *node,
-          )
-        });
+        .any(|line| line.generator == generator);
+      let target = if has_primary {
+        let candidates = self
+          .world
+          .batteries
+          .iter()
+          .filter_map(|(owner, battery)| {
+            let BatteryOwner::Node(node) = owner else {
+              return None;
+            };
+            let active = match node {
+              NodeId::Source(index) => self.source_wants_mining(usize::from(*index)),
+              NodeId::Factory(index) => self.world.factories.get(usize::from(*index)).is_some(),
+              NodeId::Road
+              | NodeId::Generator(_)
+              | NodeId::Radar(_)
+              | NodeId::BuildSite(_)
+              | NodeId::Structure(_)
+              | NodeId::Transit(_) => false,
+            };
+            (active && battery.energy == 0).then_some((
+              *owner,
+              *node,
+              self.world.topology.position(*node),
+            ))
+          })
+          .collect::<Vec<_>>();
+        if candidates.is_empty() {
+          None
+        } else {
+          let connected = self.battery_component(BatteryOwner::Node(generator));
+          candidates
+            .into_iter()
+            .filter(|(owner, _, _)| !connected.contains(owner))
+            .map(|(_, node, position)| (node, position))
+            .min_by_key(|(node, position)| {
+              (
+                origin.x.abs_diff(position.x).pow(2) + origin.y.abs_diff(position.y).pow(2),
+                *node,
+              )
+            })
+        }
+      } else {
+        self
+          .world
+          .batteries
+          .iter()
+          .filter_map(|(owner, battery)| match owner {
+            BatteryOwner::Node(node)
+              if *node != generator
+                && (!deployed || matches!(node, NodeId::Generator(_)))
+                && (!deployed || battery.energy > 0) =>
+            {
+              Some((*node, self.world.topology.position(*node)))
+            }
+            BatteryOwner::Node(_) | BatteryOwner::Hauler(_) | BatteryOwner::PowerLine(_) => None,
+          })
+          .min_by_key(|(node, position)| {
+            (
+              origin.x.abs_diff(position.x).pow(2) + origin.y.abs_diff(position.y).pow(2),
+              *node,
+            )
+          })
+      };
       let Some((target_node, target)) = target else {
-        events.push(format!("power line {generator} no battery target found"));
-        self.record_node_alert(generator, "no power source found");
+        if !has_primary {
+          events.push(format!("power line {generator} no battery target found"));
+          self.record_node_alert(generator, "no power source found");
+        }
         continue;
       };
 
@@ -1352,15 +1410,11 @@ impl GameState {
           built += 1;
         }
       }
-      self.world.generator_power_lines.insert(
+      self.world.generator_power_lines.push(GeneratorPowerLine {
         generator,
-        GeneratorPowerLine {
-          generator,
-          target: target_node,
-          cells: cells.clone(),
-        },
-      );
-      self.world.linked_generators.insert(generator);
+        target: target_node,
+        cells: cells.clone(),
+      });
       events.push(format!(
         "power line {generator} built {built} cells {:?} toward {target_node} at {},{}",
         cells, target.x, target.y
@@ -1368,8 +1422,8 @@ impl GameState {
     }
   }
 
-  fn balance_batteries(&mut self, events: &mut Vec<String>) -> u64 {
-    let positions = self
+  fn battery_positions(&self) -> std::collections::BTreeMap<BatteryOwner, GridPosition> {
+    self
       .world
       .batteries
       .keys()
@@ -1390,7 +1444,47 @@ impl GameState {
         };
         (owner, position)
       })
-      .collect::<std::collections::BTreeMap<_, _>>();
+      .collect()
+  }
+
+  fn battery_component(&self, start: BatteryOwner) -> std::collections::BTreeSet<BatteryOwner> {
+    let positions = self.battery_positions();
+    if !positions.contains_key(&start) {
+      return std::collections::BTreeSet::new();
+    }
+    let mut owners_by_position =
+      std::collections::BTreeMap::<GridPosition, Vec<BatteryOwner>>::new();
+    for (owner, position) in &positions {
+      owners_by_position
+        .entry(*position)
+        .or_default()
+        .push(*owner);
+    }
+    let mut component = std::collections::BTreeSet::from([start]);
+    let mut frontier = vec![start];
+    let mut cursor = 0;
+    while cursor < frontier.len() {
+      let owner = frontier[cursor];
+      cursor += 1;
+      let position = positions[&owner];
+      for y in position.y - 1..=position.y + 1 {
+        for x in position.x - 1..=position.x + 1 {
+          let Some(neighbors) = owners_by_position.get(&GridPosition { x, y }) else {
+            continue;
+          };
+          for neighbor in neighbors {
+            if component.insert(*neighbor) {
+              frontier.push(*neighbor);
+            }
+          }
+        }
+      }
+    }
+    component
+  }
+
+  fn balance_batteries(&mut self, events: &mut Vec<String>) -> u64 {
+    let positions = self.battery_positions();
     let mut unseen = positions
       .keys()
       .copied()
@@ -1675,6 +1769,17 @@ impl GameState {
     self.advance_tick();
   }
 
+  pub fn exhaust_non_generator_batteries(&mut self) -> usize {
+    let mut exhausted = 0;
+    for (owner, battery) in &mut self.world.batteries {
+      if !matches!(owner, BatteryOwner::Node(NodeId::Generator(_))) && battery.energy > 0 {
+        battery.energy = 0;
+        exhausted += 1;
+      }
+    }
+    exhausted
+  }
+
   pub fn metrics(&self) -> RunMetricsSnapshot {
     self.metrics.snapshot()
   }
@@ -1758,6 +1863,7 @@ impl GameState {
         .max()
         .unwrap_or(0),
       queued_mutations: self.world.queued_mutations.len(),
+      power_links: self.world.generator_power_lines.len(),
       power_line_cells: self.world.power_lines.len(),
     }
   }
@@ -1776,7 +1882,7 @@ impl GameState {
         blocked: self.world.topology.blocked.clone(),
         obstacles: self.world.topology.obstacles.clone(),
         power_lines: self.world.power_lines.clone(),
-        generator_power_lines: self.world.generator_power_lines.values().cloned().collect(),
+        generator_power_lines: self.world.generator_power_lines.clone(),
       },
       sources: self
         .world
@@ -1911,6 +2017,27 @@ mod tests {
   }
 
   #[test]
+  fn a_full_source_does_not_spend_mining_power() {
+    let mut state = GameState::new(ContentDatabase::starter(), POWER_LINE_SCENARIO).unwrap();
+    let content = state.content.clone();
+    state.world.sources[0]
+      .stockpile
+      .insert_up_to(&content, IRON_ORE, u32::MAX);
+    let owner = BatteryOwner::Node(NodeId::Source(0));
+    state.world.batteries.get_mut(&owner).unwrap().energy = 10;
+    let metrics = state.metrics();
+    let mut events = Vec::new();
+
+    state.advance_mining(&mut events);
+
+    assert!(!state.source_wants_mining(0));
+    assert_eq!(10, state.world.batteries[&owner].energy);
+    assert_eq!(metrics.energy_consumed, state.metrics().energy_consumed);
+    assert_eq!(metrics.power_starvations, state.metrics().power_starvations);
+    assert!(events.is_empty());
+  }
+
+  #[test]
   fn v2_world_runs_deployment_freight_and_upper_tier_production_at_scale() {
     let content = ContentDatabase::starter();
     let mut state = GameState::new(content.clone(), V2_WORLD_SCENARIO).expect("v2 world is valid");
@@ -1962,14 +2089,36 @@ mod tests {
   #[cfg(not(debug_assertions))]
   #[test]
   fn v2_world_sustains_remote_power_after_starter_charge() {
+    const FINAL_TICK: u64 = 650;
+    const STABILITY_WINDOW: u64 = 50;
     let mut first = GameState::new(ContentDatabase::starter(), V2_WORLD_SCENARIO).unwrap();
     let mut second = GameState::new(ContentDatabase::starter(), V2_WORLD_SCENARIO).unwrap();
-    let mut after_first_drained_source = None;
-    let mut drained_source_deposits = std::collections::BTreeMap::new();
+    let mut after_starter_drain = None;
+    let mut reconnected_sources = std::collections::BTreeSet::new();
+    let mut stability_window_start = None;
 
-    for tick in 1..=650 {
+    for tick in 1..=FINAL_TICK {
+      let previous_line_count = first.world.generator_power_lines.len();
       first.advance_without_snapshot();
       second.advance_without_snapshot();
+
+      for line in first
+        .world
+        .generator_power_lines
+        .iter()
+        .skip(previous_line_count)
+      {
+        if tick > 500 && matches!(line.target, NodeId::Source(_)) {
+          reconnected_sources.insert((line.generator, line.target));
+        }
+      }
+
+      if tick == 500 {
+        for state in [&mut first, &mut second] {
+          assert!(state.exhaust_non_generator_batteries() > 0);
+        }
+        after_starter_drain = Some(first.metrics());
+      }
 
       let summary = first.liveness_summary();
       let structural_intent_bound = first.world.sources.len()
@@ -1995,49 +2144,39 @@ mod tests {
       assert!(summary.claimed_radars <= first.world.radars.len());
       assert_eq!(0, summary.queued_mutations);
       assert!(
+        summary.power_links
+          <= first.world.sources.len()
+            + first.world.factories.len()
+            + first
+              .world
+              .power
+              .as_ref()
+              .map_or(0, |power| power.generators.len())
+      );
+      assert!(
         summary.power_line_cells
           <= usize::try_from(first.world.topology.width * first.world.topology.height).unwrap()
       );
 
-      if tick >= 500 {
-        for source in &first.world.sources {
-          let Deposit::Finite(remaining) = source.mining.deposit else {
-            continue;
-          };
-          if source.deployed
-            && remaining > 0
-            && first.world.batteries[&BatteryOwner::Node(source.node)].energy == 0
-          {
-            drained_source_deposits
-              .entry(source.node)
-              .or_insert(remaining);
-            if after_first_drained_source.is_none() {
-              after_first_drained_source = Some(first.metrics());
-            }
-          }
-        }
-      }
       if tick % 50 == 0 {
         assert_eq!(first.metrics(), second.metrics());
         assert_eq!(first.liveness_summary(), second.liveness_summary());
       }
+      if tick == FINAL_TICK - STABILITY_WINDOW {
+        stability_window_start = Some(first.metrics());
+      }
     }
 
-    let after_drain =
-      after_first_drained_source.expect("an active deposit exhausts its starter charge");
+    let after_drain = after_starter_drain.expect("the proof drains starter batteries at tick 500");
     let metrics = first.metrics();
     assert!(
-      drained_source_deposits.iter().any(|(node, before)| {
-        first
-          .world
-          .sources
-          .iter()
-          .find(|source| source.node == *node)
-          .is_some_and(|source| {
-            matches!(source.mining.deposit, Deposit::Finite(after) if after < *before)
-          })
-      }),
-      "a deposit resumes extraction after its own battery reaches zero: {metrics:?}"
+      !reconnected_sources.is_empty()
+        && reconnected_sources.iter().all(|(generator, source)| {
+          first
+            .battery_component(BatteryOwner::Node(*generator))
+            .contains(&BatteryOwner::Node(*source))
+        }),
+      "generator-owned extensions reconnect drained active deposits: {metrics:?}"
     );
     assert!(
       metrics.mined.get(COAL.as_str()).copied().unwrap_or(0)
@@ -2083,6 +2222,11 @@ mod tests {
         .saturating_sub(after_drain.power_starvations)
         <= starvation_bound,
       "starvation stays bounded by powered actors and observed ticks: {metrics:?}"
+    );
+    assert_eq!(
+      stability_window_start.unwrap().power_starvations,
+      metrics.power_starvations,
+      "no powered actor remains permanently starved in the final window: {metrics:?}"
     );
   }
 
@@ -3491,6 +3635,51 @@ mod tests {
       .events
       .iter()
       .all(|event| !event.starts_with("power line generator")));
+  }
+
+  #[test]
+  fn generator_extends_the_grid_to_a_drained_active_source() {
+    let mut content = ContentDatabase::starter();
+    let scenario = content
+      .scenarios
+      .get_mut(&POWER_LINE_SCENARIO)
+      .expect("power-line scenario exists");
+    scenario.layout.width = 8;
+    scenario.layout.source_positions[0] = GridPoint { x: 7, y: 2 };
+
+    let mut state = GameState::new(content, POWER_LINE_SCENARIO).unwrap();
+    state.step();
+    assert_eq!(1, state.world.generator_power_lines.len());
+
+    let source = NodeId::Source(0);
+    let deposit_before = state.world.sources[0].mining.deposit;
+    state
+      .world
+      .batteries
+      .get_mut(&BatteryOwner::Node(source))
+      .unwrap()
+      .energy = 0;
+
+    let reconnected = state.step();
+    assert_eq!(2, reconnected.topology.generator_power_lines.len());
+    assert_eq!(source, reconnected.topology.generator_power_lines[1].target);
+    assert!(reconnected
+      .events
+      .iter()
+      .any(|event| event.contains("toward source-0")));
+    assert!(
+      reconnected
+        .power
+        .as_ref()
+        .unwrap()
+        .batteries
+        .iter()
+        .find(|battery| battery.owner == BatteryOwner::Node(source))
+        .unwrap()
+        .energy
+        > 0
+        || state.world.sources[0].mining.deposit != deposit_before
+    );
   }
 
   #[test]

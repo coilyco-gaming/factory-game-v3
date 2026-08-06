@@ -63,6 +63,42 @@ fn cli_summary_only_skips_tick_snapshots() {
 }
 
 #[test]
+fn cli_bounds_battery_exhaustion_to_summary_runs() {
+  let valid = Command::new(env!("CARGO_BIN_EXE_factory_cli"))
+    .args([
+      "run",
+      "--scenario",
+      "hybrid-grid",
+      "--ticks",
+      "3",
+      "--summary-only",
+      "--exhaust-batteries-at",
+      "2",
+    ])
+    .output()
+    .expect("cli runs");
+  assert!(valid.status.success());
+  assert_eq!(1, String::from_utf8(valid.stdout).unwrap().lines().count());
+
+  let invalid = Command::new(env!("CARGO_BIN_EXE_factory_cli"))
+    .args([
+      "run",
+      "--scenario",
+      "hybrid-grid",
+      "--ticks",
+      "3",
+      "--exhaust-batteries-at",
+      "2",
+    ])
+    .output()
+    .expect("cli runs");
+  assert!(!invalid.status.success());
+  assert!(String::from_utf8(invalid.stderr)
+    .unwrap()
+    .contains("requires --summary-only"));
+}
+
+#[test]
 fn cli_serializes_each_hybrid_grid_generator() {
   let output = Command::new(env!("CARGO_BIN_EXE_factory_cli"))
     .args(["run", "--scenario", "hybrid-grid", "--ticks", "1"])

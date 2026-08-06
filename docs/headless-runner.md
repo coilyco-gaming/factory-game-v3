@@ -24,8 +24,13 @@ ward exec cargo-run -- run --scenario v2-world --ticks 650 --summary-only
 
 Summary-only mode emits just the final object. Liveness includes source
 lifecycle counts, generators, radar claims, dispatch and fleet occupancy, the
-longest queued route, unapplied mutations, and power-line cells. Per-generator
+longest queued route, unapplied mutations, and power-link state. Per-generator
 fuel and output maps distinguish the central and remote plants.
+
+`--exhaust-batteries-at <tick>` is available only with `--summary-only`. It
+zeros non-generator batteries after that tick, making generator-backed recovery
+reproducible without emitting hundreds of pre-cutoff snapshots. The sustained
+v2 proof uses tick 500.
 
 An equivalence test advances the same scenario through snapshot and
 snapshot-free paths and compares the resulting metrics, liveness, and full

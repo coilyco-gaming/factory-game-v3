@@ -8,8 +8,8 @@ use factory_content::{
   POWERED_IRONWORKS_SCENARIO, POWER_LINE_SCENARIO, PRODUCTION_CHAIN_SCENARIO, V2_WORLD_SCENARIO,
 };
 use factory_sim::{
-  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GridPosition,
-  HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
+  AlertHistory, BatteryOwner, DispatchPhase, DispatchReceiverState, GameState, GeneratorPowerLine,
+  GridPosition, HaulerId, HaulerSnapshot, NodeId, TickSnapshot,
 };
 use std::collections::{BTreeMap, VecDeque};
 
@@ -2089,11 +2089,21 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
           .find(|generator| generator.node == node)
       })
       .map(|generator| {
-        let line = snapshot
+        let lines = snapshot
           .topology
           .generator_power_lines
           .iter()
-          .find(|line| line.generator == generator.node);
+          .filter(|line| line.generator == generator.node)
+          .collect::<Vec<_>>();
+        let link = match lines.as_slice() {
+          [] => "pending".into(),
+          [line] => format!("{} via {} cells", line.target, line.cells.len()),
+          lines => format!(
+            "{} links via {} cells",
+            lines.len(),
+            lines.iter().map(|line| line.cells.len()).sum::<usize>()
+          ),
+        };
         format!(
           "{}\ntype: {}\nmode: {}\nfuel: {}\nlink: {}",
           generator.node,
@@ -2104,10 +2114,7 @@ fn node_label_value(snapshot: &TickSnapshot, node: NodeId) -> String {
             "fuel-free"
           },
           format_items(&generator.fuel.items),
-          line.map_or_else(
-            || "pending".into(),
-            |line| format!("{} via {} cells", line.target, line.cells.len())
-          )
+          link
         )
       })
       .unwrap_or_else(|| node.to_string()),
@@ -2458,7 +2465,7 @@ mod tests {
           .then_some(snapshot)
       })
       .expect("remote coal plant deploys");
-    let snapshot = game.step();
+    let mut snapshot = game.step();
     let generator = NodeId::Generator(1);
     let source = snapshot
       .sources
@@ -2488,6 +2495,18 @@ mod tests {
       .generator_power_lines
       .iter()
       .all(|line| line.generator != generator));
+
+    let primary_cells = line.cells.len();
+    snapshot
+      .topology
+      .generator_power_lines
+      .push(GeneratorPowerLine {
+        generator,
+        target: NodeId::Source(0),
+        cells: vec![GridPosition { x: 1, y: 1 }],
+      });
+    assert!(node_label_value(&snapshot, generator)
+      .contains(&format!("link: 2 links via {} cells", primary_cells + 1)));
   }
 
   #[test]

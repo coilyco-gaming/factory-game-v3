@@ -677,6 +677,7 @@ pub struct LivenessSummary {
   pub routed_haulers: usize,
   pub max_route_len: usize,
   pub queued_mutations: usize,
+  pub power_links: usize,
   pub power_line_cells: usize,
 }
 
@@ -719,8 +720,7 @@ pub struct WorldState {
   pub power: Option<PowerGrid>,
   pub batteries: BTreeMap<BatteryOwner, Battery>,
   pub power_lines: BTreeSet<GridPosition>,
-  pub generator_power_lines: BTreeMap<NodeId, GeneratorPowerLine>,
-  pub linked_generators: BTreeSet<NodeId>,
+  pub generator_power_lines: Vec<GeneratorPowerLine>,
   pub topology: Topology,
   pub queued_mutations: Vec<WorldMutation>,
 }

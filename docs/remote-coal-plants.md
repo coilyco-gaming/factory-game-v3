@@ -29,7 +29,9 @@ an empty 10,000-unit battery. That battery replaces the dormant source battery
 at the occupied site. Its generator contract burns four coal for 160 energy. On
 later ticks it advertises normal coal delivery, builds an automatic power line
 to the powered central generator component, and participates in spatial battery
-balancing. It does not attach to a merely closer source or factory battery.
+balancing. After that primary link, generators extend the grid to drained
+factories or mineable sources. Dormant, full, depleted, or charged sources do
+not attract speculative lines.
 
 Snapshots expose the typed generator, inventory, battery, topology position,
 occupied source, intended link target, and complete ordered line path. Metrics
@@ -38,8 +40,8 @@ separate generated, balanced, consumed, and starved energy. Fuel burn and
 generation are also attributed to each generator, so a sustained run can prove
 the remote plant itself remains active. Events cover assignment, retrieval,
 queued placement, world creation, claim release, power linking, and generation.
-The viewer labels the generator type, link target, path length, and occupied
-coal site in detail and overview modes.
+The viewer labels the generator type, primary link or aggregate link count,
+path length, and occupied coal site in detail and overview modes.
 
 ## 100x100 proof and performance
 

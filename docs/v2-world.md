@@ -43,9 +43,10 @@ while shifted grid movement crosses ten cells per keypress.
 
 The release gate also advances two independent full worlds for 650 ticks
 without constructing full object snapshots between checkpoints. It observes a
-deployed source battery at zero after tick 500, then proves that extraction,
-collection, delivery, iron bars, frames, motors, and remote generator output
-all continue. The two replays must retain identical metrics and liveness state.
+controlled exhaustion of every non-generator battery after tick 500, then
+proves that grid reconnection, extraction, collection, delivery, iron bars,
+frames, motors, and remote generator output continue. The two replays must
+retain identical metrics and liveness state.
 Queue and route bounds are derived from the scenario's world, fleet, and grid
 sizes. See [v2-liveness.md](v2-liveness.md) for the exact contract and measured
 performance.
@@ -57,8 +58,9 @@ This scenario is the separate integration and scale proof. Neither kind of test
 is presented as a substitute for the other.
 
 The current game-scale gate does not prove bit-for-bit .NET random coordinates
-or an indefinite full-map steady state. It proves bounded continued operation
-past the first depleted starter battery and sustained remote fuel-backed power
-through tick 650. Radar authority owns drill and coal-plant targeting. See
+or an indefinite full-map steady state. It proves 150 ticks of continued
+operation after a controlled distributed-energy cutoff and sustained remote
+fuel-backed power through tick 650. Radar authority owns drill and coal-plant
+targeting. See
 [deployment-radar.md](deployment-radar.md) and
 [remote-coal-plants.md](remote-coal-plants.md).
