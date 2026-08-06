@@ -39,3 +39,10 @@ movement crosses ten cells per keypress.
 The source audit remains the proof for individual retained Unity contracts.
 This scenario is the separate integration and scale proof. Neither kind of test
 is presented as a substitute for the other.
+
+The current game-scale gate does not prove bit-for-bit .NET random coordinates,
+separate deployment-radar world objects, autonomous remote coal-plant
+expansion, or an indefinitely powered full-map steady state. Drill deployment
+uses the Rust dispatcher, and the bounded run starts from the v2 battery
+capacities and central fueled generator. Those remaining behaviors require a
+longer expansion scenario rather than another component fixture.
