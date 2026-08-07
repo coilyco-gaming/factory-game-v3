@@ -5,7 +5,11 @@
 FROM rust:1.97-bookworm AS builder
 
 ARG TRUNK_VERSION=0.21.14
-ARG TARGETARCH
+# TARGETARCH is only auto-populated by BuildKit. The publish lane's dind daemon
+# runs the classic builder, which leaves it empty and used to fail the arch case
+# below in seconds. The default keeps that builder on the amd64 path it actually
+# targets, and BuildKit still overrides it with the real value.
+ARG TARGETARCH=amd64
 
 # trunk from the upstream prebuilt release (matches the aos dev-base pin), and
 # the wasm target for the shell build. No binaryen/wasm-opt in the shell yet -
