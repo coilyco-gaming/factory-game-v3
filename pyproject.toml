@@ -1,8 +1,2 @@
-[tool.agentic-os.documentation-layout]
-excludes = ["Assets/"]
-
-[tool.agentic-os.code-comments]
-excludes = ["Assets/"]
-
 [tool.agentic-os.repo-pointer-skills]
 org = "coilyco-gaming"

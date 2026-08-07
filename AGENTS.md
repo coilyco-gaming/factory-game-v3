@@ -1,23 +1,22 @@
 # Agent instructions
 
-This repo is the factory-game-v3 Rust/Bevy factory game. The Unity-to-Rust migration is complete and the C# surface is gone, recorded in [docs/csharp-decommission.md](docs/csharp-decommission.md). What remains of the Unity era is an inert art library under `Assets/`, kept as raw material for presentation work.
+This repo is the factory-game-v3 Rust/Bevy factory game. The Unity-to-Rust migration is complete: the C# surface and the Unity asset tree are both gone, recorded in [docs/csharp-decommission.md](docs/csharp-decommission.md). Runtime art the game actually uses lives in the crate that renders it.
 
 ## Scope
 
 - The Rust workspace under `crates/` is the product. Build features there.
-- Preserve the `Assets/` tree unless an issue explicitly says to remove or rewrite it. It is inert input, not dead weight to tidy.
-- `.gitattributes` encodes settled binary-asset policy: the Unity image library is LFS-managed, and the small Bevy runtime sprites are a narrow ordinary-Git exception. Change it only when an issue says to.
+- Art the game renders belongs to the crate that renders it, under `crates/factory_shell/assets/`. Do not reintroduce an engine-shaped asset tree at the repo root.
+- `.gitattributes` sends large binary art to LFS and keeps the small runtime sprites in ordinary Git so the viewer builds from a plain clone. Change it only when an issue says to.
 
 ## Project shape
 
 - `crates/` holds the Rust workspace: `factory_content` (catalog), `factory_sim` (authority), `factory_cli` (headless runner), `factory_shell` (Bevy viewer, native and Wasm).
-- `Assets/` holds the retained Unity-era art: materials, scenes, textures, TextMesh Pro, resources, and their `.meta` files. No source, no test project.
 - `scripts/` holds the test gate, the Trunk web build, and the trusted image publisher. `Dockerfile` and `nginx.conf` build and serve the browser bundle.
 - `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and `.ward/ward.yaml` are the repo-local baseline trio plus command surface.
 
 ## Repo boundaries
 
-- Keep gameplay in `crates/`. The `Assets/` tree is inert and stays that way until an issue says otherwise.
+- Keep gameplay and its art in `crates/`. The repo root carries build, deploy, and docs, not game content.
 - `coilyco-bridge/deploy` owns rollout, the pull credential, and public exposure. This repo owns the image and the workflow that publishes it.
 
 ### The simulation owns logic
@@ -57,7 +56,6 @@ repo keeps its proofs.
 
 - Keep tracked text public-safe.
 - Keep repo-local baseline exceptions narrow and documented in the lowest config layer that can express them.
-- Treat Unity asset retention as a deliberate boundary, not a license to normalize the tree wholesale.
 
 ## Cross-repo contracts
 
@@ -77,7 +75,6 @@ repo keeps its proofs.
 
 ## Agent rules
 
-- Treat the retained Unity art as reference material, not as a target to clean up speculatively.
 - Prefer the smallest local exclusion that makes the managed hooks reflect the real repo surface.
 - Bump `COMPACT_SAVE_VERSION` in the same commit that changes the compact save shape. See [docs/compact-persistence.md](docs/compact-persistence.md).
 

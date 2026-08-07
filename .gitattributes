@@ -1,3 +1,6 @@
+# Large binary art goes to LFS. The Bevy runtime sprites under
+# crates/factory_shell/assets are small and are shipped in ordinary Git so the
+# viewer builds from a plain clone.
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
 *.jpeg filter=lfs diff=lfs merge=lfs -text
@@ -9,6 +12,4 @@
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.hdr filter=lfs diff=lfs merge=lfs -text
 
-# Small Bevy runtime sprites stay in ordinary Git. The retained Unity image
-# library above remains LFS-managed.
 /crates/factory_shell/assets/factory/**/*.png -filter -diff -merge -text

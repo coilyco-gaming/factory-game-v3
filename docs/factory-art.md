@@ -1,9 +1,8 @@
 # Factory runtime art
 
-The local Bevy viewer loads a small accepted sprite set without turning the
-retained Unity library into a runtime dependency. The typed `FactoryArt`
-resource owns every image handle under the shell crate's default `assets`
-root.
+The Bevy viewer loads a small accepted sprite set that lives with the crate
+that renders it. The typed `FactoryArt` resource owns every image handle under
+the shell crate's default `assets` root.
 
 ## Accepted files
 
@@ -25,8 +24,10 @@ root.
 
 All fifteen files are 100x100 RGBA images under
 `crates/factory_shell/assets/factory/`. The narrow `.gitattributes` exception
-keeps only that subtree in ordinary Git. The retained Unity image library
-remains LFS-managed and inert.
+keeps that subtree in ordinary Git so the viewer builds from a plain clone,
+while larger binary art still goes to LFS. These sprites were selected from the
+Unity library before that tree was removed, and git history retains the
+originals.
 
 ## Projection rules
 

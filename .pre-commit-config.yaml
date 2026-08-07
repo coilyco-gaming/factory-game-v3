@@ -5,9 +5,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^Assets/
       - id: end-of-file-fixer
-        exclude: ^Assets/
       - id: check-added-large-files
         args: [--maxkb=4096]
       - id: check-merge-conflict
@@ -15,7 +13,6 @@ repos:
       - id: check-case-conflict
       - id: check-illegal-windows-names
       - id: mixed-line-ending
-        exclude: ^Assets/
       - id: check-json
       - id: check-toml
   - repo: https://forgejo.coilysiren.me/coilyco-flight-deck/agentic-os
@@ -26,7 +23,6 @@ repos:
       - id: documentation-layout
       - id: context-load-points
       - id: code-comments
-        exclude: ^Assets/
       - id: catalog-block-present
       - id: check-skills
       - id: dead-cross-links
@@ -39,9 +35,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: ^Assets/
       - id: end-of-file-fixer
-        exclude: ^Assets/
       - id: check-added-large-files
         args: [--maxkb=2048]
       - id: check-merge-conflict
@@ -49,7 +43,6 @@ repos:
       - id: check-case-conflict
       - id: check-illegal-windows-names
       - id: mixed-line-ending
-        exclude: ^Assets/
       - id: check-json
       - id: check-toml
   - repo: https://github.com/rhysd/actionlint
@@ -71,4 +64,4 @@ repos:
     hooks:
       - id: typos
         args: []
-        exclude: ^(Assets/|\.gitignore$)
+        exclude: ^\.gitignore$

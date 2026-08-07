@@ -1,8 +1,7 @@
 # Factory Game V3
 
 This repository ships the Rust/Bevy factory simulation and browser viewer.
-Reusable art from the retired Unity prototype remains available for future
-presentation work.
+Runtime art lives with the viewer in `crates/factory_shell/assets/`.
 
 ## Validation
 

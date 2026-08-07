@@ -36,6 +36,13 @@ OpenTelemetry solely to the retired C# path.
 
 ## Preserved assets
 
-The deletion does not touch scenes, textures, materials, building and vehicle
-art, fonts, shaders, or TextMesh Pro resources. Those assets are inert migration
-inputs and can be evaluated separately for future Bevy presentation work.
+The C# deletion did not touch scenes, textures, materials, building and vehicle
+art, fonts, shaders, or TextMesh Pro resources. Those assets were kept as inert
+migration inputs, to be evaluated separately for Bevy presentation work.
+
+That evaluation happened. The accepted runtime sprites were pulled into
+`crates/factory_shell/assets/factory/`, and the rest of the tree was removed in
+a later pass, because Bevy cannot read Unity scenes, materials, shader graphs,
+ShaderLab shaders, or TextMesh Pro. Git history and the LFS objects on the
+canonical remote retain every original image. See
+[factory-art.md](factory-art.md).
