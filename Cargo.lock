@@ -2551,6 +2551,7 @@ dependencies = [
  "factory_content",
  "factory_sim",
  "serde_json",
+ "wasm-bindgen",
  "web-sys",
 ]
 

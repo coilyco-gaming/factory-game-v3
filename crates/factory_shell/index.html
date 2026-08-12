@@ -15,13 +15,72 @@
         margin: 0;
         height: 100%;
         background: #0f1217;
+        color: #e8ecf2;
+        font: 15px/1.5 system-ui, sans-serif;
       }
-      canvas {
-        width: 100%;
+      #fg-layout {
+        display: flex;
         height: 100%;
+      }
+      #fg-canvas {
+        flex: 1 1 auto;
+        min-width: 0;
         display: block;
+      }
+      #fg-a11y {
+        flex: 0 0 22rem;
+        overflow-y: auto;
+        padding: 1rem;
+        background: #151a21;
+        border-left: 1px solid #2a323d;
+      }
+      #fg-a11y h2 {
+        font-size: 1rem;
+        margin: 1.25rem 0 0.35rem;
+      }
+      #fg-a11y div {
+        margin-bottom: 0.5rem;
+      }
+      #fg-a11y button {
+        font: inherit;
+        margin: 0.15rem 0.25rem 0.15rem 0;
+        padding: 0.5rem 0.75rem;
+        min-height: 2.75rem;
+        color: inherit;
+        background: #232c38;
+        border: 1px solid #3a4756;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      #fg-a11y button:focus-visible {
+        outline: 3px solid #7bc8ff;
+        outline-offset: 2px;
+      }
+      #fg-a11y label {
+        display: inline-block;
+        margin-right: 0.75rem;
+      }
+      #fg-a11y input {
+        font: inherit;
+        width: 4.5rem;
+        margin-left: 0.35rem;
+        padding: 0.4rem;
+        color: inherit;
+        background: #0f1217;
+        border: 1px solid #3a4756;
+        border-radius: 4px;
       }
     </style>
   </head>
-  <body></body>
+  <body>
+    <main id="fg-layout">
+      <canvas id="fg-canvas"></canvas>
+      <!-- Filled in by the Rust a11y module. Bevy draws into the canvas and
+           exposes nothing to a screen reader, so this is the readable half of
+           the game. See docs/accessible-play.md. -->
+      <aside id="fg-a11y" aria-label="Accessible controls">
+        <h1>Factory game</h1>
+      </aside>
+    </main>
+  </body>
 </html>

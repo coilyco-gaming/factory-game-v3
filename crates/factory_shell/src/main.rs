@@ -1,9 +1,11 @@
+mod a11y;
 mod storage;
 
 use bevy::asset::AssetMetaCheck;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::winit::{UpdateMode, WinitSettings};
+use std::time::Duration;
 use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
 use factory_sim::{
   CompactGame, CompactRecipe, CompactSnapshot, GridPosition, COMPACT_SCENARIO_NAME,
@@ -57,6 +59,10 @@ fn main() {
             title: "factory game".into(),
             resolution: (1180, 720).into(),
             fit_canvas_to_parent: true,
+            // The page owns the layout so the accessible panel can sit beside
+            // the canvas instead of under it. See docs/accessible-play.md.
+            #[cfg(target_arch = "wasm32")]
+            canvas: Some("#fg-canvas".into()),
             ..default()
           }),
           ..default()
@@ -75,7 +81,9 @@ fn main() {
     .init_resource::<PlayerView>()
     .init_resource::<HoverCell>()
     .init_resource::<FactoryArt>()
-    .add_systems(Startup, setup)
+    .init_resource::<A11yFocus>()
+    .init_resource::<A11yLog>()
+    .add_systems(Startup, (setup, install_accessible_surface))
     .add_systems(
       Update,
       (
@@ -83,6 +91,7 @@ fn main() {
         handle_control_buttons,
         update_camera,
         handle_pointer_edits,
+        apply_accessible_commands,
         sync_frame_pacing,
         advance_simulation,
         autosave,
@@ -91,6 +100,7 @@ fn main() {
         update_ui_text,
         update_hover_cursor,
         style_control_buttons,
+        publish_accessible_surface,
       )
         .chain(),
     )
@@ -317,6 +327,25 @@ impl Default for PlayerView {
 
 #[derive(Resource, Default)]
 struct HoverCell(Option<GridPosition>);
+
+/// The cell the accessible surface currently describes. A player who cannot
+/// see the grid needs a cursor that does not depend on a mouse.
+#[derive(Resource)]
+struct A11yFocus(GridPosition);
+
+impl Default for A11yFocus {
+  fn default() -> Self {
+    Self(CompactGame::WAREHOUSE_POSITION)
+  }
+}
+
+/// A rolling window of recent events, keyed on the snapshot revision so a
+/// quiet tick does not blank the region a screen reader just read.
+#[derive(Resource, Default)]
+struct A11yLog {
+  entries: Vec<String>,
+  revision: u64,
+}
 
 #[derive(Component)]
 struct MainCamera;
@@ -935,14 +964,76 @@ fn handle_pointer_edits(
   *last_painted = Some(cell);
 }
 
-/// A paused shell still ran the render loop every frame, so an idle window
-/// burned a core. Reactive mode still wakes on input. See docs/factory-viewer.md.
+const PAUSED_WAIT: Duration = Duration::from_secs(5);
+
+/// A paused native shell idles instead of burning a core on an unchanged
+/// frame. The browser is excluded: see docs/accessible-play.md.
 fn pacing_for(paused: bool) -> WinitSettings {
-  if paused {
-    WinitSettings::desktop_app()
-  } else {
-    WinitSettings::game()
+  if !paused || cfg!(target_arch = "wasm32") {
+    return WinitSettings::game();
   }
+  WinitSettings {
+    focused_mode: UpdateMode::reactive(PAUSED_WAIT),
+    unfocused_mode: UpdateMode::reactive_low_power(Duration::from_secs(60)),
+  }
+}
+
+fn install_accessible_surface() {
+  a11y::install();
+}
+
+/// The accessible surface never decides anything. It lands in the same host
+/// paths the pointer and keyboard surfaces use.
+fn apply_accessible_commands(
+  mut host: ResMut<SimHost>,
+  mut view: ResMut<PlayerView>,
+  mut focus: ResMut<A11yFocus>,
+) {
+  for command in a11y::drain() {
+    match command {
+      a11y::Command::Control(action) => apply_control(action, &mut host, &mut view),
+      a11y::Command::EditAt(tool, cell) => {
+        host.tool = tool;
+        host.edit_cell(cell);
+        focus.0 = cell;
+      }
+      a11y::Command::SelectBuilding(id) => match host
+        .snapshot
+        .buildings
+        .iter()
+        .find(|building| building.id == id)
+      {
+        Some(building) => {
+          focus.0 = building.position;
+          host.selected_building = Some(id);
+          host.feedback = format!("Factory {id} selected.");
+        }
+        None => host.feedback = format!("There is no factory {id}."),
+      },
+      a11y::Command::Focus(cell) => focus.0 = cell,
+    }
+  }
+}
+
+fn publish_accessible_surface(
+  host: Res<SimHost>,
+  focus: Res<A11yFocus>,
+  mut log: ResMut<A11yLog>,
+) {
+  if log.revision != host.snapshot_revision {
+    log.revision = host.snapshot_revision;
+    let events = host.snapshot.events.clone();
+    a11y::remember(&mut log.entries, &events);
+  }
+  a11y::publish(&a11y::Report {
+    snapshot: &host.snapshot,
+    paused: host.paused,
+    speed: host.ticks_per_second,
+    focus: focus.0,
+    selected_building: host.selected_building,
+    feedback: &host.feedback,
+    events: &log.entries,
+  });
 }
 
 fn sync_frame_pacing(

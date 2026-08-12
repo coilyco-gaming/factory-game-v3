@@ -45,12 +45,16 @@ the complete world extent.
 
 ## Frame pacing
 
-The shell redraws continuously only while the simulation runs. Paused, it
-switches to winit's reactive mode and idles until input arrives, because a
+The native shell redraws continuously only while the simulation runs. Paused,
+it switches to winit's reactive mode and idles until input arrives, because a
 paused window otherwise ran the full render loop forever and held a core at
 roughly 90 percent while nothing advanced. The shell opens paused, so it opens
 reactive, and resuming flips it back to continuous frames rather than leaving
 a running simulation waiting on events.
+
+The browser build stays continuous. A DOM click is not a winit event, so a
+sleeping web build ignores the accessible panel until a mouse moves over the
+canvas. See [accessible-play.md](accessible-play.md).
 
 ## Projection performance
 

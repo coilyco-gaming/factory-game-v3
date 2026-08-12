@@ -10,9 +10,18 @@ bevy = "0.19"
 factory_content = { path = "../factory_content" }
 factory_sim = { path = "../factory_sim" }
 
-# Browser session storage. Native uses std::fs, so this stays wasm-only.
+# Browser session storage and the accessible DOM surface. Native uses std::fs
+# and gets AccessKit from bevy_a11y, so both stay wasm-only.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3", features = ["Storage", "Window"] }
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = [
+  "Document",
+  "Element",
+  "EventTarget",
+  "HtmlInputElement",
+  "Storage",
+  "Window",
+] }
 
 [dev-dependencies]
 serde_json = "1"
