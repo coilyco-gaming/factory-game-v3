@@ -98,7 +98,8 @@ fn run() -> Result<(), String> {
 fn play(load: Option<PathBuf>, save: Option<PathBuf>, max_ticks: u64) -> Result<(), String> {
   let mut game = match load {
     Some(path) => {
-      let raw = fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+      let raw =
+        fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
       CompactGame::from_save_string(raw.trim()).map_err(|error| error.to_string())?
     }
     None => CompactGame::new(),

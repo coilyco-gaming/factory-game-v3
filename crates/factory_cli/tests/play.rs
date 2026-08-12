@@ -78,11 +78,17 @@ fn play_reports_a_refused_edit_without_ending_the_session() {
   assert_eq!(4, responses.len());
   assert_eq!(Some("out_of_bounds"), responses[0]["error_kind"].as_str());
   assert_eq!(Some("road_required"), responses[1]["error_kind"].as_str());
-  assert_eq!(Some("unknown_building"), responses[2]["error_kind"].as_str());
+  assert_eq!(
+    Some("unknown_building"),
+    responses[2]["error_kind"].as_str()
+  );
   for response in &responses[..3] {
     assert_eq!(Some(false), response["ok"].as_bool());
     assert!(response["error"].as_str().is_some_and(|e| !e.is_empty()));
-    assert_eq!(Some(3), response["snapshot"]["roads"].as_array().map(Vec::len));
+    assert_eq!(
+      Some(3),
+      response["snapshot"]["roads"].as_array().map(Vec::len)
+    );
   }
   assert_eq!(Some(true), responses[3]["ok"].as_bool());
 }
