@@ -5,12 +5,12 @@ use bevy::asset::AssetMetaCheck;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::winit::{UpdateMode, WinitSettings};
-use std::time::Duration;
 use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
 use factory_sim::{
   CompactGame, CompactRecipe, CompactSnapshot, GridPosition, COMPACT_SCENARIO_NAME,
   COMPACT_WORLD_HEIGHT, COMPACT_WORLD_WIDTH,
 };
+use std::time::Duration;
 
 const NORMAL_TICKS_PER_SECOND: f32 = 2.0;
 const FAST_TICKS_PER_SECOND: f32 = 8.0;
@@ -1015,11 +1015,7 @@ fn apply_accessible_commands(
   }
 }
 
-fn publish_accessible_surface(
-  host: Res<SimHost>,
-  focus: Res<A11yFocus>,
-  mut log: ResMut<A11yLog>,
-) {
+fn publish_accessible_surface(host: Res<SimHost>, focus: Res<A11yFocus>, mut log: ResMut<A11yLog>) {
   if log.revision != host.snapshot_revision {
     log.revision = host.snapshot_revision;
     let events = host.snapshot.events.clone();

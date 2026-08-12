@@ -282,7 +282,11 @@ mod tests {
     let mut log = Vec::new();
     remember(&mut log, &["first".to_string()]);
     remember(&mut log, &[]);
-    assert_eq!(vec!["first".to_string()], log, "a quiet tick keeps the past");
+    assert_eq!(
+      vec!["first".to_string()],
+      log,
+      "a quiet tick keeps the past"
+    );
 
     let many: Vec<String> = (0..LOG_LIMIT).map(|n| format!("event {n}")).collect();
     remember(&mut log, &many);

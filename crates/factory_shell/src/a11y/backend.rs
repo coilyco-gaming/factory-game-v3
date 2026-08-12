@@ -186,9 +186,13 @@ pub fn install() {
   button(&document, &build, "fg-factory", "Place factory", || {
     Command::EditAt(ToolMode::Building, selected_cell())
   });
-  button(&document, &build, "fg-inspect", "Describe this cell", || {
-    Command::Focus(selected_cell())
-  });
+  button(
+    &document,
+    &build,
+    "fg-inspect",
+    "Describe this cell",
+    || Command::Focus(selected_cell()),
+  );
 
   heading(&document, &root, "Recipe");
   let recipe = region(&document, &root, "fg-recipe", "Recipe controls", "");
