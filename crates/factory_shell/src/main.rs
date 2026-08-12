@@ -3,6 +3,7 @@ mod storage;
 use bevy::asset::AssetMetaCheck;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
+use bevy::winit::{UpdateMode, WinitSettings};
 use factory_content::{ItemId, COPPER_BARS, COPPER_ORE, IRON_BARS, IRON_ORE};
 use factory_sim::{
   CompactGame, CompactRecipe, CompactSnapshot, GridPosition, COMPACT_SCENARIO_NAME,
@@ -68,6 +69,8 @@ fn main() {
         }),
     )
     .insert_resource(ClearColor(Color::srgb(0.055, 0.063, 0.075)))
+    // The shell opens paused, so it opens in the reactive mode too.
+    .insert_resource(WinitSettings::desktop_app())
     .insert_resource(SimHost::new())
     .init_resource::<PlayerView>()
     .init_resource::<HoverCell>()
@@ -80,6 +83,7 @@ fn main() {
         handle_control_buttons,
         update_camera,
         handle_pointer_edits,
+        sync_frame_pacing,
         advance_simulation,
         autosave,
         rebuild_dynamic_projection,
@@ -931,6 +935,28 @@ fn handle_pointer_edits(
   *last_painted = Some(cell);
 }
 
+/// A paused shell still ran the render loop every frame, so an idle window
+/// burned a core. Reactive mode still wakes on input. See docs/factory-viewer.md.
+fn pacing_for(paused: bool) -> WinitSettings {
+  if paused {
+    WinitSettings::desktop_app()
+  } else {
+    WinitSettings::game()
+  }
+}
+
+fn sync_frame_pacing(
+  host: Res<SimHost>,
+  mut settings: ResMut<WinitSettings>,
+  mut applied: Local<Option<bool>>,
+) {
+  if *applied == Some(host.paused) {
+    return;
+  }
+  *applied = Some(host.paused);
+  *settings = pacing_for(host.paused);
+}
+
 fn advance_simulation(time: Res<Time>, mut host: ResMut<SimHost>) {
   if host.paused {
     return;
@@ -1380,6 +1406,13 @@ fn item_name(item: ItemId) -> &'static str {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn only_a_running_shell_redraws_every_frame() {
+    assert_eq!(UpdateMode::Continuous, pacing_for(false).focused_mode);
+    assert_ne!(UpdateMode::Continuous, pacing_for(true).focused_mode);
+    assert_ne!(UpdateMode::Continuous, pacing_for(true).unfocused_mode);
+  }
 
   #[test]
   fn compact_grid_conversion_round_trips_every_cell() {

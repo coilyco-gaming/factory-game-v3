@@ -43,6 +43,15 @@ changes speed. `WASD` or arrows pan while held. `Q`, `E`, and the wheel zoom.
 The closest view shows about 10x10 cells, while the maximum zoom-out remains
 the complete world extent.
 
+## Frame pacing
+
+The shell redraws continuously only while the simulation runs. Paused, it
+switches to winit's reactive mode and idles until input arrives, because a
+paused window otherwise ran the full render loop forever and held a core at
+roughly 90 percent while nothing advanced. The shell opens paused, so it opens
+reactive, and resuming flips it back to continuous frames rather than leaving
+a running simulation waiting on events.
+
 ## Projection performance
 
 The 256-cell ground is static. Snapshot revisions rebuild only the compact
