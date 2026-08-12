@@ -18,7 +18,7 @@ jobs:
         with:
           lfs: true
 
-      - run: bash scripts/test-gate.sh
+      - run: bash scripts/ci-command.sh bash scripts/test-gate.sh
       - name: Alert Telegram on main failure
         if: ${{ failure() && github.ref == 'refs/heads/main' }}
         continue-on-error: true
