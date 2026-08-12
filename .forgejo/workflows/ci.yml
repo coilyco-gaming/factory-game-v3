@@ -1,9 +1,12 @@
+# Repo gate on every push and pull request. workflow_dispatch is the retry
+# path when a runner kills a run or cannot reach a fetch it needs.
 name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   gate:
