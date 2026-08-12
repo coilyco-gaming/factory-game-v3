@@ -41,7 +41,7 @@ repo keeps its proofs.
 
 - Route dev commands through ward.
 - `ward exec test` is the gate: the pre-commit baseline plus the Rust workspace tests, under a bounded timeout. CI calls `bash scripts/test-gate.sh` directly because repo verbs require a tracked branch.
-- `ward exec cargo-run` runs a headless scenario, `shell-run` the native viewer, `shell-serve` and `shell-build-web` the browser bundle, `image-build` and `check-publish` the deploy surface, `v2-liveness` the sustained-operation proof.
+- `ward exec cargo-run` runs a headless scenario, `play` the compact loop over line-oriented JSON, `shell-run` the native viewer, `shell-serve` and `shell-build-web` the browser bundle, `image-build` and `check-publish` the deploy surface, `v2-liveness` the sustained-operation proof.
 - Enumerate the full set in [`.ward/ward.yaml`](.ward/ward.yaml), and add a verb there before invoking it.
 
 ## Validation

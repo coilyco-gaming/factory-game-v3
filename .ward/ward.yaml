@@ -13,6 +13,9 @@ commands:
   cargo-run:
     run: cargo run -p factory_cli --
     description: "Run the headless Rust scenario runner."
+  play:
+    run: cargo run -p factory_cli -- play
+    description: "Play the compact loop headlessly. One JSON request per line in, one response per line out."
   v2-liveness:
     run: cargo test --release -p factory_sim v2_world_sustains_remote_power_after_starter_charge
     description: "Run the deterministic 650-tick v2 sustained-operation proof."

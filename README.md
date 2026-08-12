@@ -21,6 +21,16 @@ The headless Rust slice can also run directly:
 ward exec cargo-run -- run --scenario iron-bars --ticks 6
 ```
 
+The compact game is playable headlessly over a line-oriented JSON protocol,
+one request per line in and one response per line out:
+
+```bash
+ward exec play
+```
+
+See [docs/headless-play.md](docs/headless-play.md) for the request and
+response shapes.
+
 ## Deployment
 
 Source CI builds the repo-root Dockerfile and publishes
