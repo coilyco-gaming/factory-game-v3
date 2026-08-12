@@ -49,8 +49,7 @@ fn run() -> Result<(), String> {
       }
       let content = ContentDatabase::starter();
       let scenario_id = parse_scenario(&content, &scenario)?;
-      let mut state =
-        GameState::new(content, scenario_id).map_err(|error| error.to_string())?;
+      let mut state = GameState::new(content, scenario_id).map_err(|error| error.to_string())?;
       let mut stdout = io::BufWriter::new(io::stdout().lock());
       for tick in 1..=ticks {
         if summary_only {

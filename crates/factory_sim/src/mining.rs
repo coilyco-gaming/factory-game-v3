@@ -17,12 +17,7 @@ pub struct MiningExtractor {
 }
 
 impl MiningExtractor {
-  pub fn for_item(
-    content: &ContentDatabase,
-    item: ItemId,
-    speed: u32,
-    deposit_size: u32,
-  ) -> Self {
+  pub fn for_item(content: &ContentDatabase, item: ItemId, speed: u32, deposit_size: u32) -> Self {
     let deposit = if content.item(item).create_from_nothing {
       Deposit::Manifest
     } else {

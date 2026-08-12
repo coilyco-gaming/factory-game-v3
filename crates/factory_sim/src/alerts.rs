@@ -30,11 +30,7 @@ impl AlertHistory {
     }
   }
 
-  pub fn record_many(
-    &mut self,
-    tick: u64,
-    messages: impl IntoIterator<Item = impl Into<String>>,
-  ) {
+  pub fn record_many(&mut self, tick: u64, messages: impl IntoIterator<Item = impl Into<String>>) {
     for message in messages {
       self.record(tick, message);
     }

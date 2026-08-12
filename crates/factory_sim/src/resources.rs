@@ -86,25 +86,31 @@ impl Inventory {
   }
 
   fn used_weight(&self, content: &ContentDatabase) -> u32 {
-    self.items
+    self
+      .items
       .iter()
       .map(|(item, quantity)| content.item(*item).weight.saturating_mul(*quantity))
       .sum()
   }
 
   fn used_volume(&self, content: &ContentDatabase) -> u32 {
-    self.items
+    self
+      .items
       .iter()
       .map(|(item, quantity)| content.item(*item).volume.saturating_mul(*quantity))
       .sum()
   }
 
   pub fn remaining_weight(&self, content: &ContentDatabase) -> u32 {
-    self.weight_capacity.saturating_sub(self.used_weight(content))
+    self
+      .weight_capacity
+      .saturating_sub(self.used_weight(content))
   }
 
   pub fn remaining_volume(&self, content: &ContentDatabase) -> u32 {
-    self.volume_capacity.saturating_sub(self.used_volume(content))
+    self
+      .volume_capacity
+      .saturating_sub(self.used_volume(content))
   }
 
   pub fn max_insertable(&self, content: &ContentDatabase, item: ItemId, requested: u32) -> u32 {

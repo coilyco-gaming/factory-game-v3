@@ -1505,7 +1505,11 @@ mod tests {
       assert_eq!(ItemId::resolve(id.as_str()), Some(id));
     }
     for id in ContentDatabase::starter().items.keys() {
-      assert_eq!(ItemId::resolve(id.as_str()), Some(*id), "{id} is absent from ItemId::ALL");
+      assert_eq!(
+        ItemId::resolve(id.as_str()),
+        Some(*id),
+        "{id} is absent from ItemId::ALL"
+      );
     }
     assert_eq!(ItemId::resolve("no_such_item"), None);
   }
