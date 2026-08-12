@@ -78,6 +78,15 @@ repo keeps its proofs.
 - Prefer the smallest local exclusion that makes the managed hooks reflect the real repo surface.
 - Bump `COMPACT_SAVE_VERSION` in the same commit that changes the compact save shape. See [docs/compact-persistence.md](docs/compact-persistence.md).
 
+## Checkout residency
+
+This repo is not in Agent Compose's `repository-plan.yaml`, so it has no
+resident checkout under `~/projects/<owner>/`. That is intentional. Work it
+from a task-scoped temporary clone, and remove that clone once the work lands.
+
+A temporary root can be purged at any time, so commit and push before pausing,
+switching tasks, or ending a session. The remote is the only durable artifact.
+
 ## See also
 
 - [README.md](README.md)
