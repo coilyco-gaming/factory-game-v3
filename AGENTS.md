@@ -1,3 +1,7 @@
+---
+ward:
+  workflow: merge-remote-main
+---
 # Agent instructions
 
 This repo is the factory-game-v3 Rust/Bevy factory game. The Unity-to-Rust migration is complete: the C# surface and the Unity asset tree are both gone, recorded in [docs/csharp-decommission.md](docs/csharp-decommission.md). Runtime art the game actually uses lives in the crate that renders it.
