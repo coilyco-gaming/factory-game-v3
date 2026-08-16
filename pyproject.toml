@@ -8,3 +8,6 @@ excludes = [
 
 [tool.agentic-os.repo-pointer-skills]
 org = "coilyco-gaming"
+
+[tool.agentic-os.documentation-layout]
+band = "small"
