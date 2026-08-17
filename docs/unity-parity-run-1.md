@@ -19,9 +19,9 @@ Contract: [Forgejo issue 37](https://forgejo.coilysiren.me/coilyco-gaming/factor
 
 - Done - issue 37 holds the run contract, this journal is tracked, and the
   repository test gate now falls back cleanly when GNU `timeout` is unavailable.
-- Evidence - `ward exec test` passed the complete pre-commit suite and all 38
+- Evidence - `just test` passed the complete pre-commit suite and all 38
   Rust tests; commit `f2ee8a3` landed on canonical main.
-- Decision - use the normal full `ward exec test` surface at every later
+- Decision - use the normal full `just test` surface at every later
   checkpoint instead of maintaining a task-only validation verb.
 - Next - classify every retained C# gameplay file by Rust coverage and select
   the next slice from the largest coherent uncovered dependency chain.

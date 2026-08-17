@@ -1,39 +1,9 @@
-# Per-repo command allowlist. Add verbs here as the surface grows.
-
-commands:
-  test:
-    run: bash scripts/test-gate.sh
-    description: "Run the pre-commit baseline and Rust workspace tests."
-  cargo-test:
-    run: cargo test --workspace
-    description: "Run the Rust workspace tests."
-  cargo-fmt:
-    run: cargo fmt --all -- --config tab_spaces=2
-    description: "Format the Rust workspace with the repository's two-space style."
-  cargo-run:
-    run: cargo run -p factory_cli --
-    description: "Run the headless Rust scenario runner."
-  play:
-    run: cargo run -p factory_cli -- play
-    description: "Play the compact loop headlessly. One JSON request per line in, one response per line out."
-  v2-liveness:
-    run: cargo test --release -p factory_sim v2_world_sustains_remote_power_after_starter_charge
-    description: "Run the deterministic 650-tick v2 sustained-operation proof."
-  shell-run:
-    run: cargo run --profile viewer -p factory_shell
-    description: "Run the native Bevy simulation viewer with optimized graphics dependencies."
-  shell-build-web:
-    run: bash scripts/shell-web.sh build
-    description: "Build the Wasm/static viewer bundle via trunk."
-  image-build:
-    run: docker build -t factory-game-v3:local .
-    description: "Build the deployable factory-game-v3 web image."
-  check-publish:
-    run: pre-commit run shellcheck --files scripts/publish-image.sh
-    description: "Lint the trusted Forgejo OCI publisher shell contract."
-  shell-serve:
-    run: bash scripts/shell-web.sh serve
-    description: "Serve the simulation viewer with trunk hot reload."
+# Catalog metadata for the cross-repo knowledge graph.
+#
+# Dev verbs used to live here as a `commands:` block. They are recipes in the
+# justfile now. This file survives only because check_catalog_block pins this
+# exact path and catalog-trifecta wants README, AGENTS, and FEATURES to link
+# it, both upstream in agentic-os.
 
 catalog:
   description: "Factory-game-v3 is a deterministic Rust simulation with a native and Wasm Bevy snapshot viewer."

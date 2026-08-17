@@ -12,10 +12,10 @@ and sends typed planning commands back to the simulation.
 
 ## Run
 
-- `ward exec shell-run` - native simulation viewer with optimized graphics
+- `just shell-run` - native simulation viewer with optimized graphics
   dependencies.
-- `ward exec shell-serve` - browser viewer with trunk hot reload.
-- `ward exec shell-build-web` - Wasm viewer bundle in
+- `just shell-serve` - browser viewer with trunk hot reload.
+- `just shell-build-web` - Wasm viewer bundle in
   `crates/factory_shell/dist/`.
 
 The wrapper prefers rustup when Homebrew Rust shadows it. The repository pins

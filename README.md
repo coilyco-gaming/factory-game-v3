@@ -8,7 +8,7 @@ Runtime art lives with the viewer in `crates/factory_shell/assets/`.
 Run the lightweight migration baseline through ward:
 
 ```bash
-ward exec test
+just test
 ```
 
 That verb runs the repo's pre-commit baseline and Rust workspace tests with a
@@ -18,14 +18,14 @@ verbs require a tracked branch.
 The headless Rust slice can also run directly:
 
 ```bash
-ward exec cargo-run -- run --scenario iron-bars --ticks 6
+just cargo-run run --scenario iron-bars --ticks 6
 ```
 
 The compact game is playable headlessly over a line-oriented JSON protocol,
 one request per line in and one response per line out:
 
 ```bash
-ward exec play
+just play
 ```
 
 See [docs/headless-play.md](docs/headless-play.md) for the request and
@@ -43,8 +43,8 @@ read-only `forgejo-registry` pull credential.
 Validate the image locally through Ward:
 
 ```bash
-ward exec check-publish
-ward exec image-build
+just check-publish
+just image-build
 ```
 
 ## Inventory
@@ -63,5 +63,6 @@ The compact player-loop contract is in
 
 - [AGENTS.md](AGENTS.md)
 - [docs/FEATURES.md](docs/FEATURES.md)
+- [justfile](justfile)
 - [.ward/ward.yaml](.ward/ward.yaml)
 - [docs/features-release-tooling.md](docs/features-release-tooling.md)

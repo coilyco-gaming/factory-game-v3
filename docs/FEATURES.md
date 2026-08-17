@@ -15,12 +15,12 @@ What `factory-game-v3` currently ships.
 - **Sustained v2 operation** - a deterministic two-replay 650-tick proof drains every non-generator battery at tick 500 and keeps extraction, freight, production, and generation running. See [v2-liveness.md](v2-liveness.md).
 - **Iron bars slice** - the starter scenario runs `IronOre -> IronBars` end to end and emits JSONL snapshots of mining, dispatch, topology, and movement. See [factory-scenarios.md](factory-scenarios.md).
 - **Source-owned private web image publication** - Forgejo Actions builds the Trunk/Wasm Dockerfile on the trusted deploy lane and publishes `forgejo.coilysiren.me/coilyco-gaming/factory-game-v3:<full-source-sha>`. The deploy repo owns the pull credential, rollout, and exposure. See [features-release-tooling.md](features-release-tooling.md).
-- **Current validation surface** - `ward exec test` runs the pre-commit baseline plus the Rust workspace tests, and CI calls `bash scripts/test-gate.sh` for the same check.
+- **Current validation surface** - `just test` runs the pre-commit baseline plus the Rust workspace tests, and CI calls `bash scripts/test-gate.sh` for the same check.
 - **C# decommission record** - the file-to-Rust proof and the fate of the Unity asset tree live in [csharp-decommission.md](csharp-decommission.md).
 
 ## See also
 
 - [README.md](../README.md)
 - [AGENTS.md](../AGENTS.md)
-- [`.ward/ward.yaml`](../.ward/ward.yaml)
+- [`justfile`](../justfile), [`.ward/ward.yaml`](../.ward/ward.yaml)
 - [docs/features-release-tooling.md](features-release-tooling.md)

@@ -4,7 +4,7 @@
 lines. A normal run emits one full object snapshot per tick:
 
 ```bash
-ward exec cargo-run -- run --scenario iron-bars --ticks 6
+just cargo-run run --scenario iron-bars --ticks 6
 ```
 
 Each tick includes topology, object state, typed dispatch, bounded per-object
@@ -19,7 +19,7 @@ Long runs can skip the large per-tick snapshots while retaining identical
 simulation state:
 
 ```bash
-ward exec cargo-run -- run --scenario v2-world --ticks 650 --summary-only
+just cargo-run run --scenario v2-world --ticks 650 --summary-only
 ```
 
 Summary-only mode emits just the final object. Liveness includes source

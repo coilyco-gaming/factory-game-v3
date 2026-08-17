@@ -70,11 +70,11 @@ An early 650-tick 100x100 release probe took 48.81 seconds. The current 50x50
 test compares two replays in 1.16 seconds. These point measurements span
 different bounds and are neither portable budgets nor a direct benchmark.
 
-Run `ward exec v2-liveness` for the committed proof. The headless runner can
+Run `just v2-liveness` for the committed proof. The headless runner can
 also expose an inspectable final summary without intermediate snapshots:
 
 ```bash
-ward exec cargo-run -- run --scenario v2-world --ticks 650 --summary-only --exhaust-batteries-at 500
+just cargo-run run --scenario v2-world --ticks 650 --summary-only --exhaust-batteries-at 500
 ```
 
 The gate proves 150 post-cutoff ticks, not infinite steady state or .NET parity.

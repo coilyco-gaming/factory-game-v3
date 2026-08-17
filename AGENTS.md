@@ -16,7 +16,7 @@ This repo is the factory-game-v3 Rust/Bevy factory game. The Unity-to-Rust migra
 
 - `crates/` holds the Rust workspace: `factory_content` (catalog), `factory_sim` (authority), `factory_cli` (headless runner), `factory_shell` (Bevy viewer, native and Wasm).
 - `scripts/` holds the test gate, the Trunk web build, and the trusted image publisher. `Dockerfile` and `nginx.conf` build and serve the browser bundle.
-- `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and `.ward/ward.yaml` are the repo-local baseline trio plus command surface.
+- `README.md`, `AGENTS.md`, `docs/FEATURES.md`, and the `justfile` are the repo-local baseline trio plus command surface.
 
 ## Repo boundaries
 
@@ -38,21 +38,21 @@ a snapshot type is never a save format or a source of truth.
 
 When a feature needs a new rule, the rule lands in the sim and the shell learns
 to draw it. Never the reverse. Logic that lives only in the shell is invisible
-to `ward exec cargo-run` and to every `factory_sim` test, which is where this
+to `just cargo-run` and to every `factory_sim` test, which is where this
 repo keeps its proofs.
 
 ## Commands
 
 - Route dev commands through ward.
-- `ward exec test` is the gate: the pre-commit baseline plus the Rust workspace tests, under a bounded timeout. CI calls `bash scripts/test-gate.sh` directly because repo verbs require a tracked branch.
-- `ward exec cargo-run` runs a headless scenario, `play` the compact loop over line-oriented JSON, `shell-run` the native viewer, `shell-serve` and `shell-build-web` the browser bundle, `image-build` and `check-publish` the deploy surface, `v2-liveness` the sustained-operation proof.
-- Enumerate the full set in [`.ward/ward.yaml`](.ward/ward.yaml), and add a verb there before invoking it.
+- `just test` is the gate: the pre-commit baseline plus the Rust workspace tests, under a bounded timeout. CI calls `bash scripts/test-gate.sh` directly because repo verbs require a tracked branch.
+- `just cargo-run` runs a headless scenario, `play` the compact loop over line-oriented JSON, `shell-run` the native viewer, `shell-serve` and `shell-build-web` the browser bundle, `image-build` and `check-publish` the deploy surface, `v2-liveness` the sustained-operation proof.
+- Enumerate the full set in the [`justfile`](justfile), and add a verb there before invoking it.
 
 ## Validation
 
-- Run `ward exec test` for the repo baseline, including the Rust workspace.
-- Run `ward exec image-build` when changing the web image or publish workflow.
-- Run `ward exec check-publish` when changing the Forgejo OCI publisher.
+- Run `just test` for the repo baseline, including the Rust workspace.
+- Run `just image-build` when changing the web image or publish workflow.
+- Run `just check-publish` when changing the Forgejo OCI publisher.
 - Run `pre-commit run --all-files` before committing.
 - Keep [README.md](README.md), this file, and [docs/FEATURES.md](docs/FEATURES.md) in sync when the repo surface changes.
 
@@ -95,5 +95,6 @@ switching tasks, or ending a session. The remote is the only durable artifact.
 
 - [README.md](README.md)
 - [docs/FEATURES.md](docs/FEATURES.md)
+- [`justfile`](justfile)
 - [`.ward/ward.yaml`](.ward/ward.yaml)
 - [docs/features-release-tooling.md](docs/features-release-tooling.md)

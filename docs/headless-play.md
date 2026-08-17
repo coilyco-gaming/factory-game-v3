@@ -7,7 +7,7 @@ client of `CompactGame` was the Bevy shell, so no determinism proof covered
 the loop that ships as the headline feature.
 
 ```bash
-ward exec play
+just play
 ```
 
 The session reads one JSON request per line and writes exactly one response
