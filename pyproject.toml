@@ -10,4 +10,8 @@ excludes = [
 org = "coilyco-gaming"
 
 [tool.agentic-os.documentation-layout]
-band = "small"
+# Large, not small. 28 docs already exceeds the small band's 20-doc cap, so
+# small was never reachable without deleting eight of them, and the longest doc
+# is 80 lines against the large cap of 120. A sweep stamped small fleet-wide
+# during the agentic-os#1108 rollout; Kai re-picked per repo.
+band = "large"
