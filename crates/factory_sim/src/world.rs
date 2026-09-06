@@ -679,6 +679,9 @@ pub struct LivenessSummary {
   pub queued_mutations: usize,
   pub power_links: usize,
   pub power_line_cells: usize,
+  // Jammed output no recipe in this world can ask for. A stalled run is
+  // otherwise indistinguishable from a finished one. See docs/stranded-products.md.
+  pub stranded_products: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

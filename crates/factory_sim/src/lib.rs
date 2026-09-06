@@ -1861,6 +1861,25 @@ impl GameState {
         .map(|radar| radar.dispatch.intents.len())
         .sum::<usize>()
       + power_intents;
+    // Stalled and finished both read as idle_ticks alone, so name the one the
+    // world can never clear by itself. See docs/stranded-products.md.
+    let consumed: std::collections::BTreeSet<ItemId> = self
+      .world
+      .factories
+      .iter()
+      .flat_map(|factory| factory.production.recipe.inputs.keys().copied())
+      .collect();
+    let stranded_products: Vec<String> = self
+      .world
+      .factories
+      .iter()
+      .filter(|factory| factory.production.blocked == Some(ProductionBlockReason::OutputFull))
+      .map(|factory| factory.production.recipe.output_item)
+      .filter(|item| !consumed.contains(item) && !self.content.item(*item).can_spawn_game_object)
+      .collect::<std::collections::BTreeSet<_>>()
+      .into_iter()
+      .map(|item| item.to_string())
+      .collect();
     LivenessSummary {
       tick: self.world.tick,
       deployed_sources: self
@@ -1915,6 +1934,7 @@ impl GameState {
       queued_mutations: self.world.queued_mutations.len(),
       power_links: self.world.generator_power_lines.len(),
       power_line_cells: self.world.power_lines.len(),
+      stranded_products,
     }
   }
 
@@ -2520,6 +2540,39 @@ mod tests {
       .factories
       .iter()
       .all(|factory| factory.alerts.entries.is_empty()));
+  }
+
+  #[test]
+  fn liveness_names_a_jammed_product_no_recipe_here_consumes() {
+    let mut state = GameState::new(ContentDatabase::starter(), IRON_BARS_SCENARIO).unwrap();
+    assert!(state.liveness_summary().stranded_products.is_empty());
+    for _ in 0..10 {
+      state.advance_without_snapshot();
+    }
+    // iron-bars smelts and stops: no factory here takes iron_bars, and bars
+    // are not placeable, so the jam can never clear from inside this world.
+    assert_eq!(
+      vec!["iron_bars".to_string()],
+      state.liveness_summary().stranded_products
+    );
+  }
+
+  #[test]
+  fn a_consumed_product_is_never_reported_as_stranded() {
+    let mut state = GameState::new(
+      ContentDatabase::starter(),
+      factory_content::DISTRIBUTED_CHAIN_SCENARIO,
+    )
+    .unwrap();
+    for _ in 0..40 {
+      state.advance_without_snapshot();
+    }
+    // The same bars, with a frames factory downstream. Jammed or not, they are
+    // demanded here, so they are never the structural case.
+    assert!(!state
+      .liveness_summary()
+      .stranded_products
+      .contains(&"iron_bars".to_string()));
   }
 
   #[test]
