@@ -1,6 +1,14 @@
 # Factory simulation scenarios
 
-The deterministic scenario catalog covers fifteen layouts:
+Twelve deterministic layouts, all of them headless. **None is player-facing.**
+The viewer runs the compact planning game in
+[compact-first-playable.md](compact-first-playable.md), which is not in this
+catalog, so a layout here is a fixture rather than a world someone plays.
+
+That matters when reading a long run. Most of these assert one mechanism and
+then have nothing left to do, and a fixture that has finished looks exactly
+like a world that is stuck. See [stranded-products.md](stranded-products.md)
+for the field that separates them.
 
 - **Iron bars** - one hauler supplies one foundry from a finite iron deposit.
 - **Iron bars fleet** - three haulers arbitrate the same bounded demand.
@@ -27,17 +35,13 @@ The deterministic scenario catalog covers fifteen layouts:
   foundries, eight factories, and the central coal plant run deployment,
   mining, freight, production, and remote power expansion together. A 650-tick
   release proof survives a complete non-generator energy cutoff at tick 500.
-- **Legacy assembly yard** - the early C# row yard places a coal plant, three
-  foundries, seven assembly factories, and eight haulers between three active
-  authored ore fields.
-- **Twin plant basin** - the later C# two-generator yard adds three deployment
-  radars, two coal plants, six factories, and twelve haulers around three
-  dormant authored ore fields.
-- **Four corners works** - a new distributed yard separates iron and copper
-  foundries across the center, places coal at the north and south edges, and
-  gives sixteen haulers four deployment radars and two coal plants.
 
-Every scenario remains available through the headless CLI and test suite. The
-Bevy/Wasm control deck exposes only the four complete 50x50 world simulations,
-so focused component fixtures do not appear as player-facing content. See
-[v3-worlds.md](v3-worlds.md) for the world roster and provenance.
+Every layout is reachable through the headless CLI and the test suite, and
+nowhere else. The 50x50 world is not an exception to that: it is migration
+evidence at full scale rather than playable content, which
+[v3-worlds.md](v3-worlds.md) records along with its provenance.
+
+The eleven small layouts carry the sim's test coverage, `iron-bars` alone
+standing behind roughly two dozen assertions and the CLI's default
+`--scenario`. Three authored 50x50 worlds that carried none were removed in
+`teable:coilyco-gaming/factory-game-v3#7041`.

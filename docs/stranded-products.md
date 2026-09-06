@@ -22,9 +22,8 @@ buffer forever.
 Nothing was wrong with that until you tried to read a run. A stalled world and
 a finished world both present as rising `idle_ticks` and a repeating
 `product output full` alert, and neither says which one you are looking at.
-Seven of the fifteen scenarios were sitting in this state and it had never been
-noticed, because the runner defaults to `--ticks 6` and the stall begins at
-tick 7.
+Seven scenarios were sitting in this state and it had never been noticed,
+because the runner defaults to `--ticks 6` and the stall begins at tick 7.
 
 ## What it does not mean
 
