@@ -22,5 +22,5 @@ What `factory-game-v3` currently ships.
 
 - [README.md](../README.md)
 - [AGENTS.md](../AGENTS.md)
-- [`justfile`](../justfile), [`.ward/ward.yaml`](../.ward/ward.yaml)
+- [`justfile`](../justfile)
 - [docs/features-release-tooling.md](features-release-tooling.md)

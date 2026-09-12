@@ -64,5 +64,4 @@ The compact player-loop contract is in
 - [AGENTS.md](AGENTS.md)
 - [docs/FEATURES.md](docs/FEATURES.md)
 - [justfile](justfile)
-- [.ward/ward.yaml](.ward/ward.yaml)
 - [docs/features-release-tooling.md](docs/features-release-tooling.md)
